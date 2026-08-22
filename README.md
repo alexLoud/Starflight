@@ -9,7 +9,12 @@
 **Starflight** turns a starless deep-sky image into a short fly-through video
 with a rendered starfield. Cross-platform desktop app for macOS, Windows, and Linux.
 
-## Install
+## Download
+
+Pre-built apps for **macOS (Intel + Apple Silicon), Windows, and Linux** are published on
+[GitHub Releases](https://github.com/alexLoud/Starflight/releases/latest).
+
+## Install (from source)
 
 ```bash
 poetry install

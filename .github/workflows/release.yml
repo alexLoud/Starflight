@@ -1,0 +1,174 @@
+# Build desktop packages for all platforms and publish a GitHub Release
+# when the project version in pyproject.toml changes (or via manual run).
+
+name: Release
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - pyproject.toml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Detect version change
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.check.outputs.should_release }}
+      version: ${{ steps.check.outputs.version }}
+      tag: ${{ steps.check.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
+
+      - name: Check whether a release is needed
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+
+          read_version() {
+            python3 -c "import tomllib,sys; print(tomllib.load(sys.stdin.buffer)['project']['version'])"
+          }
+
+          version="$(read_version < pyproject.toml)"
+          tag="v${version}"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+
+          if [[ "${EVENT_NAME}" == "push" ]]; then
+            if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+              previous="$(git show HEAD^:pyproject.toml | read_version)"
+              if [[ "${previous}" == "${version}" ]]; then
+                echo "Version ${version} unchanged (pyproject.toml changed for other reasons)."
+                echo "should_release=false" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+              echo "Version changed: ${previous} -> ${version}"
+            else
+              echo "No parent commit; treating version ${version} as new."
+            fi
+          else
+            echo "Manual dispatch for version ${version}."
+          fi
+
+          if gh release view "${tag}" >/dev/null 2>&1; then
+            echo "Release ${tag} already exists; skipping."
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "should_release=true" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.target }}
+    needs: prepare
+    if: needs.prepare.outputs.should_release == 'true'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15-intel
+            target: macos-intel
+          - os: macos-15
+            target: macos-arm
+          - os: windows-latest
+            target: windows
+          - os: ubuntu-latest
+            target: linux
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Linux GUI libraries for Qt
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libdbus-1-3 \
+            libegl1 \
+            libfontconfig1 \
+            libgl1 \
+            libglib2.0-0 \
+            libxkbcommon0 \
+            libxcb-cursor0 \
+            libxcb-icccm4 \
+            libxcb-image0 \
+            libxcb-keysyms1 \
+            libxcb-render-util0 \
+            libxcb-shape0 \
+            libxcb-xfixes0 \
+            libxcb-xinerama0 \
+            libxi6
+
+      - name: Install Poetry
+        run: pip install "poetry>=2.0,<3.0"
+
+      - name: Install project dependencies
+        run: poetry install --with dev
+
+      - name: Build package
+        run: poetry run build ${{ matrix.target }}
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: starflight-${{ matrix.target }}
+          path: |
+            dist/Starflight-*.dmg
+            dist/Starflight-*.zip
+            dist/Starflight-*.tar.gz
+          if-no-files-found: error
+          retention-days: 5
+
+  publish:
+    name: Publish GitHub Release
+    needs: [prepare, build]
+    if: needs.prepare.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: List release assets
+        run: ls -lh release-assets
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: Starflight ${{ needs.prepare.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            release-assets/Starflight-*.dmg
+            release-assets/Starflight-*.zip
+            release-assets/Starflight-*.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
