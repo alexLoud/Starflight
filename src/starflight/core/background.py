@@ -1,0 +1,260 @@
+"""Render the source image with camera movement.
+
+The renderer builds an inverse affine transform for each frame. It can adjust the requested path
+when needed to keep the output frame covered during movement and rotation.
+"""
+
+from __future__ import annotations
+
+import math
+
+import cv2
+import numpy as np
+
+from starflight.types.settings import (
+    MAX_BACKGROUND_SCALE_PERCENT,
+    MIN_BACKGROUND_SCALE_PERCENT,
+    BackgroundSettings,
+)
+
+
+def _clamp(value: float, minimum: float, maximum: float) -> float:
+    """
+    clamp value to range.
+
+    value
+        input value
+    minimum
+        lower bound
+    maximum
+        upper bound
+    """
+
+    return max(minimum, min(maximum, value))
+
+
+def resolve_camera_path(
+    settings: BackgroundSettings,
+) -> tuple[tuple[float, float], tuple[float, float]]:
+    """
+    resolve normalized start and end look-at points for the camera path.
+
+    unset points fall back to the image center so only-start or only-end
+    matches the requested defaults.
+
+    settings
+        background camera settings
+    """
+
+    image_center = (0.5, 0.5)
+    start = (
+        (_clamp(settings.start_focus_x, 0.0, 1.0), _clamp(settings.start_focus_y, 0.0, 1.0))
+        if settings.start_focus_enabled
+        else image_center
+    )
+    end = (
+        (_clamp(settings.end_focus_x, 0.0, 1.0), _clamp(settings.end_focus_y, 0.0, 1.0))
+        if settings.end_focus_enabled
+        else image_center
+    )
+    return start, end
+
+
+def interpolate_camera_look_at(
+    settings: BackgroundSettings,
+    progress: float,
+) -> tuple[float, float]:
+    """
+    interpolate the normalized look-at point along the camera path.
+
+    settings
+        background camera settings
+    progress
+        normalized animation progress 0..1
+    """
+
+    (start_x, start_y), (end_x, end_y) = resolve_camera_path(settings)
+    amount = _clamp(progress, 0.0, 1.0)
+    return (
+        start_x + (end_x - start_x) * amount,
+        start_y + (end_y - start_y) * amount,
+    )
+
+
+class BackgroundRenderer:
+    """cached background renderer for a source image."""
+
+    def __init__(self, source_image: np.ndarray, width: int, height: int) -> None:
+        """
+        prepare background renderer using the full source image.
+
+        source_image
+            loaded bgr source image
+        width
+            target frame width
+        height
+            target frame height
+        """
+
+        self.width = width
+        self.height = height
+        self.source_image = source_image
+        self.source_h, self.source_w = source_image.shape[:2]
+        self._x_coords = np.arange(width, dtype=np.float32)[np.newaxis, :]
+        self._y_coords = np.arange(height, dtype=np.float32)[:, np.newaxis]
+
+    def render(
+        self,
+        time_seconds: float,
+        duration_seconds: float,
+        settings: BackgroundSettings,
+    ) -> np.ndarray:
+        """
+        render background frame at a given time.
+
+        time_seconds
+            current time in seconds
+        duration_seconds
+            total clip duration in seconds
+        settings
+            background movement settings
+        """
+
+        progress = 0.0 if duration_seconds <= 0 else time_seconds / duration_seconds
+        progress = float(np.clip(progress, 0.0, 1.0))
+        matrix = self._build_transform_matrix(progress, settings)
+        return self._remap(matrix)
+
+    def _remap(self, matrix: np.ndarray) -> np.ndarray:
+        """
+        remap source image using an affine coordinate map.
+
+        matrix
+            2x3 affine matrix mapping output pixels to source coordinates
+        """
+
+        map_x = np.asarray(
+            matrix[0, 0] * self._x_coords
+            + matrix[0, 1] * self._y_coords
+            + matrix[0, 2],
+            dtype=np.float32,
+        )
+        map_y = np.asarray(
+            matrix[1, 0] * self._x_coords
+            + matrix[1, 1] * self._y_coords
+            + matrix[1, 2],
+            dtype=np.float32,
+        )
+
+        return cv2.remap(
+            self.source_image,
+            map_x,
+            map_y,
+            interpolation=cv2.INTER_LANCZOS4,
+            borderMode=cv2.BORDER_CONSTANT,
+            borderValue=(0, 0, 0),
+        )
+
+    def _desired_source_center(
+        self,
+        progress: float,
+        settings: BackgroundSettings,
+    ) -> tuple[float, float]:
+        """
+        compute animated source center along the start/end camera path.
+
+        progress
+            normalized animation progress 0..1
+        settings
+            background settings
+        """
+
+        look_x, look_y = interpolate_camera_look_at(settings, progress)
+        return look_x * self.source_w, look_y * self.source_h
+
+    def _build_transform_matrix(self, progress: float, settings: BackgroundSettings) -> np.ndarray:
+        """
+        build affine matrix mapping output pixels to source coordinates.
+
+        progress
+            normalized animation progress 0..1
+        settings
+            background settings
+        """
+
+        angle = math.radians(settings.rotation_degrees * progress)
+        cos_a = math.cos(angle)
+        sin_a = math.sin(angle)
+
+        center_x, center_y = self._desired_source_center(progress, settings)
+        scale_factor = _clamp(
+            settings.scale_percent / 100.0,
+            MIN_BACKGROUND_SCALE_PERCENT / 100.0,
+            MAX_BACKGROUND_SCALE_PERCENT / 100.0,
+        )
+        base_cover_scale = max(self.width / self.source_w, self.height / self.source_h)
+        zoom = 1.0 + (settings.zoom_percent / 100.0) * progress
+        requested_scale = base_cover_scale * scale_factor * zoom
+
+        rotated_width = abs(cos_a) * self.width + abs(sin_a) * self.height
+        rotated_height = abs(sin_a) * self.width + abs(cos_a) * self.height
+        centered_rotation_scale = (
+            max(rotated_width / self.source_w, rotated_height / self.source_h) * scale_factor
+        )
+        scale = max(requested_scale, centered_rotation_scale)
+
+        if settings.fill_frame:
+            edge_x = max(1e-6, min(center_x, self.source_w - center_x))
+            edge_y = max(1e-6, min(center_y, self.source_h - center_y))
+            focus_safe_scale = (
+                max(rotated_width / (2.0 * edge_x), rotated_height / (2.0 * edge_y)) * scale_factor
+            )
+            scale = max(scale, focus_safe_scale)
+
+            half_x = rotated_width / (2.0 * scale)
+            half_y = rotated_height / (2.0 * scale)
+            render_center_x = _clamp(center_x, half_x, self.source_w - half_x)
+            render_center_y = _clamp(center_y, half_y, self.source_h - half_y)
+        else:
+            render_center_x = center_x
+            render_center_y = center_y
+
+        output_center_x = self.width / 2.0
+        output_center_y = self.height / 2.0
+
+        a = cos_a / scale
+        b = sin_a / scale
+        d = -sin_a / scale
+        e = cos_a / scale
+        c = render_center_x - a * output_center_x - b * output_center_y
+        f = render_center_y - d * output_center_x - e * output_center_y
+
+        return np.array([[a, b, c], [d, e, f]], dtype=np.float32)
+
+    def focus_screen_position(
+        self,
+        progress: float,
+        settings: BackgroundSettings,
+    ) -> tuple[float, float]:
+        """
+        return where the path end point appears on the output frame.
+
+        progress
+            normalized animation progress 0..1
+        settings
+            background movement settings
+        """
+
+        matrix = self._build_transform_matrix(progress, settings)
+        a, b, c = matrix[0]
+        d, e, f = matrix[1]
+        _, (end_x, end_y) = resolve_camera_path(settings)
+        focus_x = end_x * self.source_w
+        focus_y = end_y * self.source_h
+        determinant = a * e - b * d
+        if abs(determinant) < 1e-8:
+            return self.width / 2.0, self.height / 2.0
+
+        screen_x = (e * (focus_x - c) - b * (focus_y - f)) / determinant
+        screen_y = (-d * (focus_x - c) + a * (focus_y - f)) / determinant
+        return float(screen_x), float(screen_y)

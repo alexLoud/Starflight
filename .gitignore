@@ -1,0 +1,10 @@
+.venv/
+.cursor/
+__pycache__/
+*.pyc
+.DS_Store
+test_export.mp4
+_save_test/
+AGENTS.md
+build/
+dist/

@@ -1,0 +1,366 @@
+"""Define project data and convert settings to and from saved JSON data."""
+
+from __future__ import annotations
+
+import json
+from copy import deepcopy
+from dataclasses import asdict, dataclass, field
+from enum import Enum
+from typing import Any
+
+MAX_BACKGROUND_ZOOM_PERCENT = 50.0
+MAX_BACKGROUND_ROTATION_DEGREES = 30.0
+MIN_BACKGROUND_SCALE_PERCENT = 10.0
+MAX_BACKGROUND_SCALE_PERCENT = 200.0
+MIN_STAR_COUNT = 50
+MAX_STAR_COUNT = 3000
+
+
+class DensityPreset(str, Enum):
+    """star density presets."""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CUSTOM = "custom"
+
+
+class ExportQuality(str, Enum):
+    """export quality presets."""
+
+    STANDARD = "standard"
+    HIGH = "high"
+
+
+class RenderQuality(str, Enum):
+    """render quality for preview vs export."""
+
+    PREVIEW = "preview"
+    EXPORT = "export"
+
+
+DENSITY_STAR_COUNTS: dict[DensityPreset, int] = {
+    DensityPreset.LOW: 500,
+    DensityPreset.MEDIUM: 1000,
+    DensityPreset.HIGH: 1500,
+}
+
+DENSITY_LABELS: dict[DensityPreset, str] = {
+    DensityPreset.LOW: "Low",
+    DensityPreset.MEDIUM: "Medium",
+    DensityPreset.HIGH: "High",
+    DensityPreset.CUSTOM: "Custom",
+}
+
+EXPORT_QUALITY_LABELS: dict[ExportQuality, str] = {
+    ExportQuality.STANDARD: "Standard",
+    ExportQuality.HIGH: "High",
+}
+
+RESOLUTION_PRESETS: dict[str, tuple[int, int]] = {
+    "1080 x 1920 (Portrait)": (1080, 1920),
+    "1920 x 1080 (Landscape)": (1920, 1080),
+    "2160 x 3840 (4K Portrait)": (2160, 3840),
+}
+
+PORTRAIT_1080_RESOLUTION = (1080, 1920)
+LANDSCAPE_1080_RESOLUTION = (1920, 1080)
+
+
+def resolution_for_image_orientation(width: int, height: int) -> tuple[int, int]:
+    """
+    pick default target resolution from source image orientation.
+
+    width
+        source image width in pixels
+    height
+        source image height in pixels
+    """
+
+    if width >= height:
+        return LANDSCAPE_1080_RESOLUTION
+    return PORTRAIT_1080_RESOLUTION
+
+
+@dataclass
+class ResolutionSettings:
+    """target video resolution."""
+
+    width: int = 1080
+    height: int = 1920
+
+
+@dataclass
+class BackgroundSettings:
+    """background camera movement settings."""
+
+    scale_percent: float = 100.0
+    zoom_percent: float = 0.0
+    rotation_degrees: float = 0.0
+    start_focus_enabled: bool = False
+    start_focus_x: float = 0.5
+    start_focus_y: float = 0.5
+    end_focus_enabled: bool = False
+    end_focus_x: float = 0.5
+    end_focus_y: float = 0.5
+    fill_frame: bool = True
+
+
+@dataclass
+class StarSettings:
+    """star appearance and animation settings."""
+
+    density_preset: DensityPreset = DensityPreset.MEDIUM
+    star_count: int = 1000
+    min_size: float = 0.5
+    max_size: float = 5.0
+    brightness: float = 0.8
+    glow_intensity: float = 0.0
+    glow_depth_boost: float = 0.0
+    color_intensity: float = 0.0
+    speed: float = 1.0
+    magnitude_realism: float = 0.0
+    size_spread: float = 0.0
+    seed: int = 42
+
+
+@dataclass
+class ExportSettings:
+    """export quality settings."""
+
+    quality: ExportQuality = ExportQuality.HIGH
+    crf: int = 18
+
+
+@dataclass
+class SidebarUiSettings:
+    """persisted expand/collapse state for settings sidebar sections."""
+
+    project_section_expanded: bool = True
+    background_section_expanded: bool = True
+    focus_section_expanded: bool = True
+    star_appearance_section_expanded: bool = True
+    star_effects_section_expanded: bool = True
+    star_animation_section_expanded: bool = True
+
+
+@dataclass
+class ProjectSettings:
+    """all project settings combined."""
+
+    resolution: ResolutionSettings = field(default_factory=ResolutionSettings)
+    duration_seconds: float = 10.0
+    fps: int = 30
+    background: BackgroundSettings = field(default_factory=BackgroundSettings)
+    stars: StarSettings = field(default_factory=StarSettings)
+    export: ExportSettings = field(default_factory=ExportSettings)
+    ui: SidebarUiSettings = field(default_factory=SidebarUiSettings)
+
+    def clone(self) -> ProjectSettings:
+        """return a deep copy of settings."""
+
+        return deepcopy(self)
+
+
+@dataclass
+class Project:
+    """full project state."""
+
+    name: str = "Untitled Project"
+    source_image: str | None = None
+    settings: ProjectSettings = field(default_factory=ProjectSettings)
+    version: int = 1
+
+    def clone(self) -> Project:
+        """return a deep copy of the project."""
+
+        return deepcopy(self)
+
+
+def density_preset_from_count(star_count: int) -> DensityPreset:
+    """map star count back to a density preset if it matches."""
+
+    for preset, count in DENSITY_STAR_COUNTS.items():
+        if star_count == count:
+            return preset
+    return DensityPreset.CUSTOM
+
+
+def apply_density_preset(settings: StarSettings, preset: DensityPreset) -> None:
+    """Apply a density preset to the star count."""
+
+    settings.density_preset = preset
+    if preset != DensityPreset.CUSTOM:
+        settings.star_count = DENSITY_STAR_COUNTS[preset]
+
+
+def export_crf_for_quality(quality: ExportQuality) -> int:
+    """return crf value for export quality preset."""
+
+    if quality == ExportQuality.STANDARD:
+        return 23
+    return 18
+
+
+def _enum_to_json_value(value: Enum | str) -> str:
+    """
+    convert enum or plain string to a json-safe enum value.
+
+    value
+        enum member or raw string value
+    """
+
+    if isinstance(value, Enum):
+        return value.value
+    return str(value)
+
+
+def coerce_density_preset(value: DensityPreset | str | None) -> DensityPreset:
+    """
+    normalize density preset from enum or qt user data.
+
+    value
+        density preset enum or string value
+    """
+
+    if value is None:
+        return DensityPreset.MEDIUM
+    if isinstance(value, DensityPreset):
+        return value
+    return DensityPreset(value)
+
+
+def coerce_export_quality(value: ExportQuality | str | None) -> ExportQuality:
+    """Normalize export quality from enum or Qt user data."""
+
+    if value is None:
+        return ExportQuality.HIGH
+    if isinstance(value, ExportQuality):
+        return value
+    return ExportQuality(value)
+
+
+def _load_color_intensity(stars_data: dict[str, Any]) -> float:
+    """
+    load color intensity with backward compatibility for older projects.
+
+    stars_data
+        stars section from project json
+    """
+
+    if "color_intensity" in stars_data:
+        return float(stars_data["color_intensity"])
+    if "color_variation" in stars_data:
+        legacy = float(stars_data["color_variation"])
+        return min(1.0, legacy * 10.0 + 0.15)
+    return 0.0
+
+
+def _load_focus_points(background_data: dict[str, Any]) -> dict[str, float | bool]:
+    """
+    load start/end focus points with migration from legacy focus box fields.
+
+    background_data
+        background section from project json
+    """
+
+    has_new_fields = any(
+        key in background_data
+        for key in (
+            "start_focus_enabled",
+            "end_focus_enabled",
+            "start_focus_x",
+            "start_focus_y",
+            "end_focus_x",
+            "end_focus_y",
+        )
+    )
+    if has_new_fields:
+        return {
+            "start_focus_enabled": bool(background_data.get("start_focus_enabled", False)),
+            "start_focus_x": float(background_data.get("start_focus_x", 0.5)),
+            "start_focus_y": float(background_data.get("start_focus_y", 0.5)),
+            "end_focus_enabled": bool(background_data.get("end_focus_enabled", False)),
+            "end_focus_x": float(background_data.get("end_focus_x", 0.5)),
+            "end_focus_y": float(background_data.get("end_focus_y", 0.5)),
+        }
+
+    # Older projects stored one target point as focus_x and focus_y.
+    return {
+        "start_focus_enabled": False,
+        "start_focus_x": 0.5,
+        "start_focus_y": 0.5,
+        "end_focus_enabled": True,
+        "end_focus_x": float(background_data.get("focus_x", 0.5)),
+        "end_focus_y": float(background_data.get("focus_y", 0.5)),
+    }
+
+
+def settings_to_dict(settings: ProjectSettings) -> dict[str, Any]:
+    """serialize settings to a json-compatible dict."""
+
+    data = asdict(settings)
+    data["stars"]["density_preset"] = _enum_to_json_value(settings.stars.density_preset)
+    data["export"]["quality"] = _enum_to_json_value(settings.export.quality)
+    return json.loads(json.dumps(data, ensure_ascii=False))
+
+
+def settings_from_dict(data: dict[str, Any]) -> ProjectSettings:
+    """deserialize settings from dict."""
+
+    stars_data = data.get("stars", {})
+    export_data = data.get("export", {})
+    resolution_data = data.get("resolution", {})
+    background_data = data.get("background", {})
+    ui_data = data.get("ui", {})
+
+    stars = StarSettings(
+        density_preset=DensityPreset(stars_data.get("density_preset", "medium")),
+        star_count=int(stars_data.get("star_count", 1000)),
+        min_size=float(stars_data.get("min_size", 0.5)),
+        max_size=float(stars_data.get("max_size", 5.0)),
+        brightness=float(stars_data.get("brightness", 0.8)),
+        glow_intensity=float(stars_data.get("glow_intensity", 0.0)),
+        glow_depth_boost=float(stars_data.get("glow_depth_boost", 0.0)),
+        color_intensity=_load_color_intensity(stars_data),
+        speed=float(stars_data.get("speed", 1.0)),
+        magnitude_realism=float(stars_data.get("magnitude_realism", 0.0)),
+        size_spread=float(stars_data.get("size_spread", 0.0)),
+        seed=int(stars_data.get("seed", 42)),
+    )
+
+    export_quality = ExportQuality(export_data.get("quality", "high"))
+    export_settings = ExportSettings(
+        quality=export_quality,
+        crf=int(export_data.get("crf", export_crf_for_quality(export_quality))),
+    )
+
+    ui_settings = SidebarUiSettings(
+        project_section_expanded=bool(ui_data.get("project_section_expanded", True)),
+        background_section_expanded=bool(ui_data.get("background_section_expanded", True)),
+        focus_section_expanded=bool(ui_data.get("focus_section_expanded", True)),
+        star_appearance_section_expanded=bool(
+            ui_data.get("star_appearance_section_expanded", True)
+        ),
+        star_effects_section_expanded=bool(ui_data.get("star_effects_section_expanded", True)),
+        star_animation_section_expanded=bool(ui_data.get("star_animation_section_expanded", True)),
+    )
+
+    return ProjectSettings(
+        resolution=ResolutionSettings(
+            width=int(resolution_data.get("width", 1080)),
+            height=int(resolution_data.get("height", 1920)),
+        ),
+        duration_seconds=float(data.get("duration_seconds", 10.0)),
+        fps=int(data.get("fps", 30)),
+        background=BackgroundSettings(
+            scale_percent=float(background_data.get("scale_percent", 100.0)),
+            zoom_percent=float(background_data.get("zoom_percent", 0.0)),
+            rotation_degrees=float(background_data.get("rotation_degrees", 0.0)),
+            **_load_focus_points(background_data),
+            fill_frame=bool(background_data.get("fill_frame", True)),
+        ),
+        stars=stars,
+        export=export_settings,
+        ui=ui_settings,
+    )

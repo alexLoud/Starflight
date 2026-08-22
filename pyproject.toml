@@ -1,0 +1,47 @@
+[project]
+name = "starflight"
+version = "1.0.0"
+description = "Atmospheric astrophoto video animator from starless deep-sky images"
+authors = [{ name = "Alexander Lauterbach" }]
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "pyside6>=6.8.0,<7.0.0",
+    "numpy>=2.0.0,<3.0.0",
+    "opencv-python-headless>=4.11.0,<5.0.0",
+]
+
+[project.scripts]
+starflight = "starflight.app.bootstrap:main"
+build = "starflight.build:main"
+
+[tool.poetry]
+packages = [{ include = "starflight", from = "src" }]
+include = [
+    { path = "src/starflight/assets", format = ["sdist", "wheel"] },
+    { path = "src/starflight/i18n", format = ["sdist", "wheel"] },
+]
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.11.0"
+pyinstaller = "^6.12.0"
+imageio-ffmpeg = "^0.6.0"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/starflight/views/**" = ["N802"]
+"scripts/update_i18n.py" = ["S603"]
+"src/starflight/core/exporter.py" = ["N802", "S603"]
+"src/starflight/views/widgets/settings_panel.py" = ["N802", "RUF001"]
+"tests/test_source_quality.py" = ["S314"]
+
+[build-system]
+requires = ["poetry-core>=1.9.0"]
+build-backend = "poetry.core.masonry.api"
