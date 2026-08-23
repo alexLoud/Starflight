@@ -17,6 +17,8 @@ from starflight.types.settings import (
     BackgroundSettings,
 )
 
+_SCALE_SAMPLE_COUNT = 64
+
 
 def _clamp(value: float, minimum: float, maximum: float) -> float:
     """
@@ -102,6 +104,9 @@ class BackgroundRenderer:
         self.source_h, self.source_w = source_image.shape[:2]
         self._x_coords = np.arange(width, dtype=np.float32)[np.newaxis, :]
         self._y_coords = np.arange(height, dtype=np.float32)[:, np.newaxis]
+        self._scale_envelope_cache_key: tuple[object, ...] | None = None
+        self._scale_start = 0.0
+        self._scale_slope = 0.0
 
     def render(
         self,
@@ -172,26 +177,47 @@ class BackgroundRenderer:
         look_x, look_y = interpolate_camera_look_at(settings, progress)
         return look_x * self.source_w, look_y * self.source_h
 
-    def _build_transform_matrix(self, progress: float, settings: BackgroundSettings) -> np.ndarray:
+    def _scale_factor(self, settings: BackgroundSettings) -> float:
         """
-        build affine matrix mapping output pixels to source coordinates.
+        return clamped user scale factor from settings.
+
+        settings
+            background settings
+        """
+
+        return _clamp(
+            settings.scale_percent / 100.0,
+            MIN_BACKGROUND_SCALE_PERCENT / 100.0,
+            MAX_BACKGROUND_SCALE_PERCENT / 100.0,
+        )
+
+    def _required_scale(
+        self,
+        progress: float,
+        settings: BackgroundSettings,
+        cos_a: float,
+        sin_a: float,
+        center_x: float,
+        center_y: float,
+    ) -> float:
+        """
+        compute the per-frame minimum scale before linearization.
 
         progress
             normalized animation progress 0..1
         settings
             background settings
+        cos_a
+            cosine of the current rotation angle
+        sin_a
+            sine of the current rotation angle
+        center_x
+            source-space look-at x coordinate
+        center_y
+            source-space look-at y coordinate
         """
 
-        angle = math.radians(settings.rotation_degrees * progress)
-        cos_a = math.cos(angle)
-        sin_a = math.sin(angle)
-
-        center_x, center_y = self._desired_source_center(progress, settings)
-        scale_factor = _clamp(
-            settings.scale_percent / 100.0,
-            MIN_BACKGROUND_SCALE_PERCENT / 100.0,
-            MAX_BACKGROUND_SCALE_PERCENT / 100.0,
-        )
+        scale_factor = self._scale_factor(settings)
         base_cover_scale = max(self.width / self.source_w, self.height / self.source_h)
         zoom = 1.0 + (settings.zoom_percent / 100.0) * progress
         requested_scale = base_cover_scale * scale_factor * zoom
@@ -211,6 +237,89 @@ class BackgroundRenderer:
             )
             scale = max(scale, focus_safe_scale)
 
+        return scale
+
+    def _scale_envelope_key(self, settings: BackgroundSettings) -> tuple[object, ...]:
+        """
+        build a cache key for scale-envelope settings.
+
+        settings
+            background settings
+        """
+
+        return (
+            settings.scale_percent,
+            settings.zoom_percent,
+            settings.rotation_degrees,
+            settings.fill_frame,
+            settings.start_focus_enabled,
+            settings.start_focus_x,
+            settings.start_focus_y,
+            settings.end_focus_enabled,
+            settings.end_focus_x,
+            settings.end_focus_y,
+        )
+
+    def _compute_scale_envelope(self, settings: BackgroundSettings) -> tuple[float, float]:
+        """
+        derive a constant-rate linear scale curve that covers every sampled frame.
+
+        settings
+            background settings
+        """
+
+        start = self._required_scale(0.0, settings, 1.0, 0.0, *self._desired_source_center(0.0, settings))
+        max_slope = 0.0
+        for index in range(1, _SCALE_SAMPLE_COUNT + 1):
+            progress = index / _SCALE_SAMPLE_COUNT
+            angle = math.radians(settings.rotation_degrees * progress)
+            cos_a = math.cos(angle)
+            sin_a = math.sin(angle)
+            center_x, center_y = self._desired_source_center(progress, settings)
+            required = self._required_scale(progress, settings, cos_a, sin_a, center_x, center_y)
+            max_slope = max(max_slope, (required - start) / progress)
+
+        return start, max_slope
+
+    def _linear_scale(self, progress: float, settings: BackgroundSettings) -> float:
+        """
+        return linearly interpolated scale from frame 1 through the last frame.
+
+        progress
+            normalized animation progress 0..1
+        settings
+            background settings
+        """
+
+        cache_key = self._scale_envelope_key(settings)
+        if cache_key != self._scale_envelope_cache_key:
+            self._scale_start, self._scale_slope = self._compute_scale_envelope(settings)
+            self._scale_envelope_cache_key = cache_key
+
+        amount = _clamp(progress, 0.0, 1.0)
+        return self._scale_start + self._scale_slope * amount
+
+    def _build_transform_matrix(self, progress: float, settings: BackgroundSettings) -> np.ndarray:
+        """
+        build affine matrix mapping output pixels to source coordinates.
+
+        progress
+            normalized animation progress 0..1
+        settings
+            background settings
+        """
+
+        angle = math.radians(settings.rotation_degrees * progress)
+        cos_a = math.cos(angle)
+        sin_a = math.sin(angle)
+
+        center_x, center_y = self._desired_source_center(progress, settings)
+        scale = self._linear_scale(progress, settings)
+
+        rotated_width = abs(cos_a) * self.width + abs(sin_a) * self.height
+        rotated_height = abs(sin_a) * self.width + abs(cos_a) * self.height
+
+        if settings.fill_frame:
             half_x = rotated_width / (2.0 * scale)
             half_y = rotated_height / (2.0 * scale)
             render_center_x = _clamp(center_x, half_x, self.source_w - half_x)

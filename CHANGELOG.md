@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Background zoom and rotation now scale at a constant rate from the first to the last frame
+
 ## [1.0.2] - 2026-08-23
 
 - Implemented Crash reports with persistent diagnostic logs for startup, runtime, and native failures
