@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import QCoreApplication
+from PySide6.QtCore import QCoreApplication, QSettings
 from PySide6.QtWidgets import QWidget
 
+from starflight.app.settings import render_worker_count_from_settings
 from starflight.i18n import tr_validation
 from starflight.services.error_service import ErrorService
 from starflight.types.settings import Project
@@ -23,8 +24,9 @@ class ExportController:
 
         return QCoreApplication.translate("ExportController", text)
 
-    def __init__(self, error_service: ErrorService) -> None:
+    def __init__(self, error_service: ErrorService, settings: QSettings) -> None:
         self._error_service = error_service
+        self._settings = settings
 
     def open_export_dialog(
         self,
@@ -52,7 +54,12 @@ class ExportController:
             )
             return
 
-        dialog = ExportDialog(project, project_path, parent)
+        dialog = ExportDialog(
+            project,
+            project_path,
+            parent,
+            render_workers=render_worker_count_from_settings(self._settings),
+        )
         dialog.exec()
 
 

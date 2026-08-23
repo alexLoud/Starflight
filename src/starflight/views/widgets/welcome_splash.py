@@ -2,54 +2,19 @@
 
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QPixmap, QResizeEvent
 from PySide6.QtWidgets import QLabel, QToolButton, QWidget
 
-from starflight import __version__ as package_version
 from starflight.app.constants import WELCOME_LOGO_FILE, package_dir
+from starflight.app.metadata import app_version
 
 _AUTO_HIDE_MS = 20_000
 _META_BAR_HEIGHT = 32
 _META_RIGHT_MARGIN = 12
 _CLOSE_MARGIN = 8
-
-
-def resolve_app_version() -> str:
-    """
-    return the application version from the package module.
-
-    """
-
-    return package_version
-
-
-def resolve_build_id() -> str:
-    """
-    return the short git commit hash when available.
-
-    """
-
-    repo_root = package_dir().parents[1]
-    try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--short", "HEAD"],
-            cwd=repo_root,
-            capture_output=True,
-            text=True,
-            timeout=2,
-            check=False,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return "unknown"
-
-    build_id = result.stdout.strip()
-    if result.returncode != 0 or not build_id:
-        return "unknown"
-    return build_id
 
 
 def welcome_logo_path() -> Path:
@@ -125,10 +90,7 @@ class WelcomeSplash(QWidget):
 
         self._close_button.setToolTip(self.tr("Close"))
         self._meta_label.setText(
-            self.tr("Version {version} · Build {build}").format(
-                version=resolve_app_version(),
-                build=resolve_build_id(),
-            )
+            self.tr("Version {version}").format(version=app_version()),
         )
         self._meta_label.adjustSize()
         self._position_overlays()
@@ -188,7 +150,5 @@ class WelcomeSplash(QWidget):
 
 __all__ = [
     "WelcomeSplash",
-    "resolve_app_version",
-    "resolve_build_id",
     "welcome_logo_path",
 ]

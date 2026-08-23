@@ -10,6 +10,7 @@ from starflight.views.icons import load_icon_asset
 from starflight.views.theme import PANEL_BG
 
 SIDE_PANEL_WIDTH = 188
+ZOOM_PANEL_WIDTH = 268
 _SIDE_MARGINS = (10, 0, 10, 0)
 _BUTTON_ROW_HEIGHT = 34
 _BUTTON_SIZE = 32
@@ -86,4 +87,4 @@ class TimelineSidePanel(QWidget):
         return button
 
 
-__all__ = ["SIDE_PANEL_WIDTH", "TimelineSidePanel"]
+__all__ = ["SIDE_PANEL_WIDTH", "ZOOM_PANEL_WIDTH", "TimelineSidePanel"]

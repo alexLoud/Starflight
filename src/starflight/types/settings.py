@@ -9,7 +9,7 @@ from enum import Enum
 from typing import Any
 
 MAX_BACKGROUND_ZOOM_PERCENT = 50.0
-MAX_BACKGROUND_ROTATION_DEGREES = 30.0
+MAX_BACKGROUND_ROTATION_DEGREES = 45.0
 MIN_BACKGROUND_SCALE_PERCENT = 10.0
 MAX_BACKGROUND_SCALE_PERCENT = 200.0
 MIN_STAR_COUNT = 50
@@ -41,8 +41,8 @@ class RenderQuality(str, Enum):
 
 DENSITY_STAR_COUNTS: dict[DensityPreset, int] = {
     DensityPreset.LOW: 500,
-    DensityPreset.MEDIUM: 1000,
-    DensityPreset.HIGH: 1500,
+    DensityPreset.MEDIUM: 1500,
+    DensityPreset.HIGH: 2500,
 }
 
 DENSITY_LABELS: dict[DensityPreset, str] = {
@@ -103,7 +103,7 @@ class BackgroundSettings:
     end_focus_enabled: bool = False
     end_focus_x: float = 0.5
     end_focus_y: float = 0.5
-    fill_frame: bool = True
+    fill_frame: bool = False
 
 
 @dataclass
@@ -111,8 +111,8 @@ class StarSettings:
     """star appearance and animation settings."""
 
     density_preset: DensityPreset = DensityPreset.MEDIUM
-    star_count: int = 1000
-    min_size: float = 0.5
+    star_count: int = 1500
+    min_size: float = 1.0
     max_size: float = 5.0
     brightness: float = 0.8
     glow_intensity: float = 0.0
@@ -120,7 +120,7 @@ class StarSettings:
     color_intensity: float = 0.0
     speed: float = 1.0
     magnitude_realism: float = 0.0
-    size_spread: float = 0.0
+    size_spread: float = 0.25
     seed: int = 42
 
 
@@ -316,8 +316,8 @@ def settings_from_dict(data: dict[str, Any]) -> ProjectSettings:
 
     stars = StarSettings(
         density_preset=DensityPreset(stars_data.get("density_preset", "medium")),
-        star_count=int(stars_data.get("star_count", 1000)),
-        min_size=float(stars_data.get("min_size", 0.5)),
+        star_count=int(stars_data.get("star_count", 1500)),
+        min_size=float(stars_data.get("min_size", 1.0)),
         max_size=float(stars_data.get("max_size", 5.0)),
         brightness=float(stars_data.get("brightness", 0.8)),
         glow_intensity=float(stars_data.get("glow_intensity", 0.0)),
@@ -325,7 +325,7 @@ def settings_from_dict(data: dict[str, Any]) -> ProjectSettings:
         color_intensity=_load_color_intensity(stars_data),
         speed=float(stars_data.get("speed", 1.0)),
         magnitude_realism=float(stars_data.get("magnitude_realism", 0.0)),
-        size_spread=float(stars_data.get("size_spread", 0.0)),
+        size_spread=float(stars_data.get("size_spread", 0.25)),
         seed=int(stars_data.get("seed", 42)),
     )
 
@@ -358,7 +358,7 @@ def settings_from_dict(data: dict[str, Any]) -> ProjectSettings:
             zoom_percent=float(background_data.get("zoom_percent", 0.0)),
             rotation_degrees=float(background_data.get("rotation_degrees", 0.0)),
             **_load_focus_points(background_data),
-            fill_frame=bool(background_data.get("fill_frame", True)),
+            fill_frame=bool(background_data.get("fill_frame", False)),
         ),
         stars=stars,
         export=export_settings,

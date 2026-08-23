@@ -24,6 +24,7 @@ from starflight.services.recent_projects_service import (
     remember_recent_project,
     remove_recent_project,
 )
+from starflight.views.dialogs.about_dialog import AboutDialog
 from starflight.views.dialogs.settings_dialog import SettingsDialog
 from starflight.views.widgets.main_toolbar import MainToolbar
 from starflight.views.widgets.preview_workspace import PreviewWorkspace
@@ -41,7 +42,7 @@ class MainWindow(QMainWindow):
         self._preview_service = PreviewService()
         self._project_controller = ProjectController(context.error_service)
         self._preview_controller = PreviewController(self._preview_service)
-        self._export_controller = ExportController(context.error_service)
+        self._export_controller = ExportController(context.error_service, context.settings)
 
         self._refresh_timer = QTimer(self)
         self._refresh_timer.setSingleShot(True)
@@ -273,6 +274,7 @@ class MainWindow(QMainWindow):
             "app.project.load_image": self.tr("Load image…"),
             "app.project.export": self.tr("Export video…"),
             "app.settings.open": self.tr("Settings…"),
+            "app.help.about": self.tr("About Starflight"),
         }
         registry = self._context.command_registry
         for command_id, title in titles.items():
@@ -310,6 +312,7 @@ class MainWindow(QMainWindow):
             "File": self.tr("File"),
             "Project": self.tr("Project"),
             "Settings": self.tr("Settings"),
+            "Help": self.tr("Help"),
         }
         for path, menu in self._menu_by_path.items():
             if len(path) == 1 and path[0] in labels:
@@ -464,6 +467,10 @@ class MainWindow(QMainWindow):
             self,
             on_language_changed=self._change_language,
         )
+        dialog.exec()
+
+    def open_about(self) -> None:
+        dialog = AboutDialog(self)
         dialog.exec()
 
     def _change_language(self, language_code: str) -> None:

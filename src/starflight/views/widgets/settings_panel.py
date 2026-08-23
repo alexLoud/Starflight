@@ -284,7 +284,7 @@ class SettingsPanel(QWidget):
         form.addRow(self._label_rotation, self.rotation_row)
 
         self.fill_frame_checkbox = QCheckBox()
-        self.fill_frame_checkbox.setChecked(True)
+        self.fill_frame_checkbox.setChecked(False)
         self.fill_frame_checkbox.toggled.connect(self._emit_settings_changed)
         self._label_fill_frame = self._create_setting_label()
         form.addRow(self._label_fill_frame, self.fill_frame_checkbox)
@@ -631,7 +631,7 @@ class SettingsPanel(QWidget):
                 "borders appear during focus and rotation.",
             ),
         )
-        self.fill_frame_checkbox.setText(self.tr("Fill empty areas during motion"))
+        self.fill_frame_checkbox.setText(self.tr("Avoid empty areas by\nscaling up"))
 
         self._label_density.set_text(self.tr("Density"))
         self._label_density.set_hint(

@@ -314,6 +314,11 @@
         <translation>Einstellungen…</translation>
     </message>
     <message>
+        <location filename="../views/main_window.py" line="276"/>
+        <source>About Starflight</source>
+        <translation>Über Starflight</translation>
+    </message>
+    <message>
         <location filename="../views/main_window.py" line="311"/>
         <source>Project</source>
         <translation>Projekt</translation>
@@ -322,6 +327,11 @@
         <location filename="../views/main_window.py" line="312"/>
         <source>Settings</source>
         <translation>Einstellungen</translation>
+    </message>
+    <message>
+        <location filename="../views/main_window.py" line="314"/>
+        <source>Help</source>
+        <translation>Hilfe</translation>
     </message>
     <message>
         <location filename="../views/main_window.py" line="272"/>
@@ -482,6 +492,21 @@
         <source>Language</source>
         <translation>Sprache</translation>
     </message>
+    <message>
+        <location filename="../views/dialogs/settings_dialog.py" line="84"/>
+        <source>CPU cores for rendering</source>
+        <translation>CPU-Kerne für Rendering</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/settings_dialog.py" line="87"/>
+        <source>{count} core</source>
+        <translation>{count} Kern</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/settings_dialog.py" line="89"/>
+        <source>{count} cores</source>
+        <translation>{count} Kerne</translation>
+    </message>
 </context>
 <context>
     <name>SettingsPanel</name>
@@ -641,8 +666,10 @@
     </message>
     <message>
         <location filename="../views/widgets/settings_panel.py" line="634"/>
-        <source>Fill empty areas during motion</source>
-        <translation>Leere Bereiche bei Bewegung ausfüllen</translation>
+        <source>Avoid empty areas by
+scaling up</source>
+        <translation>Leere Bereiche durch
+Vergrößerung vermeiden</translation>
     </message>
     <message>
         <location filename="../views/widgets/settings_panel.py" line="674"/>
@@ -892,6 +919,34 @@
     </message>
 </context>
 <context>
+    <name>AboutDialog</name>
+    <message>
+        <location filename="../views/dialogs/about_dialog.py" line="91"/>
+        <source>About Starflight</source>
+        <translation>Über Starflight</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/about_dialog.py" line="93"/>
+        <source>Version {version}</source>
+        <translation>Version {version}</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/about_dialog.py" line="96"/>
+        <source>Turns a starless deep-sky image into a short fly-through video with a rendered starfield.</source>
+        <translation>Verwandelt ein sternenloses Deep-Sky-Bild in ein kurzes Fly-through-Video mit gerendertem Sternenfeld.</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/about_dialog.py" line="98"/>
+        <source>Author: {author}</source>
+        <translation>Autor: {author}</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/about_dialog.py" line="101"/>
+        <source>&lt;a href=&quot;{url}&quot;&gt;GitHub&lt;/a&gt;</source>
+        <translation>&lt;a href=&quot;{url}&quot;&gt;GitHub&lt;/a&gt;</translation>
+    </message>
+</context>
+<context>
     <name>WelcomeSplash</name>
     <message>
         <location filename="../views/widgets/welcome_splash.py" line="130"/>
@@ -900,8 +955,8 @@
     </message>
     <message>
         <location filename="../views/widgets/welcome_splash.py" line="132"/>
-        <source>Version {version} · Build {build}</source>
-        <translation>Version {version} · Build {build}</translation>
+        <source>Version {version}</source>
+        <translation>Version {version}</translation>
     </message>
 </context>
 <context>
@@ -925,14 +980,14 @@
         <translation>Vergrößern</translation>
     </message>
     <message>
-        <location filename="../views/widgets/zoom_toolbar.py" line="69"/>
-        <source>With stars</source>
-        <translation>Mit Sternen</translation>
+        <location filename="../views/widgets/zoom_toolbar.py" line="89"/>
+        <source>Stars on</source>
+        <translation>Sterne ein</translation>
     </message>
     <message>
-        <location filename="../views/widgets/zoom_toolbar.py" line="71"/>
-        <source>Without stars</source>
-        <translation>Ohne Sterne</translation>
+        <location filename="../views/widgets/zoom_toolbar.py" line="91"/>
+        <source>Stars off</source>
+        <translation>Sterne aus</translation>
     </message>
 </context>
 <context>

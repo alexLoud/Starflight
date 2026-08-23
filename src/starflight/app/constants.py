@@ -9,11 +9,18 @@ APP_ID = "starflight"
 APP_DISPLAY_NAME = "Starflight"
 APP_ORGANIZATION = "starflight"
 APP_ORGANIZATION_DOMAIN = "starflight.local"
+APP_AUTHOR = "Alexander Lauterbach"
+APP_DESCRIPTION = (
+    "Turns a starless deep-sky image into a short fly-through video "
+    "with a rendered starfield."
+)
+APP_GITHUB_URL = "https://github.com/alexLoud/Starflight"
 APP_ICON_FILE = "app-icon.png"
 APP_ICON_MACOS_FILE = "app-icon-macos.png"
 WELCOME_LOGO_FILE = "welcome-logo.jpg"
 
 SETTINGS_KEY_LANGUAGE = "ui/language"
+SETTINGS_KEY_RENDER_WORKERS = "render/worker_count"
 SETTINGS_KEY_WINDOW_GEOMETRY = "ui/window_geometry"
 SETTINGS_KEY_SPLITTER_STATE = "ui/splitter_state"
 SETTINGS_KEY_RECENT_PROJECTS = "projects/recent"
@@ -32,7 +39,10 @@ def package_dir() -> Path:
 
 
 __all__ = [
+    "APP_AUTHOR",
+    "APP_DESCRIPTION",
     "APP_DISPLAY_NAME",
+    "APP_GITHUB_URL",
     "APP_ICON_FILE",
     "APP_ICON_MACOS_FILE",
     "APP_ID",
@@ -41,6 +51,7 @@ __all__ = [
     "DEFAULT_LANGUAGE",
     "SETTINGS_KEY_LANGUAGE",
     "SETTINGS_KEY_RECENT_PROJECTS",
+    "SETTINGS_KEY_RENDER_WORKERS",
     "SETTINGS_KEY_SPLITTER_STATE",
     "SETTINGS_KEY_WINDOW_GEOMETRY",
     "WELCOME_LOGO_FILE",

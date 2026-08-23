@@ -70,6 +70,15 @@ jobs:
             exit 0
           fi
 
+          if ! awk -v ver="${version}" '
+            $0 ~ "^## \\[" ver "(\\]| -)" { found=1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md | grep -q '[^[:space:]]'; then
+            echo "No CHANGELOG section found for version ${version}." >&2
+            exit 1
+          fi
+
           echo "should_release=true" >> "$GITHUB_OUTPUT"
 
   build:
@@ -158,13 +167,28 @@ jobs:
       - name: List release assets
         run: ls -lh release-assets
 
+      - name: Extract release notes from CHANGELOG
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          awk -v ver="${VERSION}" '
+            $0 ~ "^## \\[" ver "(\\]| -)" { found=1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md > release-body.md
+          if [ ! -s release-body.md ]; then
+            echo "No CHANGELOG section found for version ${VERSION}." >&2
+            exit 1
+          fi
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.prepare.outputs.tag }}
           name: Starflight ${{ needs.prepare.outputs.version }}
           target_commitish: ${{ github.sha }}
-          generate_release_notes: true
+          body_path: release-body.md
           fail_on_unmatched_files: true
           files: |
             release-assets/Starflight-*.dmg

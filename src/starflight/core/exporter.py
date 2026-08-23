@@ -7,7 +7,6 @@ ordered chunk so the main export thread can feed FFmpeg without keeping full fra
 from __future__ import annotations
 
 import math
-import os
 import shutil
 import subprocess
 import tempfile
@@ -21,6 +20,7 @@ from pathlib import Path
 import numpy as np
 from PySide6.QtCore import QThread, Signal
 
+from starflight.app.settings import DEFAULT_RENDER_WORKER_COUNT, max_available_render_workers
 from starflight.core.project import resolve_source_image_path
 from starflight.core.renderer import FrameRenderer, create_renderer
 from starflight.types.settings import Project, ProjectSettings, RenderQuality
@@ -31,12 +31,16 @@ from starflight.utils.validation import ffmpeg_executable
 EXPORT_CANCELLED = "export_cancelled"
 
 
-def _export_worker_count() -> int:
-    """choose process count for parallel export frame rendering."""
+def _export_worker_count(configured: int | None = None) -> int:
+    """
+    choose process count for parallel export frame rendering.
 
-    cpu_count = os.cpu_count() or 4
-    # Keep one logical core free for the UI, FFmpeg, and parent coordination.
-    return max(1, cpu_count - 1)
+    configured
+        user-selected worker count; defaults to four cores capped by availability
+    """
+
+    requested = configured if configured is not None else DEFAULT_RENDER_WORKER_COUNT
+    return min(max(1, requested), max_available_render_workers())
 
 
 class _WallClockProgress:
@@ -186,6 +190,8 @@ class ExportWorker(QThread):
         project: Project,
         output_path: Path,
         project_path: Path | None = None,
+        *,
+        render_workers: int | None = None,
     ) -> None:
         """
         create export worker.
@@ -196,12 +202,15 @@ class ExportWorker(QThread):
             destination mp4 path
         project_path
             optional project file path for resolving images
+        render_workers
+            configured parallel render worker count
         """
 
         super().__init__()
         self.project = project
         self.output_path = output_path
         self.project_path = project_path
+        self._render_workers = render_workers
         self._cancel_requested = False
         self._process: subprocess.Popen[bytes] | None = None
         self._pool: ProcessPoolExecutor | None = None
@@ -402,7 +411,7 @@ class ExportWorker(QThread):
         fps = settings.fps
         total_frames = max(1, round(settings.duration_seconds * fps))
         crf = settings.export.crf
-        worker_count = _export_worker_count()
+        worker_count = _export_worker_count(self._render_workers)
         frame_nbytes = width * height * 3
 
         ffmpeg_path = ffmpeg_executable()

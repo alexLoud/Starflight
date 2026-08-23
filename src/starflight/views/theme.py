@@ -380,6 +380,36 @@ QLabel#welcome_splash_meta {{
     padding: 0;
 }}
 
+QLabel#about_dialog_title {{
+    color: {TEXT_PRIMARY};
+    font-size: 18px;
+}}
+
+QLabel#about_dialog_version,
+QLabel#about_dialog_author {{
+    color: {TEXT_MUTED};
+    font-size: 12px;
+}}
+
+QLabel#about_dialog_description {{
+    color: {TEXT_PRIMARY};
+    font-size: 13px;
+}}
+
+QLabel#about_dialog_link {{
+    color: {ACCENT};
+    font-size: 12px;
+}}
+
+QLabel#about_dialog_link a {{
+    color: {ACCENT};
+    text-decoration: none;
+}}
+
+QLabel#about_dialog_link a:hover {{
+    text-decoration: underline;
+}}
+
 QToolButton#welcome_splash_close {{
     background-color: rgba(20, 26, 34, 160);
     color: {TEXT_PRIMARY};
@@ -469,6 +499,30 @@ QToolButton#transport_button:pressed {{
 }}
 
 QToolButton#transport_button:checked {{
+    border-color: {BORDER_FOCUS};
+    background-color: {ACCENT_PRESSED};
+}}
+
+QToolButton#stars_toggle_button {{
+    background-color: {SURFACE_BG};
+    border: 1px solid {BORDER};
+    border-radius: 5px;
+    padding: 0 10px 0 6px;
+    min-height: 32px;
+    max-height: 32px;
+    color: {TEXT_PRIMARY};
+    font-size: 12px;
+}}
+
+QToolButton#stars_toggle_button:hover {{
+    border-color: {BORDER_FOCUS};
+}}
+
+QToolButton#stars_toggle_button:pressed {{
+    background-color: {ACCENT_PRESSED};
+}}
+
+QToolButton#stars_toggle_button:checked {{
     border-color: {BORDER_FOCUS};
     background-color: {ACCENT_PRESSED};
 }}

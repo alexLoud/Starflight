@@ -15,7 +15,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from starflight.app.constants import SETTINGS_KEY_LANGUAGE
+from starflight.app.constants import SETTINGS_KEY_LANGUAGE, SETTINGS_KEY_RENDER_WORKERS
+from starflight.app.settings import (
+    available_render_worker_counts,
+    default_render_worker_count,
+    render_worker_count_from_settings,
+)
 from starflight.i18n import available_languages, normalize_language_code
 
 
@@ -35,6 +40,7 @@ class SettingsDialog(QDialog):
         self._initial_language = normalize_language_code(
             str(settings.value(SETTINGS_KEY_LANGUAGE, "de")),
         )
+        self._initial_render_workers = render_worker_count_from_settings(settings)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 16)
@@ -49,6 +55,15 @@ class SettingsDialog(QDialog):
         if index >= 0:
             self.language_combo.setCurrentIndex(index)
         form.addRow(self._language_label, self.language_combo)
+
+        self._render_workers_label = QLabel()
+        self.render_workers_combo = QComboBox()
+        for worker_count in available_render_worker_counts():
+            self.render_workers_combo.addItem("", worker_count)
+        render_index = self.render_workers_combo.findData(self._initial_render_workers)
+        if render_index >= 0:
+            self.render_workers_combo.setCurrentIndex(render_index)
+        form.addRow(self._render_workers_label, self.render_workers_combo)
         layout.addLayout(form)
 
         self.button_box = QDialogButtonBox(
@@ -58,16 +73,26 @@ class SettingsDialog(QDialog):
         self.button_box.rejected.connect(self.reject)
         layout.addWidget(self.button_box)
 
-        self.resize(420, 180)
+        self.resize(420, 220)
         self.retranslate_ui()
 
     def retranslate_ui(self) -> None:
         self.setWindowTitle(self.tr("Settings"))
         self._language_label.setText(self.tr("Language"))
+        self._render_workers_label.setText(self.tr("CPU cores for rendering"))
+        for index in range(self.render_workers_combo.count()):
+            worker_count = int(self.render_workers_combo.itemData(index))
+            if worker_count == 1:
+                label = self.tr("{count} core").format(count=worker_count)
+            else:
+                label = self.tr("{count} cores").format(count=worker_count)
+            self.render_workers_combo.setItemText(index, label)
 
     def _on_accept(self) -> None:
         language = normalize_language_code(str(self.language_combo.currentData()))
         self._settings.setValue(SETTINGS_KEY_LANGUAGE, language)
+        render_workers = int(self.render_workers_combo.currentData())
+        self._settings.setValue(SETTINGS_KEY_RENDER_WORKERS, render_workers)
         if language != self._initial_language and self._on_language_changed is not None:
             self._on_language_changed(language)
         self.accept()

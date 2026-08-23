@@ -34,10 +34,13 @@ class ExportDialog(QDialog):
         project: Project,
         project_path: Path | None,
         parent: QWidget | None = None,
+        *,
+        render_workers: int | None = None,
     ) -> None:
         super().__init__(parent)
         self.project = project
         self.project_path = project_path
+        self._render_workers = render_workers
         self._worker: ExportWorker | None = None
         self._export_phase = "idle"
 
@@ -162,7 +165,12 @@ class ExportDialog(QDialog):
         self.progress_bar.setValue(0)
         self.status_label.setText(self.tr("Preparing stars…"))
 
-        self._worker = ExportWorker(self.project, output_path, self.project_path)
+        self._worker = ExportWorker(
+            self.project,
+            output_path,
+            self.project_path,
+            render_workers=self._render_workers,
+        )
         self._worker.progress_changed.connect(self._on_progress)
         self._worker.frame_progress.connect(self._on_frame_progress)
         self._worker.status_changed.connect(self._on_status)

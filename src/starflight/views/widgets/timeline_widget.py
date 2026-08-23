@@ -17,9 +17,14 @@ from starflight.views.theme import (
     TIMELINE_RULER,
     TIMELINE_TRACK,
 )
-from starflight.views.widgets.timeline_side_panel import SIDE_PANEL_WIDTH, TimelineSidePanel
+from starflight.views.widgets.timeline_side_panel import (
+    SIDE_PANEL_WIDTH,
+    ZOOM_PANEL_WIDTH,
+    TimelineSidePanel,
+)
 
 _SIDE_PANEL_WIDTH = SIDE_PANEL_WIDTH
+_ZOOM_PANEL_WIDTH = ZOOM_PANEL_WIDTH
 _RULER_HEIGHT = 22
 _TRACK_HEIGHT = 34
 _PADDING = 10
@@ -180,16 +185,17 @@ class TimelineWidget(QWidget):
     def _zoom_panel_width(self) -> int:
         if self._zoom_panel is None:
             return 0
-        return _SIDE_PANEL_WIDTH
+        return _ZOOM_PANEL_WIDTH
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         self._transport.setGeometry(0, 0, _SIDE_PANEL_WIDTH, self.height())
         if self._zoom_panel is not None:
+            zoom_width = self._zoom_panel_width()
             self._zoom_panel.setGeometry(
-                max(_SIDE_PANEL_WIDTH, self.width() - _SIDE_PANEL_WIDTH),
+                max(_SIDE_PANEL_WIDTH, self.width() - zoom_width),
                 0,
-                _SIDE_PANEL_WIDTH,
+                zoom_width,
                 self.height(),
             )
 

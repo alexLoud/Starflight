@@ -26,6 +26,7 @@ def register_core_commands(registry: CommandRegistry, window: MainWindow) -> Non
         Command("app.project.load_image", "Load Image", ("Project",), None, False),
         Command("app.project.export", "Export", ("Project",), None, True),
         Command("app.settings.open", "Settings", ("Settings",), None, False),
+        Command("app.help.about", "About Starflight", ("Help",), None, False),
     ]
 
     handlers = {
@@ -37,6 +38,7 @@ def register_core_commands(registry: CommandRegistry, window: MainWindow) -> Non
         "app.project.load_image": window.load_image,
         "app.project.export": window.export_video,
         "app.settings.open": window.open_settings,
+        "app.help.about": window.open_about,
     }
 
     for command in commands:
