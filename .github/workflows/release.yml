@@ -29,13 +29,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
       - name: Check whether a release is needed
         id: check
         env:
           GH_TOKEN: ${{ github.token }}
           EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
         run: |
           set -euo pipefail
 
@@ -49,17 +50,19 @@ jobs:
           echo "tag=${tag}" >> "$GITHUB_OUTPUT"
 
           if [[ "${EVENT_NAME}" == "push" ]]; then
-            if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+            previous=""
+            if [[ -n "${BEFORE_SHA}" && "${BEFORE_SHA}" != "0000000000000000000000000000000000000000" ]] \
+              && git cat-file -e "${BEFORE_SHA}:pyproject.toml" 2>/dev/null; then
+              previous="$(git show "${BEFORE_SHA}:pyproject.toml" | read_version)"
+            elif git rev-parse --verify HEAD^ >/dev/null 2>&1; then
               previous="$(git show HEAD^:pyproject.toml | read_version)"
-              if [[ "${previous}" == "${version}" ]]; then
-                echo "Version ${version} unchanged (pyproject.toml changed for other reasons)."
-                echo "should_release=false" >> "$GITHUB_OUTPUT"
-                exit 0
-              fi
-              echo "Version changed: ${previous} -> ${version}"
-            else
-              echo "No parent commit; treating version ${version} as new."
             fi
+            if [[ -n "${previous}" && "${previous}" == "${version}" ]]; then
+              echo "Version ${version} unchanged in this push."
+              echo "should_release=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "Version changed in push: ${previous:-unknown} -> ${version}"
           else
             echo "Manual dispatch for version ${version}."
           fi
