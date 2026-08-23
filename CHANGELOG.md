@@ -1,5 +1,11 @@
 # Starflight Changelog
 
+## [Unreleased]
+
+- Welcome screen shows a link when a newer GitHub release is available
+- Welcome screen stays visible until closed manually or the first preview loads
+- Application version is read from `pyproject.toml` during development
+
 ## [1.0.1] - 2026-08-23
 
 - Rotation range extended to ±45°

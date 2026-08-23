@@ -192,6 +192,7 @@ QWidget#timeline_zoom {{
 
 QLabel#zoom_level_label {{
     color: {TEXT_MUTED};
+    font-size: 11px;
     padding: 0 4px;
     min-width: 44px;
     max-width: 44px;
@@ -378,6 +379,22 @@ QLabel#welcome_splash_meta {{
     background-color: transparent;
     font-size: 12px;
     padding: 0;
+}}
+
+QLabel#welcome_splash_update {{
+    color: {ACCENT};
+    background-color: transparent;
+    font-size: 12px;
+    padding: 0;
+}}
+
+QLabel#welcome_splash_update a {{
+    color: {ACCENT};
+    text-decoration: none;
+}}
+
+QLabel#welcome_splash_update a:hover {{
+    text-decoration: underline;
 }}
 
 QLabel#about_dialog_title {{

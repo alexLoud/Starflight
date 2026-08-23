@@ -949,14 +949,24 @@ Vergrößerung vermeiden</translation>
 <context>
     <name>WelcomeSplash</name>
     <message>
-        <location filename="../views/widgets/welcome_splash.py" line="130"/>
+        <location filename="../views/widgets/welcome_splash.py" line="118"/>
         <source>Close</source>
         <translation>Schließen</translation>
     </message>
     <message>
-        <location filename="../views/widgets/welcome_splash.py" line="132"/>
+        <location filename="../views/widgets/welcome_splash.py" line="149"/>
+        <source>Version {version} (current)</source>
+        <translation>Version {version} (aktuell)</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/welcome_splash.py" line="151"/>
         <source>Version {version}</source>
         <translation>Version {version}</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/welcome_splash.py" line="164"/>
+        <source>&lt;a href=&quot;{url}&quot;&gt;Update available: Version {version}&lt;/a&gt;</source>
+        <translation>&lt;a href=&quot;{url}&quot;&gt;Update verfügbar: Version {version}&lt;/a&gt;</translation>
     </message>
 </context>
 <context>

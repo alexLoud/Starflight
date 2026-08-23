@@ -71,6 +71,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     version = _read_version()
+    _sync_package_version(version)
     BUILD_DIR.mkdir(parents=True, exist_ok=True)
     DIST_DIR.mkdir(parents=True, exist_ok=True)
     work_dir = BUILD_DIR / "pyinstaller" / target
@@ -129,6 +130,29 @@ def _read_version() -> str:
 
     with (ROOT / "pyproject.toml").open("rb") as handle:
         return str(tomllib.load(handle)["project"]["version"])
+
+
+def _sync_package_version(version: str) -> None:
+    """
+    mirror pyproject.toml version into the package module for frozen builds.
+
+    version
+        project version string
+    """
+
+    init_path = SRC / "starflight" / "__init__.py"
+    lines = init_path.read_text(encoding="utf-8").splitlines(keepends=True)
+    updated: list[str] = []
+    replaced = False
+    for line in lines:
+        if line.startswith('__version__ = "'):
+            updated.append(f'__version__ = "{version}"\n')
+            replaced = True
+        else:
+            updated.append(line)
+    if not replaced:
+        raise RuntimeError(f"could not update __version__ in {init_path}")
+    init_path.write_text("".join(updated), encoding="utf-8")
 
 
 def _icon_source_for_target(target: str) -> Path:

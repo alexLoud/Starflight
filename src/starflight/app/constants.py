@@ -15,6 +15,7 @@ APP_DESCRIPTION = (
     "with a rendered starfield."
 )
 APP_GITHUB_URL = "https://github.com/alexLoud/Starflight"
+APP_GITHUB_REPO = "alexLoud/Starflight"
 APP_ICON_FILE = "app-icon.png"
 APP_ICON_MACOS_FILE = "app-icon-macos.png"
 WELCOME_LOGO_FILE = "welcome-logo.jpg"
@@ -42,6 +43,7 @@ __all__ = [
     "APP_AUTHOR",
     "APP_DESCRIPTION",
     "APP_DISPLAY_NAME",
+    "APP_GITHUB_REPO",
     "APP_GITHUB_URL",
     "APP_ICON_FILE",
     "APP_ICON_MACOS_FILE",

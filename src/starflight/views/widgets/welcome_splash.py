@@ -4,17 +4,36 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QPixmap, QResizeEvent
 from PySide6.QtWidgets import QLabel, QToolButton, QWidget
 
 from starflight.app.constants import WELCOME_LOGO_FILE, package_dir
 from starflight.app.metadata import app_version
+from starflight.services.update_service import fetch_latest_release, is_newer_version
+from starflight.types.update import UpdateInfo
 
-_AUTO_HIDE_MS = 20_000
 _META_BAR_HEIGHT = 32
+_META_LEFT_MARGIN = 12
 _META_RIGHT_MARGIN = 12
 _CLOSE_MARGIN = 8
+
+
+class _UpdateCheckWorker(QThread):
+    """fetch the latest release version without blocking the ui thread."""
+
+    update_available = Signal(object)
+    up_to_date = Signal()
+
+    def run(self) -> None:
+        current = app_version()
+        latest = fetch_latest_release()
+        if latest is None:
+            return
+        if is_newer_version(latest.version, current):
+            self.update_available.emit(latest)
+        else:
+            self.up_to_date.emit()
 
 
 def welcome_logo_path() -> Path:
@@ -37,6 +56,8 @@ class WelcomeSplash(QWidget):
 
         self._logo_pixmap = QPixmap(str(welcome_logo_path()))
         self._dismissed = False
+        self._update_info: UpdateInfo | None = None
+        self._is_up_to_date = False
 
         self._logo_frame = QWidget(self)
         self._logo_frame.setObjectName("welcome_splash_frame")
@@ -52,7 +73,6 @@ class WelcomeSplash(QWidget):
 
         self._meta_bar = QWidget(self._logo_frame)
         self._meta_bar.setObjectName("welcome_splash_meta_bar")
-        self._meta_bar.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
         self._meta_label = QLabel(self._meta_bar)
         self._meta_label.setObjectName("welcome_splash_meta")
@@ -61,27 +81,36 @@ class WelcomeSplash(QWidget):
         )
         self._meta_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
+        self._update_label = QLabel(self._meta_bar)
+        self._update_label.setObjectName("welcome_splash_update")
+        self._update_label.setAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+        )
+        self._update_label.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._update_label.setTextFormat(Qt.TextFormat.RichText)
+        self._update_label.setOpenExternalLinks(True)
+        self._update_label.hide()
+
         self._close_button = QToolButton(self._logo_frame)
         self._close_button.setObjectName("welcome_splash_close")
         self._close_button.setText("X")
         self._close_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self._close_button.clicked.connect(self.dismiss)
 
-        self._auto_hide_timer = QTimer(self)
-        self._auto_hide_timer.setSingleShot(True)
-        self._auto_hide_timer.setInterval(_AUTO_HIDE_MS)
-        self._auto_hide_timer.timeout.connect(self.dismiss)
+        self._update_worker = _UpdateCheckWorker(self)
+        self._update_worker.update_available.connect(self._on_update_available)
+        self._update_worker.up_to_date.connect(self._on_up_to_date)
+        self._update_worker.finished.connect(self._update_worker.deleteLater)
+        self._update_worker.start()
 
         self.retranslate_ui()
-        self._auto_hide_timer.start()
 
     def dismiss(self) -> None:
-        """hide the splash and stop the auto-hide timer."""
+        """hide the splash."""
 
         if self._dismissed:
             return
         self._dismissed = True
-        self._auto_hide_timer.stop()
         self.hide()
         self.dismissed.emit()
 
@@ -89,10 +118,58 @@ class WelcomeSplash(QWidget):
         """refresh translatable texts."""
 
         self._close_button.setToolTip(self.tr("Close"))
-        self._meta_label.setText(
-            self.tr("Version {version}").format(version=app_version()),
+        self._refresh_version_label()
+        self._refresh_update_label()
+
+    def _on_update_available(self, update: UpdateInfo) -> None:
+        """
+        show an update hint when a newer release was found.
+
+        update
+            remote release information
+        """
+
+        self._update_info = update
+        self._is_up_to_date = False
+        self._refresh_version_label()
+        self._refresh_update_label()
+
+    def _on_up_to_date(self) -> None:
+        """mark the installed version as current after a successful release check."""
+
+        self._update_info = None
+        self._is_up_to_date = True
+        self._refresh_version_label()
+        self._refresh_update_label()
+
+    def _refresh_version_label(self) -> None:
+        """refresh the version text on the right side of the splash."""
+
+        version = app_version()
+        if self._is_up_to_date:
+            text = self.tr("Version {version} (current)").format(version=version)
+        else:
+            text = self.tr("Version {version}").format(version=version)
+        self._meta_label.setText(text)
+        self._position_overlays()
+
+    def _refresh_update_label(self) -> None:
+        """refresh the optional update hint text."""
+
+        if self._update_info is None:
+            self._update_label.hide()
+            self._position_overlays()
+            return
+
+        self._update_label.setText(
+            self.tr(
+                '<a href="{url}">Update available: Version {version}</a>',
+            ).format(
+                url=self._update_info.release_url,
+                version=self._update_info.version,
+            ),
         )
-        self._meta_label.adjustSize()
+        self._update_label.show()
         self._position_overlays()
 
     def resizeEvent(self, event: QResizeEvent) -> None:
@@ -128,14 +205,31 @@ class WelcomeSplash(QWidget):
             frame_width,
             _META_BAR_HEIGHT,
         )
-        meta_width = max(self._meta_label.sizeHint().width(), 1)
-        meta_height = self._meta_label.sizeHint().height()
+
+        meta_height = max(self._meta_label.sizeHint().height(), 1)
+        meta_y = (_META_BAR_HEIGHT - meta_height) // 2
+        meta_left = _META_LEFT_MARGIN
+
+        if self._update_info is not None and self._update_label.isVisible():
+            update_width = max(self._update_label.sizeHint().width(), 1)
+            update_height = max(self._update_label.sizeHint().height(), 1)
+            self._update_label.setGeometry(
+                _META_LEFT_MARGIN,
+                meta_y,
+                update_width,
+                update_height,
+            )
+            self._update_label.raise_()
+            meta_left = _META_LEFT_MARGIN + update_width + 8
+
+        meta_width = max(frame_width - meta_left - _META_RIGHT_MARGIN, 1)
         self._meta_label.setGeometry(
-            frame_width - meta_width - _META_RIGHT_MARGIN,
-            (_META_BAR_HEIGHT - meta_height) // 2,
+            meta_left,
+            meta_y,
             meta_width,
             meta_height,
         )
+
         self._meta_bar.raise_()
 
         close_size = self._close_button.sizeHint()
