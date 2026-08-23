@@ -8,7 +8,6 @@
 - Export rendering uses up to 4 CPU cores by default; configurable in Settings
 - About dialog under Help menu
 - Zoom toolbar: labeled stars on/off toggle and wider panel
-- GitHub releases use CHANGELOG for release notes
 
 ## [1.0.0] - 2026-08-22
 
