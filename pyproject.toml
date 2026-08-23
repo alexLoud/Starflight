@@ -1,6 +1,6 @@
 [project]
 name = "starflight"
-version = "1.0.1"
+version = "1.0.2"
 description = "Atmospheric astrophoto video animator from starless deep-sky images"
 authors = [{ name = "Alexander Lauterbach" }]
 readme = "README.md"
@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [project.scripts]
-starflight = "starflight.app.bootstrap:main"
+starflight = "starflight.app.launcher:main"
 build = "starflight.build:main"
 
 [tool.poetry]

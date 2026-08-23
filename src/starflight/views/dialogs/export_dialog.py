@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 
 from starflight.core.exporter import EXPORT_CANCELLED, ExportWorker
 from starflight.i18n import tr_validation
+from starflight.services.error_service import ErrorService
 from starflight.types.settings import ExportQuality, Project, export_crf_for_quality
 from starflight.utils.validation import validate_project_for_export
 from starflight.views.dialogs.video_save_dialog import VideoSaveDialog
@@ -36,11 +37,13 @@ class ExportDialog(QDialog):
         parent: QWidget | None = None,
         *,
         render_workers: int | None = None,
+        error_service: ErrorService,
     ) -> None:
         super().__init__(parent)
         self.project = project
         self.project_path = project_path
         self._render_workers = render_workers
+        self._error_service = error_service
         self._worker: ExportWorker | None = None
         self._export_phase = "idle"
 
@@ -230,13 +233,22 @@ class ExportDialog(QDialog):
         )
         self.accept()
 
-    def _on_error(self, message: str) -> None:
+    def _on_error(self, failure: object) -> None:
         self._restore_export_controls()
         self.progress_bar.setRange(0, 100)
-        if message == EXPORT_CANCELLED:
+        if failure == EXPORT_CANCELLED:
             self.status_label.setText(self.tr("Export cancelled."))
             return
-        translated = tr_validation(message)
+        if isinstance(failure, BaseException):
+            self.status_label.setText(self.tr("Export failed due to an internal error."))
+            self._error_service.show_crash_report(
+                "video export failed",
+                failure,
+                self,
+            )
+            return
+
+        translated = tr_validation(str(failure))
         self.status_label.setText(translated)
         QMessageBox.warning(self, self.tr("Export failed"), translated)
 

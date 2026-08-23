@@ -2,7 +2,7 @@
 
 from multiprocessing import freeze_support
 
-from starflight.app.bootstrap import main
+from starflight.app.launcher import main
 
 if __name__ == "__main__":
     freeze_support()

@@ -2,9 +2,10 @@
 
 ## [Unreleased]
 
-- Welcome screen shows a link when a newer GitHub release is available
-- Welcome screen stays visible until closed manually or the first preview loads
-- Application version is read from `pyproject.toml` during development
+## [1.0.2] - 2026-08-23
+
+- Implemented Crash reports with persistent diagnostic logs for startup, runtime, and native failures
+- Welcome screen shows an info and link when a newer release on GitHub is available
 
 ## [1.0.1] - 2026-08-23
 
@@ -15,7 +16,8 @@
 - About dialog under Help menu
 - Zoom toolbar: labeled stars on/off toggle and wider panel
 
+
+
 ## [1.0.0] - 2026-08-22
 
 - Initial release
-

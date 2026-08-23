@@ -215,10 +215,9 @@ class ProjectController:
             )
             return False
         except Exception as exc:
-            self._error_service.report_exception("unexpected save failure", exc)
-            self._error_service.show_user_warning(
-                self.tr("Save failed"),
-                self.tr("Unexpected error while saving: {error}").format(error=exc),
+            self._error_service.show_crash_report(
+                "unexpected save failure",
+                exc,
                 parent,
             )
             return False
@@ -244,7 +243,7 @@ class ProjectController:
         image_path = path
         try:
             image_width, image_height = read_image_dimensions(str(image_path))
-        except ValueError as exc:
+        except (OSError, ValueError) as exc:
             self._error_service.show_user_warning(
                 self.tr("Could not load image"),
                 str(exc),
@@ -270,5 +269,6 @@ class ProjectController:
         background.end_focus_y = 0.5
         self._dirty = True
         return True
+
 
 __all__ = ["ProjectController"]

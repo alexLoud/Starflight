@@ -181,7 +181,7 @@ class ExportWorker(QThread):
     frame_progress = Signal(int, int)
     status_changed = Signal(str)
     finished_success = Signal(str)
-    finished_error = Signal(str)
+    finished_error = Signal(object)
 
     _PROGRESS_SCALE = 10000
 
@@ -242,7 +242,7 @@ class ExportWorker(QThread):
                 self.finished_error.emit(EXPORT_CANCELLED)
                 return
             self._cleanup_partial_output()
-            self.finished_error.emit(str(exc))
+            self.finished_error.emit(exc)
 
     def _cleanup_partial_output(self) -> None:
         """remove partial output file if export failed."""
@@ -513,13 +513,9 @@ class ExportWorker(QThread):
                     elif rendered >= total_frames:
                         remaining_render = 0.0
                     else:
-                        remaining_render = (render_elapsed / rendered) * (
-                            total_frames - rendered
-                        )
+                        remaining_render = (render_elapsed / rendered) * (total_frames - rendered)
                         # refine estimate for later updates while workers warm up
-                        progress.set_render_estimate(
-                            (render_elapsed / rendered) * total_frames
-                        )
+                        progress.set_render_estimate((render_elapsed / rendered) * total_frames)
                     progress.update(remaining_render)
                     if rendered != last_frame_emitted:
                         last_frame_emitted = rendered

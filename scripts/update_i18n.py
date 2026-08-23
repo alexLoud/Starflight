@@ -14,10 +14,11 @@ SOURCE_TS = I18N_DIR / "starflight_de.ts"
 def main() -> int:
     """run pylupdate6 and lrelease for project translations."""
 
-    pylupdate = ROOT / ".venv" / "bin" / "pyside6-lupdate"
-    lrelease = ROOT / ".venv" / "bin" / "pyside6-lrelease"
+    environment_bin = Path(sys.executable).parent
+    pylupdate = environment_bin / "pyside6-lupdate"
+    lrelease = environment_bin / "pyside6-lrelease"
     if not pylupdate.exists() or not lrelease.exists():
-        print("pyside6 lupdate/lrelease not found in .venv", file=sys.stderr)
+        print("pyside6 lupdate/lrelease not found in the active environment", file=sys.stderr)
         return 1
 
     sources = list((ROOT / "src" / "starflight").rglob("*.py"))

@@ -2,37 +2,111 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="de_DE">
 <context>
+    <name>AboutDialog</name>
+    <message>
+        <location filename="../views/dialogs/about_dialog.py" line="90"/>
+        <source>About Starflight</source>
+        <translation>Über Starflight</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/about_dialog.py" line="93"/>
+        <source>Version {version}</source>
+        <translation>Version {version}</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/about_dialog.py" line="97"/>
+        <source>Author: {author}</source>
+        <translation>Autor: {author}</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/about_dialog.py" line="100"/>
+        <source>&lt;a href=&quot;{url}&quot;&gt;GitHub&lt;/a&gt;</source>
+        <translation>&lt;a href=&quot;{url}&quot;&gt;GitHub&lt;/a&gt;</translation>
+    </message>
+</context>
+<context>
+    <name>CrashReportDialog</name>
+    <message>
+        <location filename="../views/dialogs/crash_report_dialog.py" line="181"/>
+        <source>Starflight Error</source>
+        <translation>Starflight-Fehler</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/crash_report_dialog.py" line="182"/>
+        <source>An application error occurred</source>
+        <translation>Es ist ein Anwendungsfehler aufgetreten</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/crash_report_dialog.py" line="186"/>
+        <source>Starflight cannot continue safely and must be closed. Your project files were not changed. You can copy the diagnostic report for troubleshooting. The report is stored locally and is not sent automatically.</source>
+        <translation>Starflight kann nicht sicher fortgesetzt werden und muss geschlossen werden. Deine Projektdateien wurden nicht verändert. Du kannst den Diagnosebericht zur Fehleranalyse kopieren. Der Bericht wird lokal gespeichert und nicht automatisch versendet.</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/crash_report_dialog.py" line="195"/>
+        <source>The affected operation could not be completed. You can copy the diagnostic report and continue using Starflight. The report is stored locally and is not sent automatically.</source>
+        <translation>Der betroffene Vorgang konnte nicht abgeschlossen werden. Du kannst den Diagnosebericht kopieren und Starflight weiter verwenden. Der Bericht wird lokal gespeichert und nicht automatisch versendet.</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/crash_report_dialog.py" line="201"/>
+        <location filename="../views/dialogs/crash_report_dialog.py" line="294"/>
+        <source>Copy report</source>
+        <translation>Bericht kopieren</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/crash_report_dialog.py" line="202"/>
+        <location filename="../views/dialogs/crash_report_dialog.py" line="297"/>
+        <source>Open log folder</source>
+        <translation>Logordner öffnen</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/crash_report_dialog.py" line="204"/>
+        <source>Quit Starflight</source>
+        <translation>Starflight beenden</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/crash_report_dialog.py" line="204"/>
+        <location filename="../views/dialogs/crash_report_dialog.py" line="300"/>
+        <source>Close message</source>
+        <translation>Meldung schließen</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/crash_report_dialog.py" line="231"/>
+        <source>Hide technical details</source>
+        <translation>Technische Details ausblenden</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/crash_report_dialog.py" line="238"/>
+        <source>Show technical details</source>
+        <translation>Technische Details anzeigen</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/crash_report_dialog.py" line="247"/>
+        <source>Report copied</source>
+        <translation>Bericht kopiert</translation>
+    </message>
+</context>
+<context>
     <name>ErrorService</name>
     <message>
-        <location filename="../services/error_service.py" line="84"/>
+        <location filename="../services/error_service.py" line="216"/>
         <source>Save</source>
         <translation>Speichern</translation>
     </message>
     <message>
-        <location filename="../services/error_service.py" line="88"/>
+        <location filename="../services/error_service.py" line="220"/>
         <source>Discard</source>
         <translation>Verwerfen</translation>
     </message>
     <message>
-        <location filename="../services/error_service.py" line="92"/>
+        <location filename="../services/error_service.py" line="224"/>
         <source>Cancel</source>
         <translation>Abbrechen</translation>
-    </message>
-    <message>
-        <location filename="../commands/registry.py" line="63"/>
-        <source>Error</source>
-        <translation>Fehler</translation>
-    </message>
-    <message>
-        <location filename="../commands/registry.py" line="65"/>
-        <source>The command &apos;{title}&apos; could not be executed.</source>
-        <translation>Der Befehl „{title}“ konnte nicht ausgeführt werden.</translation>
     </message>
 </context>
 <context>
     <name>ExportController</name>
     <message>
-        <location filename="../controllers/export_controller.py" line="49"/>
+        <location filename="../controllers/export_controller.py" line="51"/>
         <source>Export unavailable</source>
         <translation>Export nicht möglich</translation>
     </message>
@@ -40,113 +114,118 @@
 <context>
     <name>ExportDialog</name>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="102"/>
+        <location filename="../views/dialogs/export_dialog.py" line="108"/>
         <source>Export video</source>
         <translation>Video exportieren</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="103"/>
+        <location filename="../views/dialogs/export_dialog.py" line="109"/>
         <source>Output file</source>
         <translation>Ausgabedatei</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="104"/>
+        <location filename="../views/dialogs/export_dialog.py" line="110"/>
         <source>Quality</source>
         <translation>Qualität</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="105"/>
+        <location filename="../views/dialogs/export_dialog.py" line="111"/>
         <source>Browse…</source>
         <translation>Durchsuchen…</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="106"/>
+        <location filename="../views/dialogs/export_dialog.py" line="112"/>
         <source>Cancel</source>
         <translation>Abbrechen</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="107"/>
+        <location filename="../views/dialogs/export_dialog.py" line="113"/>
         <source>Export</source>
         <translation>Exportieren</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="108"/>
+        <location filename="../views/dialogs/export_dialog.py" line="114"/>
         <source>Ready to export.</source>
         <translation>Bereit zum Export.</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="109"/>
+        <location filename="../views/dialogs/export_dialog.py" line="115"/>
         <source>High</source>
         <translation>Hoch</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="110"/>
+        <location filename="../views/dialogs/export_dialog.py" line="116"/>
         <source>Standard</source>
         <translation>Standard</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="124"/>
-        <location filename="../views/dialogs/export_dialog.py" line="133"/>
-        <location filename="../views/dialogs/export_dialog.py" line="142"/>
+        <location filename="../views/dialogs/export_dialog.py" line="130"/>
+        <location filename="../views/dialogs/export_dialog.py" line="139"/>
+        <location filename="../views/dialogs/export_dialog.py" line="148"/>
         <source>Export unavailable</source>
         <translation>Export nicht möglich</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="143"/>
+        <location filename="../views/dialogs/export_dialog.py" line="149"/>
         <source>Please choose an output file.</source>
         <translation>Bitte wähle eine Ausgabedatei.</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="163"/>
-        <location filename="../views/dialogs/export_dialog.py" line="178"/>
-        <location filename="../views/dialogs/export_dialog.py" line="209"/>
+        <location filename="../views/dialogs/export_dialog.py" line="169"/>
+        <location filename="../views/dialogs/export_dialog.py" line="189"/>
+        <location filename="../views/dialogs/export_dialog.py" line="220"/>
         <source>Preparing stars…</source>
         <translation>Sterne werden vorbereitet…</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="125"/>
+        <location filename="../views/dialogs/export_dialog.py" line="131"/>
         <source>An export is already running.</source>
         <translation>Es läuft bereits ein Export.</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="192"/>
+        <location filename="../views/dialogs/export_dialog.py" line="203"/>
         <source>Rendering frames… {current} of {total}</source>
         <translation>Frames werden gerendert… {current} von {total}</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="212"/>
+        <location filename="../views/dialogs/export_dialog.py" line="223"/>
         <source>Rendering frames…</source>
         <translation>Frames werden gerendert…</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="217"/>
+        <location filename="../views/dialogs/export_dialog.py" line="228"/>
         <source>Export completed.</source>
         <translation>Export abgeschlossen.</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="220"/>
+        <location filename="../views/dialogs/export_dialog.py" line="231"/>
         <source>Export successful</source>
         <translation>Export erfolgreich</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="221"/>
+        <location filename="../views/dialogs/export_dialog.py" line="232"/>
         <source>Video saved to:
 {path}</source>
         <translation>Video gespeichert unter:
 {path}</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="229"/>
+        <location filename="../views/dialogs/export_dialog.py" line="240"/>
         <source>Export cancelled.</source>
         <translation>Export abgebrochen.</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="233"/>
+        <location filename="../views/dialogs/export_dialog.py" line="243"/>
+        <source>Export failed due to an internal error.</source>
+        <translation>Der Export ist aufgrund eines internen Fehlers fehlgeschlagen.</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/export_dialog.py" line="253"/>
         <source>Export failed</source>
         <translation>Export fehlgeschlagen</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="251"/>
+        <location filename="../views/dialogs/export_dialog.py" line="271"/>
         <source>Cancelling export…</source>
         <translation>Export wird abgebrochen…</translation>
     </message>
@@ -154,34 +233,34 @@
 <context>
     <name>ExportWorker</name>
     <message>
-        <location filename="../core/exporter.py" line="276"/>
+        <location filename="../core/exporter.py" line="285"/>
         <source>A rendered chunk has an invalid size ({actual_bytes} instead of {expected_bytes}).</source>
         <translation>Ein gerenderter Abschnitt hat eine ungültige Größe ({actual_bytes} statt {expected_bytes}).</translation>
     </message>
     <message>
-        <location filename="../core/exporter.py" line="468"/>
+        <location filename="../core/exporter.py" line="477"/>
         <source>Fade snapshots are missing for chunk starts: {starts}</source>
         <translation>Überblendungsstände fehlen für folgende Abschnittsanfänge: {starts}</translation>
     </message>
     <message>
-        <location filename="../core/exporter.py" line="281"/>
-        <location filename="../core/exporter.py" line="491"/>
+        <location filename="../core/exporter.py" line="290"/>
+        <location filename="../core/exporter.py" line="500"/>
         <source>FFmpeg could not be started.</source>
         <translation>FFmpeg konnte nicht gestartet werden.</translation>
     </message>
     <message>
-        <location filename="../core/exporter.py" line="292"/>
-        <location filename="../core/exporter.py" line="608"/>
+        <location filename="../core/exporter.py" line="301"/>
+        <location filename="../core/exporter.py" line="613"/>
         <source>FFmpeg error: {error}</source>
         <translation>FFmpeg-Fehler: {error}</translation>
     </message>
     <message>
-        <location filename="../core/exporter.py" line="412"/>
+        <location filename="../core/exporter.py" line="421"/>
         <source>FFmpeg was not found. Install FFmpeg and make sure it is available on PATH.</source>
-        <translation type="unfinished">FFmpeg wurde nicht gefunden. Installiere FFmpeg und stell sicher, dass es über PATH verfügbar ist.</translation>
+        <translation>FFmpeg wurde nicht gefunden. Installiere FFmpeg und stelle sicher, dass es über PATH verfügbar ist.</translation>
     </message>
     <message>
-        <location filename="../core/exporter.py" line="609"/>
+        <location filename="../core/exporter.py" line="614"/>
         <source>Unknown error</source>
         <translation>Unbekannter Fehler</translation>
     </message>
@@ -263,89 +342,89 @@
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../views/main_window.py" line="107"/>
-        <location filename="../views/main_window.py" line="147"/>
+        <location filename="../views/main_window.py" line="108"/>
+        <location filename="../views/main_window.py" line="148"/>
         <source>Open Recent</source>
         <translation>Zuletzt geöffnet</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="151"/>
+        <location filename="../views/main_window.py" line="152"/>
         <source>No Recent Projects</source>
         <translation>Keine zuletzt geöffneten Projekte</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="249"/>
+        <location filename="../views/main_window.py" line="250"/>
         <source>Ready</source>
         <translation>Bereit</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="268"/>
+        <location filename="../views/main_window.py" line="269"/>
         <source>New</source>
         <translation>Neu</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="269"/>
+        <location filename="../views/main_window.py" line="270"/>
         <source>Open…</source>
         <translation>Öffnen…</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="270"/>
+        <location filename="../views/main_window.py" line="271"/>
         <source>Save</source>
         <translation>Speichern</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="271"/>
+        <location filename="../views/main_window.py" line="272"/>
         <source>Save as…</source>
         <translation>Speichern unter…</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="273"/>
+        <location filename="../views/main_window.py" line="274"/>
         <source>Load image…</source>
         <translation>Bild laden…</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="274"/>
+        <location filename="../views/main_window.py" line="275"/>
         <source>Export video…</source>
         <translation>Video exportieren…</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="275"/>
+        <location filename="../views/main_window.py" line="276"/>
         <source>Settings…</source>
         <translation>Einstellungen…</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="276"/>
+        <location filename="../views/main_window.py" line="277"/>
         <source>About Starflight</source>
         <translation>Über Starflight</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="311"/>
+        <location filename="../views/main_window.py" line="313"/>
         <source>Project</source>
         <translation>Projekt</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="312"/>
+        <location filename="../views/main_window.py" line="314"/>
         <source>Settings</source>
         <translation>Einstellungen</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="314"/>
+        <location filename="../views/main_window.py" line="315"/>
         <source>Help</source>
         <translation>Hilfe</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="272"/>
+        <location filename="../views/main_window.py" line="273"/>
         <source>Quit</source>
         <translation>Beenden</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="310"/>
+        <location filename="../views/main_window.py" line="312"/>
         <source>File</source>
         <translation>Datei</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="423"/>
-        <location filename="../views/main_window.py" line="433"/>
+        <location filename="../views/main_window.py" line="435"/>
+        <location filename="../views/main_window.py" line="445"/>
         <source>Project saved: {path}</source>
         <translation>Projekt gespeichert: {path}</translation>
     </message>
@@ -391,17 +470,11 @@
     </message>
     <message>
         <location filename="../controllers/project_controller.py" line="212"/>
-        <location filename="../controllers/project_controller.py" line="220"/>
         <source>Save failed</source>
         <translation>Speichern fehlgeschlagen</translation>
     </message>
     <message>
-        <location filename="../controllers/project_controller.py" line="221"/>
-        <source>Unexpected error while saving: {error}</source>
-        <translation>Unerwarteter Fehler beim Speichern: {error}</translation>
-    </message>
-    <message>
-        <location filename="../controllers/project_controller.py" line="249"/>
+        <location filename="../controllers/project_controller.py" line="248"/>
         <source>Could not load image</source>
         <translation>Bild konnte nicht geladen werden</translation>
     </message>
@@ -425,11 +498,16 @@
     </message>
     <message>
         <location filename="../core/project.py" line="30"/>
+        <source>Project file could not be read: {error}</source>
+        <translation>Die Projektdatei konnte nicht gelesen werden: {error}</translation>
+    </message>
+    <message>
+        <location filename="../core/project.py" line="33"/>
         <source>The project file does not contain valid JSON.</source>
         <translation>Die Projektdatei enthält kein gültiges JSON.</translation>
     </message>
     <message>
-        <location filename="../core/project.py" line="33"/>
+        <location filename="../core/project.py" line="36"/>
         <source>The project file has an invalid format.</source>
         <translation>Die Projektdatei hat ein ungültiges Format.</translation>
     </message>
@@ -471,6 +549,29 @@
     </message>
 </context>
 <context>
+    <name>RecoveredCrashReportDialog</name>
+    <message>
+        <location filename="../views/dialogs/crash_report_dialog.py" line="271"/>
+        <source>Previous Starflight Crash</source>
+        <translation>Absturz bei der letzten Nutzung</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/crash_report_dialog.py" line="273"/>
+        <source>Starflight closed unexpectedly during the previous session</source>
+        <translation>Starflight wurde zuletzt unerwartet beendet</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/crash_report_dialog.py" line="278"/>
+        <source>The most recent of {count} recovered diagnostic reports is shown. You can copy it for troubleshooting and then continue using Starflight. Additional reports remain in the log folder. The report is stored locally and is not sent automatically.</source>
+        <translation>Der neueste von {count} wiederhergestellten Diagnoseberichten wird angezeigt. Du kannst ihn kopieren und anschließend Starflight weiter verwenden. Weitere Berichte verbleiben im Logordner. Der Bericht wird lokal gespeichert und nicht automatisch versendet.</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/crash_report_dialog.py" line="287"/>
+        <source>A diagnostic report was recovered. You can copy it for troubleshooting and then continue using Starflight. The report is stored locally and is not sent automatically.</source>
+        <translation>Ein Diagnosebericht wurde wiederhergestellt. Du kannst ihn kopieren und anschließend Starflight weiter verwenden. Der Bericht wird lokal gespeichert und nicht automatisch versendet.</translation>
+    </message>
+</context>
+<context>
     <name>SettingsDialog</name>
     <message>
         <location filename="__init__.py" line="61"/>
@@ -483,27 +584,27 @@
         <translation>Englisch</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/settings_dialog.py" line="65"/>
+        <location filename="../views/dialogs/settings_dialog.py" line="80"/>
         <source>Settings</source>
         <translation>Einstellungen</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/settings_dialog.py" line="66"/>
+        <location filename="../views/dialogs/settings_dialog.py" line="81"/>
         <source>Language</source>
         <translation>Sprache</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/settings_dialog.py" line="84"/>
+        <location filename="../views/dialogs/settings_dialog.py" line="82"/>
         <source>CPU cores for rendering</source>
         <translation>CPU-Kerne für Rendering</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/settings_dialog.py" line="87"/>
+        <location filename="../views/dialogs/settings_dialog.py" line="86"/>
         <source>{count} core</source>
         <translation>{count} Kern</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/settings_dialog.py" line="89"/>
+        <location filename="../views/dialogs/settings_dialog.py" line="88"/>
         <source>{count} cores</source>
         <translation>{count} Kerne</translation>
     </message>
@@ -827,22 +928,22 @@ Vergrößerung vermeiden</translation>
 <context>
     <name>TimelineWidget</name>
     <message>
-        <location filename="../views/widgets/timeline_widget.py" line="175"/>
+        <location filename="../views/widgets/timeline_widget.py" line="180"/>
         <source>Previous frame</source>
         <translation>Vorheriger Frame</translation>
     </message>
     <message>
-        <location filename="../views/widgets/timeline_widget.py" line="176"/>
+        <location filename="../views/widgets/timeline_widget.py" line="181"/>
         <source>Play / Pause</source>
         <translation>Wiedergabe / Pause</translation>
     </message>
     <message>
-        <location filename="../views/widgets/timeline_widget.py" line="177"/>
+        <location filename="../views/widgets/timeline_widget.py" line="182"/>
         <source>Stop</source>
         <translation>Stopp</translation>
     </message>
     <message>
-        <location filename="../views/widgets/timeline_widget.py" line="178"/>
+        <location filename="../views/widgets/timeline_widget.py" line="183"/>
         <source>Next frame</source>
         <translation>Nächster Frame</translation>
     </message>
@@ -919,52 +1020,24 @@ Vergrößerung vermeiden</translation>
     </message>
 </context>
 <context>
-    <name>AboutDialog</name>
-    <message>
-        <location filename="../views/dialogs/about_dialog.py" line="91"/>
-        <source>About Starflight</source>
-        <translation>Über Starflight</translation>
-    </message>
-    <message>
-        <location filename="../views/dialogs/about_dialog.py" line="93"/>
-        <source>Version {version}</source>
-        <translation>Version {version}</translation>
-    </message>
-    <message>
-        <location filename="../views/dialogs/about_dialog.py" line="96"/>
-        <source>Turns a starless deep-sky image into a short fly-through video with a rendered starfield.</source>
-        <translation>Verwandelt ein sternenloses Deep-Sky-Bild in ein kurzes Fly-through-Video mit gerendertem Sternenfeld.</translation>
-    </message>
-    <message>
-        <location filename="../views/dialogs/about_dialog.py" line="98"/>
-        <source>Author: {author}</source>
-        <translation>Autor: {author}</translation>
-    </message>
-    <message>
-        <location filename="../views/dialogs/about_dialog.py" line="101"/>
-        <source>&lt;a href=&quot;{url}&quot;&gt;GitHub&lt;/a&gt;</source>
-        <translation>&lt;a href=&quot;{url}&quot;&gt;GitHub&lt;/a&gt;</translation>
-    </message>
-</context>
-<context>
     <name>WelcomeSplash</name>
     <message>
-        <location filename="../views/widgets/welcome_splash.py" line="118"/>
+        <location filename="../views/widgets/welcome_splash.py" line="106"/>
         <source>Close</source>
         <translation>Schließen</translation>
     </message>
     <message>
-        <location filename="../views/widgets/welcome_splash.py" line="149"/>
+        <location filename="../views/widgets/welcome_splash.py" line="152"/>
         <source>Version {version} (current)</source>
         <translation>Version {version} (aktuell)</translation>
     </message>
     <message>
-        <location filename="../views/widgets/welcome_splash.py" line="151"/>
+        <location filename="../views/widgets/welcome_splash.py" line="154"/>
         <source>Version {version}</source>
         <translation>Version {version}</translation>
     </message>
     <message>
-        <location filename="../views/widgets/welcome_splash.py" line="164"/>
+        <location filename="../views/widgets/welcome_splash.py" line="168"/>
         <source>&lt;a href=&quot;{url}&quot;&gt;Update available: Version {version}&lt;/a&gt;</source>
         <translation>&lt;a href=&quot;{url}&quot;&gt;Update verfügbar: Version {version}&lt;/a&gt;</translation>
     </message>
@@ -972,30 +1045,30 @@ Vergrößerung vermeiden</translation>
 <context>
     <name>ZoomToolbar</name>
     <message>
-        <location filename="../views/widgets/zoom_toolbar.py" line="27"/>
-        <location filename="../views/widgets/zoom_toolbar.py" line="50"/>
+        <location filename="../views/widgets/zoom_toolbar.py" line="63"/>
+        <location filename="../views/widgets/zoom_toolbar.py" line="151"/>
         <source>Fit to view</source>
         <translation>An Ansicht anpassen</translation>
     </message>
     <message>
-        <location filename="../views/widgets/zoom_toolbar.py" line="28"/>
-        <location filename="../views/widgets/zoom_toolbar.py" line="51"/>
+        <location filename="../views/widgets/zoom_toolbar.py" line="64"/>
+        <location filename="../views/widgets/zoom_toolbar.py" line="152"/>
         <source>Zoom out</source>
         <translation>Verkleinern</translation>
     </message>
     <message>
-        <location filename="../views/widgets/zoom_toolbar.py" line="29"/>
-        <location filename="../views/widgets/zoom_toolbar.py" line="52"/>
+        <location filename="../views/widgets/zoom_toolbar.py" line="65"/>
+        <location filename="../views/widgets/zoom_toolbar.py" line="153"/>
         <source>Zoom in</source>
         <translation>Vergrößern</translation>
     </message>
     <message>
-        <location filename="../views/widgets/zoom_toolbar.py" line="89"/>
+        <location filename="../views/widgets/zoom_toolbar.py" line="170"/>
         <source>Stars on</source>
         <translation>Sterne ein</translation>
     </message>
     <message>
-        <location filename="../views/widgets/zoom_toolbar.py" line="91"/>
+        <location filename="../views/widgets/zoom_toolbar.py" line="172"/>
         <source>Stars off</source>
         <translation>Sterne aus</translation>
     </message>

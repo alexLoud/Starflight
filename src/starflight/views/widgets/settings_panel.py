@@ -948,7 +948,7 @@ class SettingsPanel(QWidget):
             preview_image = numpy_rgb_to_qimage(source_rgb, screen=self.screen())
             source_h, source_w = source_rgb.shape[:2]
             self.focus_points.set_image(preview_image, source_w, source_h)
-        except OSError:
+        except (OSError, ValueError):
             self.focus_points.clear_image()
             self.focus_points.setEnabled(False)
             return

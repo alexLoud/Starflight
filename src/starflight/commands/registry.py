@@ -6,6 +6,7 @@ from collections.abc import Callable
 
 from PySide6.QtCore import QObject
 from PySide6.QtGui import QAction
+from PySide6.QtWidgets import QApplication
 
 from starflight.commands.models import Command, CommandHandler
 from starflight.services.error_service import ErrorService
@@ -57,13 +58,14 @@ class CommandRegistry(QObject):
         try:
             handler()
         except Exception as exc:
-            self._error_service.report_exception(f"command '{command_id}' failed", exc)
-            command = self.get(command_id)
-            self._error_service.show_user_error(
-                ErrorService.tr("Error"),
-                ErrorService.tr(
-                    "The command '{title}' could not be executed.",
-                ).format(title=command.title),
+            parent = None
+            app = QApplication.instance()
+            if app is not None:
+                parent = app.activeWindow()
+            self._error_service.show_crash_report(
+                f"command '{command_id}' failed",
+                exc,
+                parent,
             )
 
     def bind_action(self, command_id: str, action: QAction) -> None:

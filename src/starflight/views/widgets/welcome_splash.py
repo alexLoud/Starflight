@@ -4,36 +4,24 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtCore import Qt, QUrl, Signal
 from PySide6.QtGui import QPixmap, QResizeEvent
+from PySide6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
 from PySide6.QtWidgets import QLabel, QToolButton, QWidget
 
 from starflight.app.constants import WELCOME_LOGO_FILE, package_dir
 from starflight.app.metadata import app_version
-from starflight.services.update_service import fetch_latest_release, is_newer_version
+from starflight.services.update_service import (
+    is_newer_version,
+    latest_release_api_url,
+    parse_latest_release,
+)
 from starflight.types.update import UpdateInfo
 
 _META_BAR_HEIGHT = 32
 _META_LEFT_MARGIN = 12
 _META_RIGHT_MARGIN = 12
 _CLOSE_MARGIN = 8
-
-
-class _UpdateCheckWorker(QThread):
-    """fetch the latest release version without blocking the ui thread."""
-
-    update_available = Signal(object)
-    up_to_date = Signal()
-
-    def run(self) -> None:
-        current = app_version()
-        latest = fetch_latest_release()
-        if latest is None:
-            return
-        if is_newer_version(latest.version, current):
-            self.update_available.emit(latest)
-        else:
-            self.up_to_date.emit()
 
 
 def welcome_logo_path() -> Path:
@@ -76,16 +64,12 @@ class WelcomeSplash(QWidget):
 
         self._meta_label = QLabel(self._meta_bar)
         self._meta_label.setObjectName("welcome_splash_meta")
-        self._meta_label.setAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-        )
+        self._meta_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self._meta_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
         self._update_label = QLabel(self._meta_bar)
         self._update_label.setObjectName("welcome_splash_update")
-        self._update_label.setAlignment(
-            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
-        )
+        self._update_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         self._update_label.setCursor(Qt.CursorShape.PointingHandCursor)
         self._update_label.setTextFormat(Qt.TextFormat.RichText)
         self._update_label.setOpenExternalLinks(True)
@@ -97,11 +81,13 @@ class WelcomeSplash(QWidget):
         self._close_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self._close_button.clicked.connect(self.dismiss)
 
-        self._update_worker = _UpdateCheckWorker(self)
-        self._update_worker.update_available.connect(self._on_update_available)
-        self._update_worker.up_to_date.connect(self._on_up_to_date)
-        self._update_worker.finished.connect(self._update_worker.deleteLater)
-        self._update_worker.start()
+        self._network_manager = QNetworkAccessManager(self)
+        request = QNetworkRequest(QUrl(latest_release_api_url()))
+        request.setRawHeader(b"Accept", b"application/vnd.github+json")
+        request.setRawHeader(b"User-Agent", b"Starflight")
+        request.setTransferTimeout(8_000)
+        reply = self._network_manager.get(request)
+        reply.finished.connect(lambda current_reply=reply: self._on_update_reply(current_reply))
 
         self.retranslate_ui()
 
@@ -133,6 +119,22 @@ class WelcomeSplash(QWidget):
         self._is_up_to_date = False
         self._refresh_version_label()
         self._refresh_update_label()
+
+    def _on_update_reply(self, reply: QNetworkReply) -> None:
+        """consume the asynchronous latest-release response."""
+
+        try:
+            if reply.error() != QNetworkReply.NetworkError.NoError:
+                return
+            latest = parse_latest_release(bytes(reply.readAll()))
+            if latest is None:
+                return
+            if is_newer_version(latest.version, app_version()):
+                self._on_update_available(latest)
+            else:
+                self._on_up_to_date()
+        finally:
+            reply.deleteLater()
 
     def _on_up_to_date(self) -> None:
         """mark the installed version as current after a successful release check."""

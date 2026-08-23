@@ -27,6 +27,9 @@ def _tr(text: str) -> str:
         "Project file not found: {path}": QCoreApplication.translate(
             "ProjectError", "Project file not found: {path}"
         ),
+        "Project file could not be read: {error}": QCoreApplication.translate(
+            "ProjectError", "Project file could not be read: {error}"
+        ),
         "The project file does not contain valid JSON.": QCoreApplication.translate(
             "ProjectError", "The project file does not contain valid JSON."
         ),
@@ -137,19 +140,28 @@ def load_project(project_path: Path) -> Project:
     try:
         with project_path.open("r", encoding="utf-8") as handle:
             payload = json.load(handle)
-    except json.JSONDecodeError as exc:
+    except OSError as exc:
+        message = _tr("Project file could not be read: {error}").format(error=exc)
+        raise ProjectError(message) from exc
+    except (UnicodeError, json.JSONDecodeError) as exc:
         raise ProjectError(_tr("The project file does not contain valid JSON.")) from exc
 
     if not isinstance(payload, dict):
         raise ProjectError(_tr("The project file has an invalid format."))
 
-    settings = settings_from_dict(payload.get("settings", {}))
-    return Project(
-        version=int(payload.get("version", 1)),
-        name=str(payload.get("name", project_path.stem)),
-        source_image=payload.get("source_image"),
-        settings=settings,
-    )
+    try:
+        settings = settings_from_dict(payload.get("settings", {}))
+        source_image = payload.get("source_image")
+        if source_image is not None and not isinstance(source_image, str):
+            raise TypeError("source_image must be a string or null")
+        return Project(
+            version=int(payload.get("version", 1)),
+            name=str(payload.get("name", project_path.stem)),
+            source_image=source_image,
+            settings=settings,
+        )
+    except (AttributeError, OverflowError, TypeError, ValueError) as exc:
+        raise ProjectError(_tr("The project file has an invalid format.")) from exc
 
 
 def new_project(name: str = "Untitled Project") -> Project:

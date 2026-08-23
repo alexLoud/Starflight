@@ -390,13 +390,22 @@ class MainWindow(QMainWindow):
 
         if sync_settings:
             self._sync_project_from_ui()
-        self._preview_controller.refresh_preview(
-            self._project_controller.project,
-            self._project_controller.project_path,
-            self.preview_workspace.preview_panel,
-            self.preview_workspace.timeline.current_time_seconds(),
-            include_stars=self.preview_workspace.zoom_toolbar.stars_enabled,
-        )
+        try:
+            self._preview_controller.refresh_preview(
+                self._project_controller.project,
+                self._project_controller.project_path,
+                self.preview_workspace.preview_panel,
+                self.preview_workspace.timeline.current_time_seconds(),
+                include_stars=self.preview_workspace.zoom_toolbar.stars_enabled,
+            )
+        except Exception as exc:
+            self._preview_controller.invalidate()
+            self._refresh_timer.stop()
+            self._context.error_service.show_crash_report(
+                "preview rendering failed",
+                exc,
+                self,
+            )
 
     def new_project_action(self) -> None:
         if not self._project_controller.confirm_discard_changes(self):

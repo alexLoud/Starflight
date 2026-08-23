@@ -56,6 +56,34 @@ def release_page_url(version: str) -> str:
     return f"{APP_GITHUB_URL}/releases/tag/v{version}"
 
 
+def latest_release_api_url(repo: str = APP_GITHUB_REPO) -> str:
+    """build the GitHub API URL for the latest published release."""
+
+    return f"{_GITHUB_API_BASE}/repos/{repo}/releases/latest"
+
+
+def parse_latest_release(payload: bytes) -> UpdateInfo | None:
+    """parse a GitHub latest-release response payload."""
+
+    try:
+        data = json.loads(payload)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    if not isinstance(data, dict):
+        return None
+
+    tag_name = data.get("tag_name")
+    if not isinstance(tag_name, str) or not tag_name.strip():
+        return None
+
+    version = tag_name.strip().removeprefix("v").removeprefix("V")
+    release_url = data.get("html_url")
+    if not isinstance(release_url, str) or not release_url.strip():
+        release_url = release_page_url(version)
+
+    return UpdateInfo(version=version, release_url=release_url)
+
+
 def fetch_latest_release(repo: str = APP_GITHUB_REPO) -> UpdateInfo | None:
     """
     fetch the latest published github release for the configured repository.
@@ -65,7 +93,7 @@ def fetch_latest_release(repo: str = APP_GITHUB_REPO) -> UpdateInfo | None:
     """
 
     request = urllib.request.Request(
-        f"{_GITHUB_API_BASE}/repos/{repo}/releases/latest",
+        latest_release_api_url(repo),
         headers={
             "Accept": "application/vnd.github+json",
             "User-Agent": _USER_AGENT,
@@ -74,20 +102,9 @@ def fetch_latest_release(repo: str = APP_GITHUB_REPO) -> UpdateInfo | None:
     )
     try:
         with urllib.request.urlopen(request, timeout=_REQUEST_TIMEOUT_S) as response:
-            payload = json.load(response)
-    except (TimeoutError, urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError):
+            return parse_latest_release(response.read())
+    except (TimeoutError, urllib.error.URLError, urllib.error.HTTPError):
         return None
-
-    tag_name = payload.get("tag_name")
-    if not isinstance(tag_name, str) or not tag_name.strip():
-        return None
-
-    version = tag_name.strip().removeprefix("v").removeprefix("V")
-    release_url = payload.get("html_url")
-    if not isinstance(release_url, str) or not release_url.strip():
-        release_url = release_page_url(version)
-
-    return UpdateInfo(version=version, release_url=release_url)
 
 
 def check_for_update(current_version: str) -> UpdateInfo | None:
@@ -110,6 +127,8 @@ __all__ = [
     "check_for_update",
     "fetch_latest_release",
     "is_newer_version",
+    "latest_release_api_url",
     "normalize_version",
+    "parse_latest_release",
     "release_page_url",
 ]

@@ -83,7 +83,10 @@ class PreviewService:
             return False, None, "preview_missing_image"
 
         if self._preview_renderer is None or self._preview_settings != preview_settings:
-            self._loaded_image_bgr = load_image_bgr(str(image_path))
+            try:
+                self._loaded_image_bgr = load_image_bgr(str(image_path))
+            except (OSError, ValueError) as exc:
+                return False, None, str(exc)
             self._preview_settings = preview_settings.clone()
             self._preview_renderer = create_renderer(self._loaded_image_bgr, preview_settings)
         else:
@@ -120,5 +123,6 @@ def _copy_star_render_settings(target: StarSettings, source: StarSettings) -> No
     target.magnitude_realism = source.magnitude_realism
     target.size_spread = source.size_spread
     target.speed = source.speed
+
 
 __all__ = ["PreviewService"]

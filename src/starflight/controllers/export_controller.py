@@ -59,6 +59,7 @@ class ExportController:
             project_path,
             parent,
             render_workers=render_worker_count_from_settings(self._settings),
+            error_service=self._error_service,
         )
         dialog.exec()
 

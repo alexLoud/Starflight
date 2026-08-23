@@ -11,7 +11,9 @@ from starflight.services.update_service import (
     check_for_update,
     fetch_latest_release,
     is_newer_version,
+    latest_release_api_url,
     normalize_version,
+    parse_latest_release,
     release_page_url,
 )
 from starflight.types.update import UpdateInfo
@@ -28,6 +30,12 @@ class UpdateVersionTests(unittest.TestCase):
 
 
 class UpdateServiceTests(unittest.TestCase):
+    def test_latest_release_api_url_uses_configured_repo(self) -> None:
+        self.assertEqual(
+            latest_release_api_url(),
+            "https://api.github.com/repos/alexLoud/Starflight/releases/latest",
+        )
+
     def test_release_page_url_uses_configured_repo(self) -> None:
         self.assertEqual(
             release_page_url("1.0.2"),
@@ -54,6 +62,9 @@ class UpdateServiceTests(unittest.TestCase):
                 release_url="https://github.com/alexLoud/Starflight/releases/tag/v1.0.2",
             ),
         )
+
+    def test_parse_latest_release_rejects_invalid_json(self) -> None:
+        self.assertIsNone(parse_latest_release(b"not json"))
 
     def test_check_for_update_returns_none_when_current_is_latest(self) -> None:
         update = UpdateInfo(

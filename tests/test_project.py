@@ -41,6 +41,30 @@ class ProjectPersistenceTests(unittest.TestCase):
             with self.assertRaises(ProjectError):
                 load_project(path)
 
+    def test_invalid_settings_are_reported_as_project_error(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "invalid-settings.sf"
+            path.write_text('{"settings": []}', encoding="utf-8")
+
+            with self.assertRaises(ProjectError):
+                load_project(path)
+
+    def test_invalid_utf8_is_reported_as_project_error(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "invalid-encoding.sf"
+            path.write_bytes(b"\xff\xfe")
+
+            with self.assertRaises(ProjectError):
+                load_project(path)
+
+    def test_non_finite_integer_is_reported_as_project_error(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "invalid-number.sf"
+            path.write_text('{"version": 1e999}', encoding="utf-8")
+
+            with self.assertRaises(ProjectError):
+                load_project(path)
+
 
 if __name__ == "__main__":
     unittest.main()
