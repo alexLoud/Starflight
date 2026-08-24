@@ -1,0 +1,103 @@
+# Build desktop packages on pull requests and main pushes.
+# Uploads preview artifacts only; does not create GitHub Releases.
+# Windows/Linux previews upload the application folder directly so downloads
+# need one extract, matching GitHub Release assets instead of zip-in-zip.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Preview build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15-intel
+            target: macos-intel
+          - os: macos-15
+            target: macos-arm
+          - os: windows-latest
+            target: windows
+          - os: ubuntu-latest
+            target: linux
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Linux GUI libraries for Qt
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libdbus-1-3 \
+            libegl1 \
+            libfontconfig1 \
+            libgl1 \
+            libglib2.0-0 \
+            libxkbcommon0 \
+            libxcb-cursor0 \
+            libxcb-icccm4 \
+            libxcb-image0 \
+            libxcb-keysyms1 \
+            libxcb-render-util0 \
+            libxcb-shape0 \
+            libxcb-xfixes0 \
+            libxcb-xinerama0 \
+            libxi6
+
+      - name: Install Poetry
+        run: pip install "poetry>=2.0,<3.0"
+
+      - name: Install project dependencies
+        run: poetry install --with dev
+
+      - name: Build package
+        run: poetry run build ${{ matrix.target }}
+
+      - name: Prepare preview upload
+        id: preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${{ matrix.target }}" in
+            windows)
+              unzip -q dist/Starflight-*.zip -d dist/preview-upload
+              echo "path=dist/preview-upload/Starflight" >> "$GITHUB_OUTPUT"
+              ;;
+            linux)
+              mkdir -p dist/preview-upload
+              tar -xzf dist/Starflight-*.tar.gz -C dist/preview-upload
+              echo "path=dist/preview-upload/Starflight" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "path=dist/Starflight-*.dmg" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+      - name: Upload preview artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: starflight-${{ matrix.target }}-preview
+          path: ${{ steps.preview.outputs.path }}
+          if-no-files-found: error
+          retention-days: 14

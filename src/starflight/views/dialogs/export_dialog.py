@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from PySide6.QtCore import QStandardPaths
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
@@ -25,6 +26,29 @@ from starflight.services.error_service import ErrorService
 from starflight.types.settings import ExportQuality, Project, export_crf_for_quality
 from starflight.utils.validation import validate_project_for_export
 from starflight.views.dialogs.video_save_dialog import VideoSaveDialog
+
+
+def default_export_output_path(filename: str) -> Path:
+    """
+    return a writable default mp4 path, preferring the real desktop folder.
+
+    filename
+        destination file name including the .mp4 suffix
+    """
+
+    locations = (
+        QStandardPaths.StandardLocation.DesktopLocation,
+        QStandardPaths.StandardLocation.DocumentsLocation,
+        QStandardPaths.StandardLocation.HomeLocation,
+    )
+    for location in locations:
+        candidate = QStandardPaths.writableLocation(location)
+        if not candidate:
+            continue
+        directory = Path(candidate)
+        if directory.is_dir():
+            return directory / filename
+    return Path.home() / filename
 
 
 class ExportDialog(QDialog):
@@ -100,7 +124,7 @@ class ExportDialog(QDialog):
         layout.addLayout(button_row)
 
         default_name = f"{self.project.name}.mp4".replace(" ", "_")
-        self.output_edit.setText(str(Path.home() / "Desktop" / default_name))
+        self.output_edit.setText(str(default_export_output_path(default_name)))
 
     def retranslate_ui(self) -> None:
         """refresh translatable texts."""
@@ -141,12 +165,22 @@ class ExportDialog(QDialog):
             )
             return
 
-        output_path = Path(self.output_edit.text().strip())
-        if not output_path:
+        output_text = self.output_edit.text().strip()
+        if not output_text:
             QMessageBox.warning(
                 self,
                 self.tr("Export unavailable"),
                 self.tr("Please choose an output file."),
+            )
+            return
+        output_path = Path(output_text).expanduser()
+        if not output_path.parent.is_dir():
+            QMessageBox.warning(
+                self,
+                self.tr("Export unavailable"),
+                self.tr("The output folder does not exist:\n{path}").format(
+                    path=output_path.parent
+                ),
             )
             return
 
@@ -239,6 +273,11 @@ class ExportDialog(QDialog):
         if failure == EXPORT_CANCELLED:
             self.status_label.setText(self.tr("Export cancelled."))
             return
+        if isinstance(failure, RuntimeError) and "FFmpeg" in str(failure):
+            message = str(failure)
+            self.status_label.setText(message)
+            QMessageBox.warning(self, self.tr("Export failed"), message)
+            return
         if isinstance(failure, BaseException):
             self.status_label.setText(self.tr("Export failed due to an internal error."))
             self._error_service.show_crash_report(
@@ -279,4 +318,4 @@ class ExportDialog(QDialog):
         super().closeEvent(event)
 
 
-__all__ = ["ExportDialog"]
+__all__ = ["ExportDialog", "default_export_output_path"]
