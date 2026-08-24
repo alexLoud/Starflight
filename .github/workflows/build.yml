@@ -1,5 +1,7 @@
 # Build desktop packages on pull requests and main pushes.
 # Uploads preview artifacts only; does not create GitHub Releases.
+# Windows/Linux previews upload the application folder directly so downloads
+# need one extract, matching GitHub Release assets instead of zip-in-zip.
 
 name: CI
 
@@ -72,13 +74,30 @@ jobs:
       - name: Build package
         run: poetry run build ${{ matrix.target }}
 
+      - name: Prepare preview upload
+        id: preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${{ matrix.target }}" in
+            windows)
+              unzip -q dist/Starflight-*.zip -d dist/preview-upload
+              echo "path=dist/preview-upload/Starflight" >> "$GITHUB_OUTPUT"
+              ;;
+            linux)
+              mkdir -p dist/preview-upload
+              tar -xzf dist/Starflight-*.tar.gz -C dist/preview-upload
+              echo "path=dist/preview-upload/Starflight" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "path=dist/Starflight-*.dmg" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
       - name: Upload preview artifact
         uses: actions/upload-artifact@v4
         with:
           name: starflight-${{ matrix.target }}-preview
-          path: |
-            dist/Starflight-*.dmg
-            dist/Starflight-*.zip
-            dist/Starflight-*.tar.gz
+          path: ${{ steps.preview.outputs.path }}
           if-no-files-found: error
           retention-days: 14
