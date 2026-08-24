@@ -171,6 +171,12 @@
         <translation>Bitte wähle eine Ausgabedatei.</translation>
     </message>
     <message>
+        <source>The output folder does not exist:
+{path}</source>
+        <translation>Der Ausgabeordner existiert nicht:
+{path}</translation>
+    </message>
+    <message>
         <location filename="../views/dialogs/export_dialog.py" line="169"/>
         <location filename="../views/dialogs/export_dialog.py" line="189"/>
         <location filename="../views/dialogs/export_dialog.py" line="220"/>
@@ -263,6 +269,12 @@
         <location filename="../core/exporter.py" line="614"/>
         <source>Unknown error</source>
         <translation>Unbekannter Fehler</translation>
+    </message>
+    <message>
+        <source>The output folder does not exist:
+{path}</source>
+        <translation>Der Ausgabeordner existiert nicht:
+{path}</translation>
     </message>
 </context>
 <context>

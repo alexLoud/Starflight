@@ -17,11 +17,13 @@ from starflight.core.exporter import (
     _PIPE_WRITE_CHUNK_SIZE,
     ExportWorker,
     _export_worker_count,
+    _ffmpeg_output_arg,
     _ffmpeg_popen_kwargs,
     _is_closed_pipe_error,
     _stream_file_to_pipe,
 )
 from starflight.types.settings import Project
+from starflight.views.dialogs.export_dialog import default_export_output_path
 
 
 class ExportResourceTests(unittest.TestCase):
@@ -120,6 +122,64 @@ class ExportPipeTests(unittest.TestCase):
             process.stdin.write.assert_not_called()
         finally:
             os.unlink(path)
+
+
+class ExportOutputPathTests(unittest.TestCase):
+    def test_ffmpeg_output_arg_uses_file_url_on_windows(self) -> None:
+        windows_path = MagicMock()
+        windows_path.expanduser.return_value = windows_path
+        windows_path.is_absolute.return_value = True
+        windows_path.as_posix.return_value = "C:/Users/ELAUTAL/Desktop/video.mp4"
+        with patch("starflight.core.exporter.sys.platform", "win32"):
+            argument = _ffmpeg_output_arg(windows_path)
+        self.assertEqual(argument, "file:C:/Users/ELAUTAL/Desktop/video.mp4")
+        self.assertEqual(argument, "file:C:/Users/ELAUTAL/Desktop/video.mp4")
+
+    def test_ffmpeg_output_arg_keeps_native_path_on_other_platforms(self) -> None:
+        path = Path("/tmp/video.mp4")
+        with patch("starflight.core.exporter.sys.platform", "linux"):
+            self.assertEqual(_ffmpeg_output_arg(path), str(path))
+
+    def test_default_export_path_skips_missing_desktop(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            documents = Path(directory) / "Documents"
+            documents.mkdir()
+            missing_desktop = Path(directory) / "Desktop"
+
+            def fake_location(location) -> str:
+                from PySide6.QtCore import QStandardPaths
+
+                if location == QStandardPaths.StandardLocation.DesktopLocation:
+                    return str(missing_desktop)
+                if location == QStandardPaths.StandardLocation.DocumentsLocation:
+                    return str(documents)
+                return ""
+
+            with patch(
+                "starflight.views.dialogs.export_dialog.QStandardPaths.writableLocation",
+                side_effect=fake_location,
+            ):
+                path = default_export_output_path("clip.mp4")
+            self.assertEqual(path, documents / "clip.mp4")
+
+    def test_default_export_path_prefers_existing_desktop(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            desktop = Path(directory) / "Desktop"
+            desktop.mkdir()
+
+            def fake_location(location) -> str:
+                from PySide6.QtCore import QStandardPaths
+
+                if location == QStandardPaths.StandardLocation.DesktopLocation:
+                    return str(desktop)
+                return ""
+
+            with patch(
+                "starflight.views.dialogs.export_dialog.QStandardPaths.writableLocation",
+                side_effect=fake_location,
+            ):
+                path = default_export_output_path("clip.mp4")
+            self.assertEqual(path, desktop / "clip.mp4")
 
 
 if __name__ == "__main__":

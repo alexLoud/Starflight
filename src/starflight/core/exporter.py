@@ -44,6 +44,23 @@ def _ffmpeg_popen_kwargs() -> dict[str, int]:
     return {"creationflags": creationflags}
 
 
+def _ffmpeg_output_arg(path: Path) -> str:
+    """
+    return a local output path that ffmpeg can open on windows.
+
+    path
+        destination video path
+    """
+
+    resolved = path.expanduser()
+    if not resolved.is_absolute():
+        resolved = Path(resolved).absolute()
+    if sys.platform == "win32":
+        # ffmpeg treats backslashes and drive-letter urls unreliably on windows
+        return f"file:{resolved.as_posix()}"
+    return str(resolved)
+
+
 def _is_closed_pipe_error(exc: BaseException) -> bool:
     """
     return whether a pipe write failed because the child closed stdin.
@@ -463,6 +480,13 @@ class ExportWorker(QThread):
         worker_count = _export_worker_count(self._render_workers)
         frame_nbytes = width * height * 3
 
+        output_parent = self.output_path.expanduser().parent
+        if not output_parent.is_dir():
+            self.finished_error.emit(
+                self.tr("The output folder does not exist:\n{path}").format(path=output_parent)
+            )
+            return
+
         ffmpeg_path = ffmpeg_executable()
         if ffmpeg_path is None:
             raise RuntimeError(
@@ -496,7 +520,7 @@ class ExportWorker(QThread):
             str(crf),
             "-preset",
             "medium",
-            str(self.output_path),
+            _ffmpeg_output_arg(self.output_path),
         ]
 
         chunk_count = min(worker_count, total_frames)
