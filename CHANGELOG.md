@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Fixed Windows video export crash (`OSError: [Errno 22] Invalid argument`) when piping frames to FFmpeg
+- Hidden the empty FFmpeg console window during export on Windows
+
 ## [1.0.2] - 2026-08-23
 
 - Implemented Crash reports with persistent diagnostic logs for startup, runtime, and native failures

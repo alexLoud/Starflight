@@ -6,9 +6,11 @@ ordered chunk so the main export thread can feed FFmpeg without keeping full fra
 
 from __future__ import annotations
 
+import errno
 import math
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
@@ -29,6 +31,49 @@ from starflight.utils.validation import ffmpeg_executable
 
 # stable machine-readable cancel token; never compare translated ui strings
 EXPORT_CANCELLED = "export_cancelled"
+# windows writefile rejects a single pipe write above 32 kib with einval
+_PIPE_WRITE_CHUNK_SIZE = 32767
+
+
+def _ffmpeg_popen_kwargs() -> dict[str, int]:
+    """return extra popen kwargs so ffmpeg does not open a console on windows."""
+
+    if sys.platform != "win32":
+        return {}
+    creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+    return {"creationflags": creationflags}
+
+
+def _is_closed_pipe_error(exc: BaseException) -> bool:
+    """
+    return whether a pipe write failed because the child closed stdin.
+
+    exc
+        exception raised while writing to ffmpeg stdin
+    """
+
+    if isinstance(exc, BrokenPipeError):
+        return True
+    if not isinstance(exc, OSError):
+        return False
+    if exc.errno == errno.EPIPE:
+        return True
+    # windows maps a closed pipe to einval instead of epipe
+    return sys.platform == "win32" and exc.errno == errno.EINVAL
+
+
+def _stream_file_to_pipe(source_path: str, stream: BufferedIOBase) -> None:
+    """
+    copy a raw file to a pipe in windows-safe chunks.
+
+    source_path
+        path to the rendered rgb24 chunk file
+    stream
+        destination pipe, typically ffmpeg stdin
+    """
+
+    with open(source_path, "rb") as handle:
+        shutil.copyfileobj(handle, stream, length=_PIPE_WRITE_CHUNK_SIZE)
 
 
 def _export_worker_count(configured: int | None = None) -> int:
@@ -276,26 +321,30 @@ class ExportWorker(QThread):
             ffmpeg stderr capture
         """
 
-        try:
-            expected_bytes = frame_count * frame_nbytes
-            actual_bytes = Path(chunk_path).stat().st_size
-            if actual_bytes != expected_bytes:
-                raise RuntimeError(
-                    self.tr(
-                        "A rendered chunk has an invalid size "
-                        "({actual_bytes} instead of {expected_bytes})."
-                    ).format(actual_bytes=actual_bytes, expected_bytes=expected_bytes)
+        expected_bytes = frame_count * frame_nbytes
+        actual_bytes = Path(chunk_path).stat().st_size
+        if actual_bytes != expected_bytes:
+            raise RuntimeError(
+                self.tr(
+                    "A rendered chunk has an invalid size "
+                    "({actual_bytes} instead of {expected_bytes})."
+                ).format(actual_bytes=actual_bytes, expected_bytes=expected_bytes)
+            )
+        if process.stdin is None:
+            raise RuntimeError(self.tr("FFmpeg could not be started."))
+        if process.poll() is not None:
+            stderr = self._read_ffmpeg_stderr(stderr_log)
+            raise RuntimeError(
+                self.tr("FFmpeg error: {error}").format(
+                    error=stderr or self.tr("Unknown error"),
                 )
-            if process.stdin is None:
-                raise RuntimeError(self.tr("FFmpeg could not be started."))
-            with open(chunk_path, "rb") as handle:
-                while True:
-                    payload = handle.read(min(frame_nbytes * 8, expected_bytes))
-                    if not payload:
-                        break
-                    process.stdin.write(payload)
+            )
+        try:
+            _stream_file_to_pipe(chunk_path, process.stdin)
             process.stdin.flush()
-        except BrokenPipeError as exc:
+        except OSError as exc:
+            if not _is_closed_pipe_error(exc):
+                raise
             stderr = self._read_ffmpeg_stderr(stderr_log)
             raise RuntimeError(
                 self.tr("FFmpeg error: {error}").format(error=stderr or exc)
@@ -493,6 +542,7 @@ class ExportWorker(QThread):
                     stdin=subprocess.PIPE,
                     stdout=subprocess.DEVNULL,
                     stderr=stderr_log,
+                    **_ffmpeg_popen_kwargs(),
                 )
                 self._process = process
 
