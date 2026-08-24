@@ -455,6 +455,31 @@ QWidget#timeline_widget {{
     border-top: 1px solid {BORDER};
 }}
 
+QToolButton#setting_reset_button {{
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 0;
+    min-width: 24px;
+    max-width: 24px;
+    min-height: 24px;
+    max-height: 24px;
+}}
+
+QToolButton#setting_reset_button:hover {{
+    background-color: {SURFACE_BG};
+    border-color: {BORDER};
+}}
+
+QToolButton#setting_reset_button:pressed {{
+    background-color: {ACCENT_PRESSED};
+    border-color: {BORDER_FOCUS};
+}}
+
+QToolButton#setting_reset_button:disabled {{
+    opacity: 0.35;
+}}
+
 QPushButton {{
     background-color: {SURFACE_BG};
     color: {TEXT_PRIMARY};

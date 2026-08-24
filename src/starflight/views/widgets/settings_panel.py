@@ -6,6 +6,7 @@ Signal blocking keeps programmatic updates from marking a project as modified.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 from PySide6.QtCore import Qt, Signal
@@ -48,6 +49,7 @@ from starflight.views.widgets.setting_label import (
     apply_form_label_palette,
     apply_settings_group_title_style,
 )
+from starflight.views.widgets.setting_field_row import SettingFieldRow
 from starflight.views.widgets.slider_spinbox_row import SliderSpinBoxRow
 
 _RESOLUTION_CHOICES: tuple[tuple[str, tuple[int, int]], ...] = (
@@ -59,6 +61,7 @@ _RESOLUTION_CHOICES: tuple[tuple[str, tuple[int, int]], ...] = (
 _FIELD_MIN_WIDTH = 228
 _LABEL_MIN_WIDTH = 132
 _SPIN_WIDTH = 88
+_DEFAULT_SETTINGS = ProjectSettings()
 
 
 class SettingsPanel(QWidget):
@@ -74,6 +77,7 @@ class SettingsPanel(QWidget):
         self.setMaximumWidth(520)
         self._update_block_depth = 0
         self._project_path: Path | None = None
+        self._setting_field_rows: list[SettingFieldRow] = []
         self._build_ui()
         self.retranslate_ui()
 
@@ -174,6 +178,84 @@ class SettingsPanel(QWidget):
         widget.setMinimumWidth(_FIELD_MIN_WIDTH)
         widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
+    def _wrap_setting_field(
+        self,
+        field: QWidget,
+        reset_handler: Callable[[], None],
+    ) -> SettingFieldRow:
+        """
+        wrap an input widget with a trailing reset button.
+
+        field
+            primary setting input widget
+        reset_handler
+            callback that restores the default value
+        """
+
+        row = SettingFieldRow(field, reset_handler)
+        self._style_field(row)
+        self._setting_field_rows.append(row)
+        return row
+
+    def _add_setting_row(
+        self,
+        form: QFormLayout,
+        label: SettingLabel,
+        field: QWidget,
+        reset_handler: Callable[[], None],
+    ) -> None:
+        """
+        add a labeled setting row with reset control to a form.
+
+        form
+            target form layout
+        label
+            setting label widget
+        field
+            primary input widget
+        reset_handler
+            callback that restores the default value
+        """
+
+        form.addRow(label, self._wrap_setting_field(field, reset_handler))
+
+    def _reset_slider_value(self, row: SliderSpinBoxRow, value: float) -> None:
+        """
+        restore one slider row and persist the change.
+
+        row
+            slider row to update
+        value
+            default value to apply
+        """
+
+        row.set_value(value)
+        self._emit_settings_changed()
+
+    def _reset_density(self) -> None:
+        """restore star density preset and count to defaults."""
+
+        preset = _DEFAULT_SETTINGS.stars.density_preset
+        index = self.density_combo.findData(preset)
+        if index >= 0:
+            self.density_combo.blockSignals(True)
+            self.density_combo.setCurrentIndex(index)
+            self.density_combo.blockSignals(False)
+        self.star_count_row.set_value(_DEFAULT_SETTINGS.stars.star_count)
+        self._emit_settings_changed()
+
+    def _reset_star_count(self) -> None:
+        """restore star count and matching density preset to defaults."""
+
+        self.star_count_row.set_value(_DEFAULT_SETTINGS.stars.star_count)
+        preset = density_preset_from_count(_DEFAULT_SETTINGS.stars.star_count)
+        index = self.density_combo.findData(preset)
+        if index >= 0:
+            self.density_combo.blockSignals(True)
+            self.density_combo.setCurrentIndex(index)
+            self.density_combo.blockSignals(False)
+        self._emit_settings_changed()
+
     def _build_project_section(self, layout: QVBoxLayout) -> None:
         form = QFormLayout()
         self._configure_form(form)
@@ -257,7 +339,15 @@ class SettingsPanel(QWidget):
         self.scale_row.value_changed.connect(self._emit_settings_changed)
         self._style_field(self.scale_row)
         self._label_scale = self._create_setting_label()
-        form.addRow(self._label_scale, self.scale_row)
+        self._add_setting_row(
+            form,
+            self._label_scale,
+            self.scale_row,
+            lambda: self._reset_slider_value(
+                self.scale_row,
+                _DEFAULT_SETTINGS.background.scale_percent,
+            ),
+        )
 
         self.zoom_row = SliderSpinBoxRow(
             0.0,
@@ -269,7 +359,15 @@ class SettingsPanel(QWidget):
         self.zoom_row.value_changed.connect(self._emit_settings_changed)
         self._style_field(self.zoom_row)
         self._label_zoom = self._create_setting_label()
-        form.addRow(self._label_zoom, self.zoom_row)
+        self._add_setting_row(
+            form,
+            self._label_zoom,
+            self.zoom_row,
+            lambda: self._reset_slider_value(
+                self.zoom_row,
+                _DEFAULT_SETTINGS.background.zoom_percent,
+            ),
+        )
 
         self.rotation_row = SliderSpinBoxRow(
             -MAX_BACKGROUND_ROTATION_DEGREES,
@@ -281,7 +379,15 @@ class SettingsPanel(QWidget):
         self.rotation_row.value_changed.connect(self._emit_settings_changed)
         self._style_field(self.rotation_row)
         self._label_rotation = self._create_setting_label()
-        form.addRow(self._label_rotation, self.rotation_row)
+        self._add_setting_row(
+            form,
+            self._label_rotation,
+            self.rotation_row,
+            lambda: self._reset_slider_value(
+                self.rotation_row,
+                _DEFAULT_SETTINGS.background.rotation_degrees,
+            ),
+        )
 
         self.fill_frame_checkbox = QCheckBox()
         self.fill_frame_checkbox.setChecked(False)
@@ -354,7 +460,7 @@ class SettingsPanel(QWidget):
         self.density_combo.currentIndexChanged.connect(self._on_density_changed)
         self._style_field(self.density_combo)
         self._label_density = self._create_setting_label()
-        form.addRow(self._label_density, self.density_combo)
+        self._add_setting_row(form, self._label_density, self.density_combo, self._reset_density)
 
         self.star_count_row = SliderSpinBoxRow(
             MIN_STAR_COUNT,
@@ -365,25 +471,43 @@ class SettingsPanel(QWidget):
         self.star_count_row.value_changed.connect(self._on_star_count_changed)
         self._style_field(self.star_count_row)
         self._label_star_count = self._create_setting_label()
-        form.addRow(self._label_star_count, self.star_count_row)
+        self._add_setting_row(form, self._label_star_count, self.star_count_row, self._reset_star_count)
 
         self.min_size_row = SliderSpinBoxRow(0.3, 3.0, decimals=1, step=0.1, suffix=" px")
         self.min_size_row.value_changed.connect(self._emit_settings_changed)
         self._style_field(self.min_size_row)
         self._label_min_size = self._create_setting_label()
-        form.addRow(self._label_min_size, self.min_size_row)
+        self._add_setting_row(
+            form,
+            self._label_min_size,
+            self.min_size_row,
+            lambda: self._reset_slider_value(self.min_size_row, _DEFAULT_SETTINGS.stars.min_size),
+        )
 
         self.max_size_row = SliderSpinBoxRow(1.0, 15.0, decimals=1, step=0.1, suffix=" px")
         self.max_size_row.value_changed.connect(self._emit_settings_changed)
         self._style_field(self.max_size_row)
         self._label_max_size = self._create_setting_label()
-        form.addRow(self._label_max_size, self.max_size_row)
+        self._add_setting_row(
+            form,
+            self._label_max_size,
+            self.max_size_row,
+            lambda: self._reset_slider_value(self.max_size_row, _DEFAULT_SETTINGS.stars.max_size),
+        )
 
         self.size_spread_row = SliderSpinBoxRow(0.0, 100.0, decimals=0, step=1.0, suffix=" %")
         self.size_spread_row.value_changed.connect(self._emit_settings_changed)
         self._style_field(self.size_spread_row)
         self._label_size_spread = self._create_setting_label()
-        form.addRow(self._label_size_spread, self.size_spread_row)
+        self._add_setting_row(
+            form,
+            self._label_size_spread,
+            self.size_spread_row,
+            lambda: self._reset_slider_value(
+                self.size_spread_row,
+                _DEFAULT_SETTINGS.stars.size_spread * 100.0,
+            ),
+        )
 
         layout.addLayout(form)
 
@@ -416,13 +540,22 @@ class SettingsPanel(QWidget):
         decimals: int = 0,
         step: float = 1.0,
         suffix: str = "",
+        reset_value: float,
+        after_reset: Callable[[], None] | None = None,
     ) -> tuple[SettingLabel, SliderSpinBoxRow]:
         """add a labeled slider row to a form and return label plus control."""
 
         row = SliderSpinBoxRow(minimum, maximum, decimals=decimals, step=step, suffix=suffix)
         self._style_field(row)
         label = self._create_setting_label()
-        form.addRow(label, row)
+
+        def reset() -> None:
+            row.set_value(reset_value)
+            if after_reset is not None:
+                after_reset()
+            self._emit_settings_changed()
+
+        self._add_setting_row(form, label, row, reset)
         return label, row
 
     def _sync_dependent_slider(
@@ -457,6 +590,7 @@ class SettingsPanel(QWidget):
             0.0,
             100.0,
             suffix=" %",
+            reset_value=_DEFAULT_SETTINGS.stars.brightness * 100.0,
         )
         self.brightness_row.value_changed.connect(self._emit_settings_changed)
         self._label_magnitude, self.magnitude_realism_row = self._add_slider_row(
@@ -464,6 +598,7 @@ class SettingsPanel(QWidget):
             0.0,
             100.0,
             suffix=" %",
+            reset_value=_DEFAULT_SETTINGS.stars.magnitude_realism * 100.0,
         )
         self.magnitude_realism_row.value_changed.connect(self._emit_settings_changed)
         layout.addLayout(brightness_form)
@@ -480,6 +615,8 @@ class SettingsPanel(QWidget):
             0.0,
             100.0,
             suffix=" %",
+            reset_value=_DEFAULT_SETTINGS.stars.glow_intensity * 100.0,
+            after_reset=self._sync_glow_depth_controls,
         )
         self.glow_row.value_changed.connect(self._on_glow_changed)
         self._label_glow_depth, self.glow_depth_row = self._add_slider_row(
@@ -487,6 +624,7 @@ class SettingsPanel(QWidget):
             0.0,
             100.0,
             suffix=" %",
+            reset_value=_DEFAULT_SETTINGS.stars.glow_depth_boost * 100.0,
         )
         self.glow_depth_row.value_changed.connect(self._emit_settings_changed)
         layout.addLayout(glow_form)
@@ -503,6 +641,7 @@ class SettingsPanel(QWidget):
             0.0,
             100.0,
             suffix=" %",
+            reset_value=_DEFAULT_SETTINGS.stars.color_intensity * 100.0,
         )
         self.color_intensity_row.value_changed.connect(self._emit_settings_changed)
         layout.addLayout(color_form)
@@ -528,7 +667,12 @@ class SettingsPanel(QWidget):
         self.speed_row.value_changed.connect(self._emit_settings_changed)
         self._style_field(self.speed_row)
         self._label_speed = self._create_setting_label()
-        form.addRow(self._label_speed, self.speed_row)
+        self._add_setting_row(
+            form,
+            self._label_speed,
+            self.speed_row,
+            lambda: self._reset_slider_value(self.speed_row, _DEFAULT_SETTINGS.stars.speed),
+        )
 
         layout.addLayout(form)
 
@@ -706,6 +850,9 @@ class SettingsPanel(QWidget):
                 "1.0 matches the previous default feel of a 10s clip."
             ),
         )
+
+        for row in self._setting_field_rows:
+            row.retranslate_ui()
 
         self._populate_resolution_combo(preserve_selection=True)
 

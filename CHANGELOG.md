@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Reset buttons for sidebar settings to restore defaults
 - Background zoom and rotation now scale at a constant rate from the first to the last frame
 - Fixed Windows video export crash (`OSError: [Errno 22] Invalid argument`) when piping frames to FFmpeg
 - Hidden the empty FFmpeg console window during export on Windows
