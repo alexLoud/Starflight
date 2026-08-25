@@ -405,6 +405,7 @@ class StarRenderer:
         duration_seconds: float,
         quality: RenderQuality,
         view_center_at_progress: Callable[[float], tuple[float, float]] | None = None,
+        motion_progress: float | None = None,
     ) -> np.ndarray:
         """
         render star rgb layer at a given time.
@@ -417,6 +418,8 @@ class StarRenderer:
             preview or export quality
         view_center_at_progress
             optional callback returning the screen-space aim point
+        motion_progress
+            optional eased progress for look-at and star travel
         """
 
         projections = self.field.project_at_time(
@@ -424,6 +427,7 @@ class StarRenderer:
             duration_seconds,
             view_center_at_progress,
             quality,
+            motion_progress,
         )
         width = self.field.width
         height = self.field.height

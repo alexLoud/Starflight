@@ -11,6 +11,7 @@ import math
 import cv2
 import numpy as np
 
+from starflight.core.camera_motion import camera_motion_progress
 from starflight.types.settings import (
     MAX_BACKGROUND_SCALE_PERCENT,
     MIN_BACKGROUND_SCALE_PERCENT,
@@ -113,6 +114,7 @@ class BackgroundRenderer:
         time_seconds: float,
         duration_seconds: float,
         settings: BackgroundSettings,
+        flight_speed: float = 1.0,
     ) -> np.ndarray:
         """
         render background frame at a given time.
@@ -123,10 +125,16 @@ class BackgroundRenderer:
             total clip duration in seconds
         settings
             background movement settings
+        flight_speed
+            star flight speed used to size easing ramps
         """
 
-        progress = 0.0 if duration_seconds <= 0 else time_seconds / duration_seconds
-        progress = float(np.clip(progress, 0.0, 1.0))
+        progress = camera_motion_progress(
+            time_seconds,
+            duration_seconds,
+            settings,
+            flight_speed,
+        )
         matrix = self._build_transform_matrix(progress, settings)
         return self._remap(matrix)
 

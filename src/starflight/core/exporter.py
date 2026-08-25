@@ -23,6 +23,7 @@ import numpy as np
 from PySide6.QtCore import QThread, Signal
 
 from starflight.app.settings import DEFAULT_RENDER_WORKER_COUNT, max_available_render_workers
+from starflight.core.camera_motion import camera_motion_progress
 from starflight.core.project import resolve_source_image_path
 from starflight.core.renderer import FrameRenderer, create_renderer
 from starflight.types.settings import Project, ProjectSettings, RenderQuality
@@ -181,6 +182,12 @@ def _advance_star_fade_state(renderer: FrameRenderer, time_seconds: float) -> No
         renderer.settings.duration_seconds,
         renderer._view_center_at_progress,
         RenderQuality.EXPORT,
+        camera_motion_progress(
+            time_seconds,
+            renderer.settings.duration_seconds,
+            renderer.settings.background,
+            renderer.settings.stars.speed,
+        ),
     )
 
 

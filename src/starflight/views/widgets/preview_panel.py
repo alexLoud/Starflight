@@ -18,8 +18,8 @@ class PreviewPanel(QWidget):
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self._target_width = 1080
-        self._target_height = 1920
+        self._target_width = 1920
+        self._target_height = 1080
 
         self.viewport = ZoomablePreviewViewport(self)
         self.viewport.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)

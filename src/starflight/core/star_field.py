@@ -566,6 +566,7 @@ class StarField:
         duration_seconds: float,
         view_center_at_progress: Callable[[float], tuple[float, float]] | None = None,
         quality: RenderQuality = RenderQuality.EXPORT,
+        motion_progress: float | None = None,
     ) -> list[StarProjection]:
         """
         project stars for a specific time.
@@ -578,13 +579,20 @@ class StarField:
             optional callback returning the screen-space aim point
         quality
             preview or export quality
+        motion_progress
+            optional eased progress for look-at and star travel
         """
 
         settings = self.settings
-        progress = 0.0 if duration_seconds <= 0 else time_seconds / duration_seconds
-        progress = float(np.clip(progress, 0.0, 1.0))
+        if motion_progress is None:
+            progress = 0.0 if duration_seconds <= 0 else time_seconds / duration_seconds
+            progress = float(np.clip(progress, 0.0, 1.0))
+            travel_time = time_seconds
+        else:
+            progress = float(np.clip(motion_progress, 0.0, 1.0))
+            travel_time = progress * duration_seconds
         max_travel = self._max_travel(settings, duration_seconds)
-        travel = self._travel_at_time(settings, time_seconds)
+        travel = self._travel_at_time(settings, travel_time)
         use_fade = quality == RenderQuality.EXPORT
 
         focal = min(self.width, self.height) * self._FOCAL_SCALE

@@ -645,6 +645,15 @@ QComboBox QAbstractItemView {{
     padding: 4px 0;
 }}
 
+QComboBox#resolution_combo {{
+    icon-size: 16px;
+}}
+
+QComboBox#resolution_combo QAbstractItemView::item {{
+    min-height: 22px;
+    padding: 4px 10px 4px 6px;
+}}
+
 QSpinBox, QDoubleSpinBox {{
     background-color: {SURFACE_ALT_BG};
     color: {TEXT_PRIMARY};

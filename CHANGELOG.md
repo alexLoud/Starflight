@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Easing for camera movement (Linear, Ease-In, Ease-Out, Ease-In/Out)
+
 ## [1.0.3] - 2026-08-24
 
 - Reset buttons for sidebar settings to restore defaults
@@ -12,6 +14,8 @@
 
 - Implemented Crash reports with persistent diagnostic logs for startup, runtime, and native failures
 - Welcome screen shows an info and link when a newer release on GitHub is available
+
+
 
 ## [1.0.1] - 2026-08-23
 
@@ -27,3 +31,4 @@
 ## [1.0.0] - 2026-08-22
 
 - Initial release
+

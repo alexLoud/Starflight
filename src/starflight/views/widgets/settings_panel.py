@@ -9,8 +9,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFontMetrics
+from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtGui import QFontMetrics, QIcon
 from PySide6.QtWidgets import (
     QCheckBox,
     QFormLayout,
@@ -34,9 +34,11 @@ from starflight.types.settings import (
     MIN_BACKGROUND_SCALE_PERCENT,
     MIN_STAR_COUNT,
     DensityPreset,
+    EasingMode,
     Project,
     ProjectSettings,
     coerce_density_preset,
+    coerce_easing_mode,
     density_preset_from_count,
 )
 from starflight.utils.image import bgr_to_rgb, load_image_bgr, numpy_rgb_to_qimage
@@ -44,23 +46,36 @@ from starflight.views.icons import load_icon_asset
 from starflight.views.widgets.collapsible_section import CollapsibleSection
 from starflight.views.widgets.focus_points_control import FocusPointsControl
 from starflight.views.widgets.no_wheel_widgets import NoWheelComboBox, NoWheelSpinBox
+from starflight.views.widgets.setting_field_row import SettingFieldRow
 from starflight.views.widgets.setting_label import (
     SettingLabel,
     apply_form_label_palette,
     apply_settings_group_title_style,
 )
-from starflight.views.widgets.setting_field_row import SettingFieldRow
 from starflight.views.widgets.slider_spinbox_row import SliderSpinBoxRow
 
 _RESOLUTION_CHOICES: tuple[tuple[str, tuple[int, int]], ...] = (
-    ("portrait_1080", (1080, 1920)),
     ("landscape_1080", (1920, 1080)),
+    ("landscape_1440", (2560, 1440)),
+    ("landscape_4k", (3840, 2160)),
+    ("portrait_1080", (1080, 1920)),
+    ("portrait_1440", (1440, 2560)),
     ("portrait_4k", (2160, 3840)),
+    ("square_1080", (1080, 1080)),
+    ("square_1440", (1440, 1440)),
+    ("square_4k", (2160, 2160)),
 )
 
 _FIELD_MIN_WIDTH = 228
 _LABEL_MIN_WIDTH = 132
 _SPIN_WIDTH = 88
+_RESOLUTION_ICON_SIZE = 16
+_RESOLUTION_ICON_FILES: dict[str, str] = {
+    "landscape": "resolution-landscape.svg",
+    "portrait": "resolution-portrait.svg",
+    "square": "resolution-square.svg",
+    "custom": "resolution-custom.svg",
+}
 _DEFAULT_SETTINGS = ProjectSettings()
 
 
@@ -256,6 +271,16 @@ class SettingsPanel(QWidget):
             self.density_combo.blockSignals(False)
         self._emit_settings_changed()
 
+    def _reset_easing(self) -> None:
+        """restore easing to the default curve."""
+
+        index = self.easing_combo.findData(_DEFAULT_SETTINGS.background.easing)
+        if index >= 0:
+            self.easing_combo.blockSignals(True)
+            self.easing_combo.setCurrentIndex(index)
+            self.easing_combo.blockSignals(False)
+        self._emit_settings_changed()
+
     def _build_project_section(self, layout: QVBoxLayout) -> None:
         form = QFormLayout()
         self._configure_form(form)
@@ -279,6 +304,8 @@ class SettingsPanel(QWidget):
         form.addRow(self._label_source_image, image_widget)
 
         self.resolution_combo = NoWheelComboBox()
+        self.resolution_combo.setObjectName("resolution_combo")
+        self.resolution_combo.setIconSize(QSize(_RESOLUTION_ICON_SIZE, _RESOLUTION_ICON_SIZE))
         self.resolution_combo.currentIndexChanged.connect(self._on_resolution_changed)
         self._style_field(self.resolution_combo)
         self._label_resolution = self._create_setting_label()
@@ -674,6 +701,19 @@ class SettingsPanel(QWidget):
             lambda: self._reset_slider_value(self.speed_row, _DEFAULT_SETTINGS.stars.speed),
         )
 
+        self.easing_combo = NoWheelComboBox()
+        for mode in (
+            EasingMode.LINEAR,
+            EasingMode.EASE_IN,
+            EasingMode.EASE_OUT,
+            EasingMode.EASE_IN_OUT,
+        ):
+            self.easing_combo.addItem("", mode)
+        self.easing_combo.currentIndexChanged.connect(self._emit_settings_changed)
+        self._style_field(self.easing_combo)
+        self._label_easing = self._create_setting_label()
+        self._add_setting_row(form, self._label_easing, self.easing_combo, self._reset_easing)
+
         layout.addLayout(form)
 
     def _display_image_name(self, source_image: str | None) -> str:
@@ -851,6 +891,20 @@ class SettingsPanel(QWidget):
             ),
         )
 
+        self._label_easing.set_text(self.tr("Easing"))
+        self._label_easing.set_hint(
+            self.tr(
+                "How zoom, rotation, camera path, and star flight change over the clip. "
+                "Ease-In ramps up at the start, Ease-Out ramps down at the end, "
+                "Ease-In/Out does both. Linear keeps a constant speed. "
+                "Ramp length follows clip length and flight speed.",
+            ),
+        )
+        self.easing_combo.setItemText(0, self.tr("Linear"))
+        self.easing_combo.setItemText(1, self.tr("Ease-In"))
+        self.easing_combo.setItemText(2, self.tr("Ease-Out"))
+        self.easing_combo.setItemText(3, self.tr("Ease-In/Out"))
+
         for row in self._setting_field_rows:
             row.retranslate_ui()
 
@@ -863,8 +917,16 @@ class SettingsPanel(QWidget):
         self.resolution_combo.blockSignals(True)
         self.resolution_combo.clear()
         for key, _size in _RESOLUTION_CHOICES:
-            self.resolution_combo.addItem(self._resolution_label(key), key)
-        self.resolution_combo.addItem(self.tr("Custom"), "custom")
+            self.resolution_combo.addItem(
+                self._resolution_icon(key),
+                self._resolution_label(key),
+                key,
+            )
+        self.resolution_combo.addItem(
+            self._resolution_icon("custom"),
+            self.tr("Custom"),
+            "custom",
+        )
 
         if preserve_selection:
             if current_custom:
@@ -880,11 +942,35 @@ class SettingsPanel(QWidget):
                     self.resolution_combo.setCurrentIndex(self.resolution_combo.count() - 1)
         self.resolution_combo.blockSignals(False)
 
+    def _resolution_icon(self, key: str) -> QIcon:
+        """
+        load the orientation icon for a resolution preset.
+
+        key
+            preset key such as landscape_1080 or custom
+        """
+
+        if key.startswith("landscape_"):
+            kind = "landscape"
+        elif key.startswith("portrait_"):
+            kind = "portrait"
+        elif key.startswith("square_"):
+            kind = "square"
+        else:
+            kind = "custom"
+        return load_icon_asset(_RESOLUTION_ICON_FILES[kind])
+
     def _resolution_label(self, key: str) -> str:
         labels = {
-            "portrait_1080": self.tr("1080 × 1920 (Portrait)"),
-            "landscape_1080": self.tr("1920 × 1080 (Landscape)"),
+            "landscape_1080": self.tr("1920 × 1080 (1080p Landscape)"),
+            "landscape_1440": self.tr("2560 × 1440 (1440p Landscape)"),
+            "landscape_4k": self.tr("3840 × 2160 (4K Landscape)"),
+            "portrait_1080": self.tr("1080 × 1920 (1080p Portrait)"),
+            "portrait_1440": self.tr("1440 × 2560 (1440p Portrait)"),
             "portrait_4k": self.tr("2160 × 3840 (4K Portrait)"),
+            "square_1080": self.tr("1080 × 1080 (1080p Square)"),
+            "square_1440": self.tr("1440 × 1440 (1440p Square)"),
+            "square_4k": self.tr("2160 × 2160 (4K Square)"),
         }
         return labels[key]
 
@@ -1001,6 +1087,9 @@ class SettingsPanel(QWidget):
         self.scale_row.set_value(background.scale_percent)
         self.zoom_row.set_value(background.zoom_percent)
         self.rotation_row.set_value(background.rotation_degrees)
+        easing_index = self.easing_combo.findData(background.easing)
+        if easing_index >= 0:
+            self.easing_combo.setCurrentIndex(easing_index)
         self.fill_frame_checkbox.setChecked(background.fill_frame)
         self._sync_focus_controls(project)
 
@@ -1040,6 +1129,7 @@ class SettingsPanel(QWidget):
         background.scale_percent = float(self.scale_row.value())
         background.zoom_percent = float(self.zoom_row.value())
         background.rotation_degrees = float(self.rotation_row.value())
+        background.easing = coerce_easing_mode(self.easing_combo.currentData())
         background.fill_frame = self.fill_frame_checkbox.isChecked()
         (
             start_enabled,

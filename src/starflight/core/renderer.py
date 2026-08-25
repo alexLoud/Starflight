@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from starflight.core.background import BackgroundRenderer
+from starflight.core.camera_motion import camera_motion_progress
 from starflight.core.star_renderer import StarRenderer
 from starflight.types.settings import ProjectSettings, RenderQuality
 from starflight.utils.image import bgr_to_rgb
@@ -46,10 +47,18 @@ class FrameRenderer:
             when false, skip the star layer entirely
         """
 
+        duration = self.settings.duration_seconds
+        motion_progress = camera_motion_progress(
+            time_seconds,
+            duration,
+            self.settings.background,
+            self.settings.stars.speed,
+        )
         background_bgr = self.background.render(
             time_seconds,
-            self.settings.duration_seconds,
+            duration,
             self.settings.background,
+            self.settings.stars.speed,
         )
         background_rgb = bgr_to_rgb(background_bgr).astype(np.float32)
         if not include_stars:
@@ -57,9 +66,10 @@ class FrameRenderer:
 
         star_layer = self.stars.render_layer(
             time_seconds,
-            self.settings.duration_seconds,
+            duration,
             quality,
             self._view_center_at_progress,
+            motion_progress,
         )
         composite = _composite_additive(background_rgb, star_layer)
         return np.clip(composite, 0, 255).astype(np.uint8)

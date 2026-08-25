@@ -25,6 +25,15 @@ class DensityPreset(str, Enum):
     CUSTOM = "custom"
 
 
+class EasingMode(str, Enum):
+    """camera motion easing over the clip."""
+
+    LINEAR = "linear"
+    EASE_IN = "ease_in"
+    EASE_OUT = "ease_out"
+    EASE_IN_OUT = "ease_in_out"
+
+
 class ExportQuality(str, Enum):
     """export quality presets."""
 
@@ -58,13 +67,20 @@ EXPORT_QUALITY_LABELS: dict[ExportQuality, str] = {
 }
 
 RESOLUTION_PRESETS: dict[str, tuple[int, int]] = {
-    "1080 x 1920 (Portrait)": (1080, 1920),
-    "1920 x 1080 (Landscape)": (1920, 1080),
+    "1920 x 1080 (1080p Landscape)": (1920, 1080),
+    "2560 x 1440 (1440p Landscape)": (2560, 1440),
+    "3840 x 2160 (4K Landscape)": (3840, 2160),
+    "1080 x 1920 (1080p Portrait)": (1080, 1920),
+    "1440 x 2560 (1440p Portrait)": (1440, 2560),
     "2160 x 3840 (4K Portrait)": (2160, 3840),
+    "1080 x 1080 (1080p Square)": (1080, 1080),
+    "1440 x 1440 (1440p Square)": (1440, 1440),
+    "2160 x 2160 (4K Square)": (2160, 2160),
 }
 
 PORTRAIT_1080_RESOLUTION = (1080, 1920)
 LANDSCAPE_1080_RESOLUTION = (1920, 1080)
+SQUARE_1080_RESOLUTION = (1080, 1080)
 
 
 def resolution_for_image_orientation(width: int, height: int) -> tuple[int, int]:
@@ -77,7 +93,9 @@ def resolution_for_image_orientation(width: int, height: int) -> tuple[int, int]
         source image height in pixels
     """
 
-    if width >= height:
+    if width == height:
+        return SQUARE_1080_RESOLUTION
+    if width > height:
         return LANDSCAPE_1080_RESOLUTION
     return PORTRAIT_1080_RESOLUTION
 
@@ -86,8 +104,8 @@ def resolution_for_image_orientation(width: int, height: int) -> tuple[int, int]
 class ResolutionSettings:
     """target video resolution."""
 
-    width: int = 1080
-    height: int = 1920
+    width: int = 1920
+    height: int = 1080
 
 
 @dataclass
@@ -97,6 +115,7 @@ class BackgroundSettings:
     scale_percent: float = 100.0
     zoom_percent: float = 0.0
     rotation_degrees: float = 0.0
+    easing: EasingMode = EasingMode.LINEAR
     start_focus_enabled: bool = False
     start_focus_x: float = 0.5
     start_focus_y: float = 0.5
@@ -240,6 +259,21 @@ def coerce_export_quality(value: ExportQuality | str | None) -> ExportQuality:
     return ExportQuality(value)
 
 
+def coerce_easing_mode(value: EasingMode | str | None) -> EasingMode:
+    """
+    normalize easing mode from enum or qt user data.
+
+    value
+        easing enum or string value
+    """
+
+    if value is None:
+        return EasingMode.LINEAR
+    if isinstance(value, EasingMode):
+        return value
+    return EasingMode(value)
+
+
 def _load_color_intensity(stars_data: dict[str, Any]) -> float:
     """
     load color intensity with backward compatibility for older projects.
@@ -254,6 +288,19 @@ def _load_color_intensity(stars_data: dict[str, Any]) -> float:
         legacy = float(stars_data["color_variation"])
         return min(1.0, legacy * 10.0 + 0.15)
     return 0.0
+
+
+def _load_easing_mode(background_data: dict[str, Any]) -> EasingMode:
+    """
+    load easing with linear fallback for older projects.
+
+    background_data
+        background section from project json
+    """
+
+    if "easing" not in background_data:
+        return EasingMode.LINEAR
+    return EasingMode(background_data["easing"])
 
 
 def _load_focus_points(background_data: dict[str, Any]) -> dict[str, float | bool]:
@@ -302,6 +349,7 @@ def settings_to_dict(settings: ProjectSettings) -> dict[str, Any]:
     data = asdict(settings)
     data["stars"]["density_preset"] = _enum_to_json_value(settings.stars.density_preset)
     data["export"]["quality"] = _enum_to_json_value(settings.export.quality)
+    data["background"]["easing"] = _enum_to_json_value(settings.background.easing)
     return json.loads(json.dumps(data, ensure_ascii=False))
 
 
@@ -348,8 +396,8 @@ def settings_from_dict(data: dict[str, Any]) -> ProjectSettings:
 
     return ProjectSettings(
         resolution=ResolutionSettings(
-            width=int(resolution_data.get("width", 1080)),
-            height=int(resolution_data.get("height", 1920)),
+            width=int(resolution_data.get("width", 1920)),
+            height=int(resolution_data.get("height", 1080)),
         ),
         duration_seconds=float(data.get("duration_seconds", 10.0)),
         fps=int(data.get("fps", 30)),
@@ -357,6 +405,7 @@ def settings_from_dict(data: dict[str, Any]) -> ProjectSettings:
             scale_percent=float(background_data.get("scale_percent", 100.0)),
             zoom_percent=float(background_data.get("zoom_percent", 0.0)),
             rotation_degrees=float(background_data.get("rotation_degrees", 0.0)),
+            easing=_load_easing_mode(background_data),
             **_load_focus_points(background_data),
             fill_frame=bool(background_data.get("fill_frame", False)),
         ),
