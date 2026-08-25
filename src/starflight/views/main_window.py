@@ -10,9 +10,13 @@ from pathlib import Path
 
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QAction, QCloseEvent
-from PySide6.QtWidgets import QMainWindow, QMenu, QSplitter, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QMainWindow, QMenu, QSplitter, QStackedWidget, QVBoxLayout, QWidget
 
-from starflight.app.constants import SETTINGS_KEY_SPLITTER_STATE, SETTINGS_KEY_WINDOW_GEOMETRY
+from starflight.app.constants import (
+    APP_DISPLAY_NAME,
+    SETTINGS_KEY_SPLITTER_STATE,
+    SETTINGS_KEY_WINDOW_GEOMETRY,
+)
 from starflight.app.context import AppContext
 from starflight.controllers.export_controller import ExportController
 from starflight.controllers.preview_controller import PreviewController
@@ -29,6 +33,7 @@ from starflight.views.dialogs.settings_dialog import SettingsDialog
 from starflight.views.widgets.main_toolbar import MainToolbar
 from starflight.views.widgets.preview_workspace import PreviewWorkspace
 from starflight.views.widgets.settings_panel import SettingsPanel
+from starflight.views.widgets.welcome_splash import WelcomeSplash
 
 
 class MainWindow(QMainWindow):
@@ -52,11 +57,12 @@ class MainWindow(QMainWindow):
         self._menu_by_path: dict[tuple[str, ...], QMenu] = {}
         self._recent_projects_menu: QMenu | None = None
 
+        self._workspace_active = False
+
         self._build_ui()
         self._connect_signals()
         self._restore_layout()
         self._apply_project_to_ui()
-        self.showMaximized()
 
     def build_shell(self) -> None:
         """build toolbar and menu after commands are registered."""
@@ -67,6 +73,8 @@ class MainWindow(QMainWindow):
         self._setup_recent_projects_menu()
         self._setup_menu_separators()
         self.refresh_actions_from_registry()
+        self._apply_chrome_visibility()
+        self.showMaximized()
 
     def build_menu_shell(self) -> None:
         """Build the window shell through the legacy public entry point."""
@@ -142,6 +150,7 @@ class MainWindow(QMainWindow):
         return None
 
     def _refresh_recent_projects_menu(self) -> None:
+        self._refresh_start_recent_projects()
         if self._recent_projects_menu is None:
             return
 
@@ -178,15 +187,61 @@ class MainWindow(QMainWindow):
 
         self._remember_current_project()
         self._preview_controller.invalidate()
+        self._show_workspace()
         self._apply_project_to_ui()
         self.refresh_preview()
 
-    def _build_ui(self) -> None:
-        central = QWidget()
-        central.setObjectName("central_workspace")
-        self.setCentralWidget(central)
+    def _on_start_recent_project(self, path_text: str) -> None:
+        """
+        open a recent project chosen on the start screen.
 
-        root_layout = QVBoxLayout(central)
+        path_text
+            stored project file path
+        """
+
+        self._open_recent_project(Path(path_text))
+
+    def _refresh_start_recent_projects(self) -> None:
+        """copy recent project paths onto the start screen."""
+
+        self.welcome_splash.set_recent_projects(
+            read_recent_project_paths(self._context.settings),
+        )
+
+    def _show_workspace(self) -> None:
+        """reveal editor chrome after the start screen is left."""
+
+        if self._workspace_active:
+            return
+        self._workspace_active = True
+        self._root_stack.setCurrentWidget(self._workspace_page)
+        self._apply_chrome_visibility()
+        self._update_window_title()
+
+    def _apply_chrome_visibility(self) -> None:
+        """show or hide toolbar, menu, and status bar."""
+
+        visible = self._workspace_active
+        self.menuBar().setVisible(visible)
+        if hasattr(self, "_toolbar"):
+            self._toolbar.setVisible(visible)
+        self.statusBar().setVisible(visible)
+
+    def _build_ui(self) -> None:
+        self.menuBar().setVisible(False)
+        self.statusBar().setVisible(False)
+
+        self._root_stack = QStackedWidget()
+        self._root_stack.setObjectName("root_stack")
+        self.setCentralWidget(self._root_stack)
+
+        self.welcome_splash = WelcomeSplash()
+
+        workspace = QWidget()
+        workspace.setObjectName("central_workspace")
+        self._workspace_page = workspace
+
+        root_layout = QVBoxLayout(workspace)
         root_layout.setContentsMargins(0, 0, 0, 0)
         root_layout.setSpacing(0)
 
@@ -205,7 +260,10 @@ class MainWindow(QMainWindow):
 
         root_layout.addWidget(content_splitter, stretch=1)
 
-        self.statusBar().showMessage("")
+        self._root_stack.addWidget(self.welcome_splash)
+        self._root_stack.addWidget(workspace)
+        self._root_stack.setCurrentWidget(self.welcome_splash)
+        self._refresh_start_recent_projects()
 
     def _connect_signals(self) -> None:
         self.settings_panel.settings_changed.connect(self._on_settings_changed)
@@ -215,6 +273,9 @@ class MainWindow(QMainWindow):
         self.preview_workspace.zoom_toolbar.stars_enabled_changed.connect(
             self._on_preview_stars_changed,
         )
+        self.welcome_splash.new_project_requested.connect(self.new_project_action)
+        self.welcome_splash.open_project_requested.connect(self.open_project)
+        self.welcome_splash.recent_project_requested.connect(self._on_start_recent_project)
 
     def _restore_layout(self) -> None:
         geometry = self._context.settings.value(SETTINGS_KEY_WINDOW_GEOMETRY)
@@ -245,9 +306,11 @@ class MainWindow(QMainWindow):
         )
         self.preview_workspace.timeline.set_frame_index(0, emit_signal=False)
         self.preview_workspace.timeline.pause()
-        self.refresh_preview()
+        if self._workspace_active:
+            self.refresh_preview()
         self._update_window_title()
-        self._set_status(self.tr("Ready"))
+        if self._workspace_active:
+            self._set_status(self.tr("Ready"))
         self._update_action_states()
 
     def retranslate_ui(self) -> None:
@@ -259,10 +322,12 @@ class MainWindow(QMainWindow):
         self._rebuild_menu_texts()
         self._update_menu_action_texts()
         self._refresh_recent_projects_menu()
+        self.welcome_splash.retranslate_ui()
         self.settings_panel.retranslate_ui()
         self.preview_workspace.retranslate_ui()
         self._update_window_title()
-        self.refresh_preview()
+        if self._workspace_active:
+            self.refresh_preview()
 
     def _update_command_texts(self) -> None:
         titles = {
@@ -340,6 +405,9 @@ class MainWindow(QMainWindow):
         registry.set_enabled("app.project.export", has_image)
 
     def _update_window_title(self) -> None:
+        if not self._workspace_active:
+            self.setWindowTitle(APP_DISPLAY_NAME)
+            return
         self.setWindowTitle(self._project_controller.window_title())
 
     def _set_status(self, message: str) -> None:
@@ -366,6 +434,8 @@ class MainWindow(QMainWindow):
         self._update_action_states()
 
     def _on_preview_resized(self) -> None:
+        if not self._workspace_active:
+            return
         last_frame = self._preview_service.last_preview_frame
         self._preview_controller.invalidate()
         if last_frame is not None:
@@ -388,6 +458,8 @@ class MainWindow(QMainWindow):
             when true, copy sidebar values into the project first
         """
 
+        if not self._workspace_active:
+            return
         if sync_settings:
             self._sync_project_from_ui()
         try:
@@ -413,6 +485,7 @@ class MainWindow(QMainWindow):
         self._project_controller.new_project()
         self._preview_controller.invalidate()
         self.preview_workspace.preview_panel.viewport.reset_zoom()
+        self._show_workspace()
         self._apply_project_to_ui()
 
     def open_project(self) -> None:
@@ -422,6 +495,7 @@ class MainWindow(QMainWindow):
             return
         self._remember_current_project()
         self._preview_controller.invalidate()
+        self._show_workspace()
         self._apply_project_to_ui()
         self.refresh_preview()
 

@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from PySide6.QtCore import Signal
 from PySide6.QtGui import QPixmap
-from PySide6.QtWidgets import QSizePolicy, QStackedWidget, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
 
 from starflight.utils.image import numpy_rgb_to_qimage
-from starflight.views.widgets.welcome_splash import WelcomeSplash
 from starflight.views.widgets.zoomable_viewport import ZoomablePreviewViewport
 
 
@@ -24,21 +23,11 @@ class PreviewPanel(QWidget):
         self.viewport = ZoomablePreviewViewport(self)
         self.viewport.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
-        self.welcome_splash = WelcomeSplash(self)
-
-        self._preview_stack = QStackedWidget(self)
-        self._preview_stack.setObjectName("preview_stack")
-        self._preview_stack.addWidget(self.viewport)
-        self._preview_stack.addWidget(self.welcome_splash)
-        self._preview_stack.setCurrentWidget(self.welcome_splash)
-
-        self.welcome_splash.dismissed.connect(self._on_welcome_dismissed)
-
         container = QWidget(self)
         container.setObjectName("preview_container")
         container_layout = QVBoxLayout(container)
         container_layout.setContentsMargins(0, 0, 0, 0)
-        container_layout.addWidget(self._preview_stack)
+        container_layout.addWidget(self.viewport)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(12, 12, 8, 4)
@@ -85,7 +74,6 @@ class PreviewPanel(QWidget):
         pixmap = QPixmap.fromImage(qimage)
         pixmap.setDevicePixelRatio(1.0)
         self.viewport.set_frame_pixmap(pixmap)
-        self.welcome_splash.dismiss()
 
     def show_message(self, message: str) -> None:
         """
@@ -105,19 +93,11 @@ class PreviewPanel(QWidget):
     def retranslate_ui(self) -> None:
         """Refresh translatable texts."""
 
-        self.welcome_splash.retranslate_ui()
+        return
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         self.resized.emit()
-
-    def _on_welcome_dismissed(self) -> None:
-        """
-        switch from the welcome splash back to the preview viewport.
-
-        """
-
-        self._preview_stack.setCurrentWidget(self.viewport)
 
 
 __all__ = ["PreviewPanel"]

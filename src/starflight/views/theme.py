@@ -358,20 +358,125 @@ QGraphicsView#preview_viewport {{
     border: none;
 }}
 
+QStackedWidget#root_stack {{
+    background-color: {APP_BG};
+    border: none;
+}}
+
 QWidget#welcome_splash {{
-    background-color: {SURFACE_ALT_BG};
+    background-color: {APP_BG};
 }}
 
-QWidget#welcome_splash_frame {{
-    background-color: transparent;
-}}
-
-QLabel#welcome_splash_logo {{
+QWidget#welcome_splash_frame,
+QLabel#welcome_splash_logo,
+QWidget#welcome_actions_host,
+QWidget#welcome_recent_list,
+QWidget#welcome_recent_section {{
     background-color: transparent;
 }}
 
 QWidget#welcome_splash_meta_bar {{
-    background-color: rgba(58, 110, 165, 90);
+    background-color: rgba(20, 26, 34, 170);
+}}
+
+QFrame#welcome_action_button {{
+    background-color: {PANEL_BG};
+    color: {TEXT_PRIMARY};
+    border: 1px solid {BORDER};
+    border-radius: 12px;
+    padding: 0;
+}}
+
+QFrame#welcome_action_button:hover {{
+    background-color: {SURFACE_BG};
+    border-color: {BORDER_FOCUS};
+}}
+
+QFrame#welcome_action_button:focus {{
+    background-color: {SURFACE_BG};
+    border-color: {ACCENT_HOVER};
+}}
+
+QLabel#welcome_action_icon {{
+    background-color: rgba(58, 110, 165, 70);
+    border: 1px solid rgba(122, 186, 232, 70);
+    border-radius: 10px;
+}}
+
+QLabel#welcome_action_title {{
+    color: {TEXT_PRIMARY};
+    background-color: transparent;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 0;
+}}
+
+QLabel#welcome_action_subtitle {{
+    color: {TEXT_MUTED};
+    background-color: transparent;
+    font-size: 12px;
+    padding: 0;
+}}
+
+QFrame#welcome_recent_panel {{
+    background-color: {PANEL_BG};
+    border: 1px solid {BORDER};
+    border-radius: 12px;
+}}
+
+QLabel#welcome_recent_heading {{
+    color: {TEXT_MUTED};
+    background-color: transparent;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 0 2px;
+}}
+
+QPushButton#welcome_recent_row {{
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 0;
+    min-height: 58px;
+    text-align: left;
+}}
+
+QPushButton#welcome_recent_row:hover,
+QPushButton#welcome_recent_row:focus {{
+    background-color: {SURFACE_BG};
+    border-color: {BORDER};
+}}
+
+QPushButton#welcome_recent_row:pressed {{
+    background-color: {ACCENT_SELECTION};
+}}
+
+QLabel#welcome_recent_icon {{
+    background-color: {SURFACE_BG};
+    border: 1px solid {BORDER};
+    border-radius: 8px;
+}}
+
+QLabel#welcome_recent_name {{
+    color: {TEXT_PRIMARY};
+    background-color: transparent;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 0;
+}}
+
+QLabel#welcome_recent_location {{
+    color: {TEXT_MUTED};
+    background-color: transparent;
+    font-size: 12px;
+    padding: 0;
+}}
+
+QLabel#welcome_recent_date {{
+    color: {TEXT_MUTED};
+    background-color: transparent;
+    font-size: 12px;
+    padding: 0;
 }}
 
 QLabel#welcome_splash_meta {{
@@ -425,29 +530,6 @@ QLabel#about_dialog_link a {{
 
 QLabel#about_dialog_link a:hover {{
     text-decoration: underline;
-}}
-
-QToolButton#welcome_splash_close {{
-    background-color: rgba(20, 26, 34, 160);
-    color: {TEXT_PRIMARY};
-    border: 1px solid {BORDER};
-    border-radius: 12px;
-    font-size: 16px;
-    font-weight: 600;
-    min-width: 24px;
-    max-width: 24px;
-    min-height: 24px;
-    max-height: 24px;
-    padding: 0;
-}}
-
-QToolButton#welcome_splash_close:hover {{
-    background-color: rgba(34, 44, 56, 200);
-    border-color: {BORDER_FOCUS};
-}}
-
-QToolButton#welcome_splash_close:pressed {{
-    background-color: {ACCENT_PRESSED};
 }}
 
 QWidget#timeline_widget {{

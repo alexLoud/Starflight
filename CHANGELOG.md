@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- New start screen
 - Easing for camera movement (Linear, Ease-In, Ease-Out, Ease-In/Out)
 
 ## [1.0.3] - 2026-08-24

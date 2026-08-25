@@ -360,89 +360,89 @@
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../views/main_window.py" line="108"/>
-        <location filename="../views/main_window.py" line="148"/>
+        <location filename="../views/main_window.py" line="116"/>
+        <location filename="../views/main_window.py" line="157"/>
         <source>Open Recent</source>
         <translation>Zuletzt geöffnet</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="152"/>
+        <location filename="../views/main_window.py" line="161"/>
         <source>No Recent Projects</source>
         <translation>Keine zuletzt geöffneten Projekte</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="250"/>
+        <location filename="../views/main_window.py" line="313"/>
         <source>Ready</source>
         <translation>Bereit</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="269"/>
+        <location filename="../views/main_window.py" line="334"/>
         <source>New</source>
         <translation>Neu</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="270"/>
+        <location filename="../views/main_window.py" line="335"/>
         <source>Open…</source>
         <translation>Öffnen…</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="271"/>
+        <location filename="../views/main_window.py" line="336"/>
         <source>Save</source>
         <translation>Speichern</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="272"/>
+        <location filename="../views/main_window.py" line="337"/>
         <source>Save as…</source>
         <translation>Speichern unter…</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="274"/>
+        <location filename="../views/main_window.py" line="339"/>
         <source>Load image…</source>
         <translation>Bild laden…</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="275"/>
+        <location filename="../views/main_window.py" line="340"/>
         <source>Export video…</source>
         <translation>Video exportieren…</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="276"/>
+        <location filename="../views/main_window.py" line="341"/>
         <source>Settings…</source>
         <translation>Einstellungen…</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="277"/>
+        <location filename="../views/main_window.py" line="342"/>
         <source>About Starflight</source>
         <translation>Über Starflight</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="313"/>
+        <location filename="../views/main_window.py" line="378"/>
         <source>Project</source>
         <translation>Projekt</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="314"/>
+        <location filename="../views/main_window.py" line="379"/>
         <source>Settings</source>
         <translation>Einstellungen</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="315"/>
+        <location filename="../views/main_window.py" line="380"/>
         <source>Help</source>
         <translation>Hilfe</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="273"/>
+        <location filename="../views/main_window.py" line="338"/>
         <source>Quit</source>
         <translation>Beenden</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="312"/>
+        <location filename="../views/main_window.py" line="377"/>
         <source>File</source>
         <translation>Datei</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="435"/>
-        <location filename="../views/main_window.py" line="445"/>
+        <location filename="../views/main_window.py" line="509"/>
+        <location filename="../views/main_window.py" line="519"/>
         <source>Project saved: {path}</source>
         <translation>Projekt gespeichert: {path}</translation>
     </message>
@@ -450,7 +450,7 @@
 <context>
     <name>PreviewPanel</name>
     <message>
-        <location filename="../views/widgets/preview_panel.py" line="103"/>
+        <location filename="../views/widgets/preview_panel.py" line="91"/>
         <source>Load at least one image to see the preview.</source>
         <translation>Lade mindestens ein Bild, um die Vorschau zu sehen.</translation>
     </message>
@@ -1108,22 +1108,42 @@ Vergrößerung vermeiden</translation>
 <context>
     <name>WelcomeSplash</name>
     <message>
-        <location filename="../views/widgets/welcome_splash.py" line="106"/>
-        <source>Close</source>
-        <translation>Schließen</translation>
+        <location filename="../views/widgets/welcome_splash.py" line="304"/>
+        <source>New Project</source>
+        <translation>Neues Projekt</translation>
     </message>
     <message>
-        <location filename="../views/widgets/welcome_splash.py" line="152"/>
+        <location filename="../views/widgets/welcome_splash.py" line="305"/>
+        <source>Start a new fly-through</source>
+        <translation>Neuen Flug beginnen</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/welcome_splash.py" line="308"/>
+        <source>Load Project</source>
+        <translation>Projekt laden</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/welcome_splash.py" line="309"/>
+        <source>Open a saved project</source>
+        <translation>Gespeichertes Projekt öffnen</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/welcome_splash.py" line="311"/>
+        <source>Recent Projects</source>
+        <translation>Zuletzt geöffnet</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/welcome_splash.py" line="468"/>
         <source>Version {version} (current)</source>
         <translation>Version {version} (aktuell)</translation>
     </message>
     <message>
-        <location filename="../views/widgets/welcome_splash.py" line="154"/>
+        <location filename="../views/widgets/welcome_splash.py" line="470"/>
         <source>Version {version}</source>
         <translation>Version {version}</translation>
     </message>
     <message>
-        <location filename="../views/widgets/welcome_splash.py" line="168"/>
+        <location filename="../views/widgets/welcome_splash.py" line="484"/>
         <source>&lt;a href=&quot;{url}&quot;&gt;Update available: Version {version}&lt;/a&gt;</source>
         <translation>&lt;a href=&quot;{url}&quot;&gt;Update verfügbar: Version {version}&lt;/a&gt;</translation>
     </message>
