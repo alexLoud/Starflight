@@ -10,7 +10,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QFontMetrics, QIcon
+from PySide6.QtGui import QFontMetrics, QIcon, QImage
 from PySide6.QtWidgets import (
     QCheckBox,
     QFormLayout,
@@ -24,26 +24,29 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from starflight.core.crop import crop_pixel_bounds, remap_look_at_for_crop
 from starflight.services.project_service import resolve_source_image_path
 from starflight.types.settings import (
     DENSITY_STAR_COUNTS,
     MAX_BACKGROUND_ROTATION_DEGREES,
-    MAX_BACKGROUND_SCALE_PERCENT,
     MAX_BACKGROUND_ZOOM_PERCENT,
     MAX_STAR_COUNT,
-    MIN_BACKGROUND_SCALE_PERCENT,
     MIN_STAR_COUNT,
+    CropSettings,
     DensityPreset,
     EasingMode,
+    ImageMotionMode,
     Project,
     ProjectSettings,
     coerce_density_preset,
     coerce_easing_mode,
+    coerce_image_motion_mode,
     density_preset_from_count,
 )
 from starflight.utils.image import bgr_to_rgb, load_image_bgr, numpy_rgb_to_qimage
 from starflight.views.icons import load_icon_asset
 from starflight.views.widgets.collapsible_section import CollapsibleSection
+from starflight.views.widgets.crop_control import CropControl
 from starflight.views.widgets.focus_points_control import FocusPointsControl
 from starflight.views.widgets.no_wheel_widgets import NoWheelComboBox, NoWheelSpinBox
 from starflight.views.widgets.setting_field_row import SettingFieldRow
@@ -95,6 +98,11 @@ class SettingsPanel(QWidget):
         self.setMaximumWidth(520)
         self._update_block_depth = 0
         self._project_path: Path | None = None
+        self._source_qimage: QImage | None = None
+        self._source_width = 1
+        self._source_height = 1
+        self._crop_orientation: int | None = None
+        self._last_crop = CropSettings()
         self._setting_field_rows: list[SettingFieldRow] = []
         self._build_ui()
         self.retranslate_ui()
@@ -115,20 +123,20 @@ class SettingsPanel(QWidget):
             icon=load_icon_asset("section-project.svg"),
             expanded=True,
         )
-        self.background_section = CollapsibleSection(
+        self.image_motion_section = CollapsibleSection(
             "",
             icon=load_icon_asset("section-background.svg"),
             expanded=True,
         )
+        self.crop_section = CollapsibleSection(
+            "",
+            icon=load_icon_asset("section-camera.svg"),
+            expanded=False,
+        )
         self.focus_section = CollapsibleSection(
             "",
             icon=load_icon_asset("section-camera.svg"),
-            expanded=True,
-        )
-        self.parallax_section = CollapsibleSection(
-            "",
-            icon=load_icon_asset("section-effects.svg"),
-            expanded=True,
+            expanded=False,
         )
         self.star_appearance_section = CollapsibleSection(
             "",
@@ -147,18 +155,19 @@ class SettingsPanel(QWidget):
         )
 
         self._build_project_section(self.project_section.content_layout)
-        self._build_background_section(self.background_section.content_layout)
+        self._build_image_motion_section(self.image_motion_section.content_layout)
+        self._build_crop_section(self.crop_section.content_layout)
         self._build_focus_section(self.focus_section.content_layout)
-        self._build_parallax_section(self.parallax_section.content_layout)
+        self._sync_image_motion_controls()
         self._build_star_appearance_section(self.star_appearance_section.content_layout)
         self._build_star_effects_section(self.star_effects_section.content_layout)
         self._build_star_animation_section(self.star_animation_section.content_layout)
 
         for section in (
             self.project_section,
-            self.background_section,
+            self.image_motion_section,
+            self.crop_section,
             self.focus_section,
-            self.parallax_section,
             self.star_appearance_section,
             self.star_effects_section,
             self.star_animation_section,
@@ -374,29 +383,23 @@ class SettingsPanel(QWidget):
 
         layout.addLayout(form)
 
-    def _build_background_section(self, layout: QVBoxLayout) -> None:
+    def _build_image_motion_section(self, layout: QVBoxLayout) -> None:
+        """Build controls shared by the mutually exclusive image movement modes."""
+
         form = QFormLayout()
         self._configure_form(form)
+        self._image_motion_form = form
 
-        self.scale_row = SliderSpinBoxRow(
-            MIN_BACKGROUND_SCALE_PERCENT,
-            MAX_BACKGROUND_SCALE_PERCENT,
-            decimals=0,
-            step=1.0,
-            suffix=" %",
-        )
-        self.scale_row.value_changed.connect(self._emit_settings_changed)
-        self._style_field(self.scale_row)
-        self._label_scale = self._create_setting_label()
-        self._add_setting_row(
-            form,
-            self._label_scale,
-            self.scale_row,
-            lambda: self._reset_slider_value(
-                self.scale_row,
-                _DEFAULT_SETTINGS.background.scale_percent,
-            ),
-        )
+        self.motion_mode_combo = NoWheelComboBox()
+        for mode in (
+            ImageMotionMode.MANUAL,
+            ImageMotionMode.PARALLAX,
+        ):
+            self.motion_mode_combo.addItem("", mode)
+        self.motion_mode_combo.currentIndexChanged.connect(self._on_motion_mode_changed)
+        self._style_field(self.motion_mode_combo)
+        self._label_motion_mode = self._create_setting_label()
+        form.addRow(self._label_motion_mode, self.motion_mode_combo)
 
         self.zoom_row = SliderSpinBoxRow(
             0.0,
@@ -439,45 +442,9 @@ class SettingsPanel(QWidget):
         )
 
         self.fill_frame_checkbox = QCheckBox()
-        self.fill_frame_checkbox.setChecked(False)
         self.fill_frame_checkbox.toggled.connect(self._emit_settings_changed)
         self._label_fill_frame = self._create_setting_label()
         form.addRow(self._label_fill_frame, self.fill_frame_checkbox)
-
-        layout.addLayout(form)
-
-    def _build_focus_section(self, layout: QVBoxLayout) -> None:
-        """
-        build the top-level camera path section.
-
-        layout
-            section content layout
-        """
-
-        self.focus_points = FocusPointsControl()
-        self.focus_points.focus_changed.connect(self._emit_settings_changed)
-        self._style_field(self.focus_points)
-        layout.addWidget(self.focus_points)
-
-    def _build_parallax_section(self, layout: QVBoxLayout) -> None:
-        """Build the export-only parallax section."""
-
-        form = QFormLayout()
-        self._configure_form(form)
-
-        self.parallax_checkbox = QCheckBox()
-        self.parallax_checkbox.toggled.connect(self._on_parallax_toggled)
-        self.parallax_preview_hint = QLabel()
-        self.parallax_preview_hint.setObjectName("section_hint")
-        self.parallax_preview_hint.setWordWrap(True)
-        enable_column = QWidget()
-        enable_layout = QVBoxLayout(enable_column)
-        enable_layout.setContentsMargins(0, 0, 0, 0)
-        enable_layout.setSpacing(4)
-        enable_layout.addWidget(self.parallax_checkbox)
-        enable_layout.addWidget(self.parallax_preview_hint)
-        self._label_parallax = self._create_setting_label()
-        form.addRow(self._label_parallax, enable_column)
 
         self.parallax_strength_row = SliderSpinBoxRow(
             1.0,
@@ -498,31 +465,77 @@ class SettingsPanel(QWidget):
                 emit_change=self._emit_meta_settings_changed,
             ),
         )
+
+        self.parallax_preview_hint = QLabel()
+        self.parallax_preview_hint.setObjectName("section_hint")
+        self.parallax_preview_hint.setWordWrap(True)
+        form.addRow(self.parallax_preview_hint)
+
         layout.addLayout(form)
-        self._sync_parallax_controls()
 
-    def _on_parallax_toggled(self, *_args: object) -> None:
-        """Update the strength control and persist the activation state."""
+    def _build_crop_section(self, layout: QVBoxLayout) -> None:
+        """Build the fixed-aspect crop editor shared by all movement modes."""
 
-        self._sync_parallax_controls()
-        self._emit_meta_settings_changed()
+        self.crop_control = CropControl()
+        self.crop_control.crop_changed.connect(self._on_crop_changed)
+        self._style_field(self.crop_control)
+        layout.addWidget(self.crop_control)
 
-    def _sync_parallax_controls(self) -> None:
-        """Enable strength controls and show the preview hint while active."""
+    def _build_focus_section(self, layout: QVBoxLayout) -> None:
+        """
+        build the top-level camera path section.
 
-        enabled = self.parallax_checkbox.isChecked()
-        self.parallax_strength_row.setEnabled(enabled)
-        self._label_parallax_strength.setEnabled(enabled)
-        self.parallax_preview_hint.setVisible(enabled)
+        layout
+            section content layout
+        """
+
+        self.focus_points = FocusPointsControl()
+        self.focus_points.focus_changed.connect(self._emit_settings_changed)
+        self._style_field(self.focus_points)
+        layout.addWidget(self.focus_points)
+
+    def _on_motion_mode_changed(self, *_args: object) -> None:
+        """Update conditional controls and persist the selected movement mode."""
+
+        self._sync_image_motion_controls()
+        self._emit_settings_changed()
+
+    def _on_crop_changed(self) -> None:
+        """Keep camera-path points on the same source pixels after crop edits."""
+
+        new_crop = self._current_crop_settings()
+        self._remap_focus_points_for_crop(self._last_crop, new_crop)
+        self._last_crop = new_crop
+        self._sync_focus_crop_image()
+        self._emit_settings_changed()
+
+    def _sync_image_motion_controls(self) -> None:
+        """Show only controls that apply to the selected image movement mode."""
+
+        mode = coerce_image_motion_mode(self.motion_mode_combo.currentData())
+        manual_visible = mode == ImageMotionMode.MANUAL
+        parallax_visible = mode == ImageMotionMode.PARALLAX
+
+        self._image_motion_form.setRowVisible(self._label_zoom, manual_visible)
+        self._image_motion_form.setRowVisible(self._label_rotation, manual_visible)
+        self._image_motion_form.setRowVisible(self._label_fill_frame, manual_visible)
+        self._image_motion_form.setRowVisible(
+            self._label_parallax_strength,
+            parallax_visible,
+        )
+        self.parallax_preview_hint.setVisible(parallax_visible)
+        self.focus_section.set_available(manual_visible)
+        self._sync_focus_availability()
+        self._sync_crop_editor_state()
 
     def _connect_section_state_signals(self) -> None:
         """wire section expand/collapse to ui-state dirty tracking only."""
 
         for section in (
             self.project_section,
-            self.background_section,
+            self.image_motion_section,
+            self.crop_section,
             self.focus_section,
-            self.parallax_section,
             self.star_appearance_section,
             self.star_effects_section,
             self.star_animation_section,
@@ -534,9 +547,9 @@ class SettingsPanel(QWidget):
 
         ui = settings.ui
         self.project_section.set_expanded(ui.project_section_expanded)
-        self.background_section.set_expanded(ui.background_section_expanded)
+        self.image_motion_section.set_expanded(ui.image_motion_section_expanded)
+        self.crop_section.set_expanded(ui.crop_section_expanded)
         self.focus_section.set_expanded(ui.focus_section_expanded)
-        self.parallax_section.set_expanded(ui.parallax_section_expanded)
         self.star_appearance_section.set_expanded(ui.star_appearance_section_expanded)
         self.star_effects_section.set_expanded(ui.star_effects_section_expanded)
         self.star_animation_section.set_expanded(ui.star_animation_section_expanded)
@@ -546,9 +559,9 @@ class SettingsPanel(QWidget):
 
         ui = settings.ui
         ui.project_section_expanded = self.project_section.is_expanded
-        ui.background_section_expanded = self.background_section.is_expanded
+        ui.image_motion_section_expanded = self.image_motion_section.is_expanded
+        ui.crop_section_expanded = self.crop_section.is_expanded
         ui.focus_section_expanded = self.focus_section.is_expanded
-        ui.parallax_section_expanded = self.parallax_section.is_expanded
         ui.star_appearance_section_expanded = self.star_appearance_section.is_expanded
         ui.star_effects_section_expanded = self.star_effects_section.is_expanded
         ui.star_animation_section_expanded = self.star_animation_section.is_expanded
@@ -579,7 +592,9 @@ class SettingsPanel(QWidget):
         self.star_count_row.value_changed.connect(self._on_star_count_changed)
         self._style_field(self.star_count_row)
         self._label_star_count = self._create_setting_label()
-        self._add_setting_row(form, self._label_star_count, self.star_count_row, self._reset_star_count)
+        self._add_setting_row(
+            form, self._label_star_count, self.star_count_row, self._reset_star_count
+        )
 
         self.min_size_row = SliderSpinBoxRow(0.3, 3.0, decimals=1, step=0.1, suffix=" px")
         self.min_size_row.value_changed.connect(self._emit_settings_changed)
@@ -819,26 +834,37 @@ class SettingsPanel(QWidget):
         """refresh all translatable texts."""
 
         self.project_section.set_title(self.tr("Project & Video"))
-        self.background_section.set_title(self.tr("Background"))
+        self.image_motion_section.set_title(self.tr("Image motion"))
+        self.image_motion_section.set_hint(
+            self.tr(
+                "Choose one movement type for the source image. Manual controls and "
+                "parallax are kept separate so their motion does not hide each other.",
+            ),
+        )
+        self.crop_section.set_title(self.tr("Crop"))
+        self.crop_section.set_hint(
+            self.tr(
+                "Source-image area used by every movement mode. The selection matches "
+                "the target resolution aspect ratio and can be smaller than the largest "
+                "fit. Pixels around the crop stay available during rotation.",
+            ),
+        )
         self.focus_section.set_title(self.tr("Camera path"))
         self.focus_section.set_hint(
             self.tr(
                 "Optional start and target points. Each point is the center of the video "
-                "frame. Enable a point to show its marker, then drag it on the preview. "
-                "Only a target starts from the image center; only a start ends at the "
-                "image center.",
+                "frame in the active image area. Available only for manual movement.",
             ),
         )
-        self.parallax_section.set_title(self.tr("Parallax"))
-        self.parallax_section.set_badge(self.tr("Beta"))
-        self._label_parallax.set_text(self.tr("Parallax"))
-        self._label_parallax.set_hint(
+        self._label_motion_mode.set_text(self.tr("Movement type"))
+        self._label_motion_mode.set_hint(
             self.tr(
-                "Structural depth zoom applied during video export only. "
-                "The preview does not show parallax.",
+                "Manual movement enables zoom, rotation, and the camera path. "
+                "Parallax zoom animates structural depth.",
             ),
         )
-        self.parallax_checkbox.setText(self.tr("Enable parallax effect"))
+        self.motion_mode_combo.setItemText(0, self.tr("Manual movement"))
+        self.motion_mode_combo.setItemText(1, self.tr("Parallax zoom"))
         self.parallax_preview_hint.setText(self.tr("Not visible in the preview"))
         self._label_parallax_strength.set_text(self.tr("Strength"))
         self.star_appearance_section.set_title(self.tr("Stars — Count & Size"))
@@ -882,13 +908,6 @@ class SettingsPanel(QWidget):
         self.fps_combo.setItemText(1, self.tr("{fps} fps").format(fps=30))
         self.fps_combo.setItemText(2, self.tr("{fps} fps").format(fps=60))
 
-        self._label_scale.set_text(self.tr("Image scale"))
-        self._label_scale.set_hint(
-            self.tr(
-                "Base size of the source image in the video. 100% fills the frame; "
-                "smaller values shrink the image, larger values zoom in further.",
-            ),
-        )
         self._label_zoom.set_text(self.tr("Zoom in"))
         self._label_zoom.set_hint(
             self.tr("How strongly the image slowly enlarges over the full video length."),
@@ -900,7 +919,6 @@ class SettingsPanel(QWidget):
                 "Positive values rotate clockwise.",
             ),
         )
-        self.focus_points.retranslate_ui()
         self._label_fill_frame.set_text(self.tr("Frame edges"))
         self._label_fill_frame.set_hint(
             self.tr(
@@ -909,6 +927,8 @@ class SettingsPanel(QWidget):
             ),
         )
         self.fill_frame_checkbox.setText(self.tr("Avoid empty areas by\nscaling up"))
+        self.crop_control.retranslate_ui()
+        self.focus_points.retranslate_ui()
 
         self._label_density.set_text(self.tr("Density"))
         self._label_density.set_hint(
@@ -1110,6 +1130,7 @@ class SettingsPanel(QWidget):
                     self.width_spin.blockSignals(False)
                     self.height_spin.blockSignals(False)
                     break
+        self._sync_crop_target_resolution()
         self._emit_settings_changed()
 
     def _on_custom_resolution_changed(self, *_args: object) -> None:
@@ -1131,7 +1152,33 @@ class SettingsPanel(QWidget):
             self.resolution_combo.setCurrentIndex(self.resolution_combo.count() - 1)
             self.resolution_combo.blockSignals(False)
 
+        self._sync_crop_target_resolution()
         self._emit_settings_changed()
+
+    @staticmethod
+    def _resolution_orientation(width: int, height: int) -> int:
+        """Return -1 for portrait, 0 for square, and 1 for landscape."""
+
+        return (width > height) - (width < height)
+
+    def _sync_crop_target_resolution(self) -> None:
+        """Update crop aspect and reset only when the output orientation changes."""
+
+        width = self.width_spin.value()
+        height = self.height_spin.value()
+        orientation = self._resolution_orientation(width, height)
+        orientation_changed = (
+            self._crop_orientation is not None and orientation != self._crop_orientation
+        )
+        self._crop_orientation = orientation
+        old_crop = self._current_crop_settings()
+        self.crop_control.set_target_resolution(width, height)
+        if orientation_changed:
+            self.crop_control.reset_crop(emit_change=False)
+        new_crop = self._current_crop_settings()
+        self._remap_focus_points_for_crop(old_crop, new_crop)
+        self._last_crop = new_crop
+        self._sync_focus_crop_image()
 
     def _on_density_changed(self) -> None:
         if self._updates_blocked():
@@ -1185,6 +1232,11 @@ class SettingsPanel(QWidget):
             self.resolution_combo.setCurrentIndex(self.resolution_combo.count() - 1)
         self.width_spin.setValue(resolution.width)
         self.height_spin.setValue(resolution.height)
+        self._crop_orientation = self._resolution_orientation(
+            resolution.width,
+            resolution.height,
+        )
+        self.crop_control.set_target_resolution(resolution.width, resolution.height)
 
         self.duration_row.set_value(settings.duration_seconds)
         fps_index = self.fps_combo.findData(settings.fps)
@@ -1192,17 +1244,33 @@ class SettingsPanel(QWidget):
             self.fps_combo.setCurrentIndex(fps_index)
 
         background = settings.background
-        self.scale_row.set_value(background.scale_percent)
+        motion_mode_index = self.motion_mode_combo.findData(background.motion_mode)
+        if motion_mode_index >= 0:
+            self.motion_mode_combo.setCurrentIndex(motion_mode_index)
         self.zoom_row.set_value(background.zoom_percent)
         self.rotation_row.set_value(background.rotation_degrees)
+        self.fill_frame_checkbox.setChecked(background.fill_frame)
         easing_index = self.easing_combo.findData(background.easing)
         if easing_index >= 0:
             self.easing_combo.setCurrentIndex(easing_index)
-        self.fill_frame_checkbox.setChecked(background.fill_frame)
-        self.parallax_checkbox.setChecked(settings.parallax.enabled)
         self.parallax_strength_row.set_value(settings.parallax.strength)
-        self._sync_parallax_controls()
-        self._sync_focus_controls(project)
+        self.crop_control.set_crop(
+            settings.crop.center_x,
+            settings.crop.center_y,
+            settings.crop.scale,
+        )
+        self._sync_source_controls(project)
+        self._last_crop = self._current_crop_settings()
+        self._sync_focus_crop_image()
+        self.focus_points.set_points(
+            background.start_focus_enabled,
+            background.start_focus_x,
+            background.start_focus_y,
+            background.end_focus_enabled,
+            background.end_focus_x,
+            background.end_focus_y,
+        )
+        self._sync_image_motion_controls()
 
         stars = settings.stars
         density_index = self.density_combo.findData(stars.density_preset)
@@ -1220,6 +1288,7 @@ class SettingsPanel(QWidget):
         self.magnitude_realism_row.set_value(stars.magnitude_realism * 100.0)
         self.speed_row.set_value(stars.speed)
         self._apply_ui_state(settings)
+        self._sync_image_motion_controls()
         self._end_update_block()
 
     def apply_to_project(self, project: Project) -> None:
@@ -1236,13 +1305,17 @@ class SettingsPanel(QWidget):
         settings.duration_seconds = float(self.duration_row.value())
         settings.fps = int(self.fps_combo.currentData() or 30)
 
+        crop_center_x, crop_center_y, crop_scale = self.crop_control.crop_values()
+        settings.crop.center_x = crop_center_x
+        settings.crop.center_y = crop_center_y
+        settings.crop.scale = crop_scale
+
         background = settings.background
-        background.scale_percent = float(self.scale_row.value())
+        background.motion_mode = coerce_image_motion_mode(self.motion_mode_combo.currentData())
         background.zoom_percent = float(self.zoom_row.value())
         background.rotation_degrees = float(self.rotation_row.value())
         background.easing = coerce_easing_mode(self.easing_combo.currentData())
         background.fill_frame = self.fill_frame_checkbox.isChecked()
-        settings.parallax.enabled = self.parallax_checkbox.isChecked()
         settings.parallax.strength = int(self.parallax_strength_row.value())
         (
             start_enabled,
@@ -1273,44 +1346,119 @@ class SettingsPanel(QWidget):
         stars.speed = float(self.speed_row.value())
         self._write_ui_state(settings)
 
-    def _sync_focus_controls(self, project: Project) -> None:
-        """
-        sync focus path controls with the current project image and settings.
+    def _sync_source_controls(self, project: Project) -> None:
+        """Load the source image once for the crop and camera-path controls."""
 
-        project
-            current project
-        """
-
-        background = project.settings.background
         image_path = resolve_source_image_path(self._project_path, project.source_image)
         has_image = image_path is not None and image_path.is_file()
 
-        self.focus_points.setEnabled(has_image)
-
         if not has_image:
+            self._source_qimage = None
+            self._source_width = 1
+            self._source_height = 1
+            self.crop_control.clear_image()
             self.focus_points.clear_image()
-            self.focus_points.set_points(False, 0.5, 0.5, False, 0.5, 0.5)
+            self._sync_crop_editor_state()
+            self._sync_focus_availability()
             return
 
         try:
             source_bgr = load_image_bgr(str(image_path))
             source_rgb = bgr_to_rgb(source_bgr)
-            preview_image = numpy_rgb_to_qimage(source_rgb, screen=self.screen())
+            self._source_qimage = numpy_rgb_to_qimage(source_rgb, screen=self.screen())
             source_h, source_w = source_rgb.shape[:2]
-            self.focus_points.set_image(preview_image, source_w, source_h)
+            self._source_width = source_w
+            self._source_height = source_h
+            self.crop_control.set_image(self._source_qimage, source_w, source_h)
+            self._sync_crop_editor_state()
+            self._sync_focus_crop_image()
         except (OSError, ValueError):
+            self._source_qimage = None
+            self._source_width = 1
+            self._source_height = 1
+            self.crop_control.clear_image()
             self.focus_points.clear_image()
-            self.focus_points.setEnabled(False)
-            return
+            self._sync_crop_editor_state()
+        self._sync_focus_availability()
 
-        self.focus_points.set_points(
-            background.start_focus_enabled,
-            background.start_focus_x,
-            background.start_focus_y,
-            background.end_focus_enabled,
-            background.end_focus_x,
-            background.end_focus_y,
+    def _sync_focus_crop_image(self) -> None:
+        """Show the active source area as the camera-path coordinate space."""
+
+        if self._source_qimage is None:
+            self.focus_points.clear_image()
+            self._sync_focus_availability()
+            return
+        center_x, center_y, scale = self.crop_control.crop_values()
+        left, top, right, bottom = crop_pixel_bounds(
+            CropSettings(center_x=center_x, center_y=center_y, scale=scale),
+            self._source_width,
+            self._source_height,
+            self.width_spin.value(),
+            self.height_spin.value(),
         )
+        cropped = self._source_qimage.copy(left, top, right - left, bottom - top)
+        self.focus_points.set_image(cropped, right - left, bottom - top)
+        self._sync_focus_availability()
+
+    def _current_crop_settings(self) -> CropSettings:
+        """Return the crop currently shown in the editor."""
+
+        center_x, center_y, scale = self.crop_control.crop_values()
+        return CropSettings(center_x=center_x, center_y=center_y, scale=scale)
+
+    def _remap_focus_points_for_crop(self, old_crop: CropSettings, new_crop: CropSettings) -> None:
+        """Rewrite enabled camera-path points so they stay on the same source pixels."""
+
+        if old_crop == new_crop or self._source_qimage is None:
+            return
+        start_enabled, start_x, start_y, end_enabled, end_x, end_y = (
+            self.focus_points.point_values()
+        )
+        width = self.width_spin.value()
+        height = self.height_spin.value()
+        if start_enabled:
+            start_x, start_y = remap_look_at_for_crop(
+                start_x,
+                start_y,
+                old_crop,
+                new_crop,
+                self._source_width,
+                self._source_height,
+                width,
+                height,
+            )
+        if end_enabled:
+            end_x, end_y = remap_look_at_for_crop(
+                end_x,
+                end_y,
+                old_crop,
+                new_crop,
+                self._source_width,
+                self._source_height,
+                width,
+                height,
+            )
+        self.focus_points.set_points(
+            start_enabled,
+            start_x,
+            start_y,
+            end_enabled,
+            end_x,
+            end_y,
+        )
+
+    def _sync_crop_editor_state(self) -> None:
+        """Enable the crop canvas when a source image is loaded."""
+
+        self.crop_control.setEnabled(self._source_qimage is not None)
+
+    def _sync_focus_availability(self) -> None:
+        """Enable camera-path controls only for manual movement with a loaded image."""
+
+        manual = coerce_image_motion_mode(self.motion_mode_combo.currentData()) == (
+            ImageMotionMode.MANUAL
+        )
+        self.focus_points.setEnabled(manual and self._source_qimage is not None)
 
 
 __all__ = ["SettingsPanel"]

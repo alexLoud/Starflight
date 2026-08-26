@@ -98,7 +98,14 @@ class PreviewService:
             preview_settings,
         ):
             self._preview_settings = _cache_settings(preview_settings)
-            self._preview_renderer = create_renderer(self._loaded_image_bgr, preview_settings)
+            self._preview_renderer = create_renderer(
+                self._loaded_image_bgr,
+                preview_settings,
+                crop_target_size=(
+                    project.settings.resolution.width,
+                    project.settings.resolution.height,
+                ),
+            )
         else:
             self._preview_renderer.settings = preview_settings.clone()
             _sync_star_render_settings(self._preview_renderer, preview_settings)
@@ -130,6 +137,8 @@ def _needs_renderer_rebuild(
     if current is None:
         return True
     if current.resolution != incoming.resolution:
+        return True
+    if current.crop != incoming.crop:
         return True
 
     current_stars = current.stars

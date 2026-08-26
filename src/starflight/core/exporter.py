@@ -24,15 +24,16 @@ import numpy as np
 from PySide6.QtCore import QThread, Signal
 
 from starflight.app.settings import DEFAULT_RENDER_WORKER_COUNT, max_available_render_workers
-from starflight.core.background import resolve_camera_path
+from starflight.core.background import effective_background_settings, resolve_camera_path
 from starflight.core.camera_motion import camera_motion_progress
+from starflight.core.crop import map_look_at_to_source
 from starflight.core.parallax import (
     create_parallax_depth,
     smooth_parallax_depth_for_strength,
 )
 from starflight.core.project import resolve_source_image_path
 from starflight.core.renderer import FrameRenderer, create_renderer
-from starflight.types.settings import Project, ProjectSettings, RenderQuality
+from starflight.types.settings import ImageMotionMode, Project, ProjectSettings, RenderQuality
 from starflight.utils.image import load_image_bgr
 from starflight.utils.validation import ffmpeg_executable
 
@@ -625,7 +626,7 @@ class ExportWorker(QThread):
         star_phase_progress: _LinearProgressPhase | None = None
         render_phase_progress: _LinearProgressPhase | None = None
         parallax_depth = None
-        if settings.parallax.enabled:
+        if settings.background.motion_mode == ImageMotionMode.PARALLAX:
             parallax_progress = _LinearProgressPhase(
                 self._PROGRESS_SCALE,
                 self._PARALLAX_PROGRESS_START,
@@ -646,7 +647,18 @@ class ExportWorker(QThread):
             )
             self.status_changed.emit("parallax")
             source_image = load_image_bgr(str(image_path))
-            _start_focus, end_focus = resolve_camera_path(settings.background)
+            source_h, source_w = source_image.shape[:2]
+            background_settings = effective_background_settings(settings.background)
+            _start_focus, end_focus = resolve_camera_path(background_settings)
+            end_focus = map_look_at_to_source(
+                end_focus[0],
+                end_focus[1],
+                settings.crop,
+                source_w,
+                source_h,
+                settings.resolution.width,
+                settings.resolution.height,
+            )
             parallax_depth = self._create_parallax_depth_with_progress(
                 source_image,
                 end_focus,

@@ -15,7 +15,12 @@ from starflight.core.parallax import (
     smooth_parallax_depth_for_strength,
 )
 from starflight.core.renderer import create_renderer
-from starflight.types.settings import ProjectSettings, RenderQuality, ResolutionSettings
+from starflight.types.settings import (
+    ImageMotionMode,
+    ProjectSettings,
+    RenderQuality,
+    ResolutionSettings,
+)
 
 
 class ParallaxDepthTests(unittest.TestCase):
@@ -179,7 +184,7 @@ class ParallaxRenderModeTests(unittest.TestCase):
         settings.background.end_focus_enabled = True
         settings.background.end_focus_x = 0.6
         settings.background.end_focus_y = 0.4
-        settings.parallax.enabled = True
+        settings.background.motion_mode = ImageMotionMode.PARALLAX
         settings.parallax.strength = 10
         depth = np.ones((height, width), dtype=np.float32)
         renderer = create_renderer(source, settings, parallax_depth=depth)
@@ -192,7 +197,7 @@ class ParallaxRenderModeTests(unittest.TestCase):
         np.testing.assert_array_equal(preview, ordinary_preview)
         self.assertFalse(np.array_equal(exported, ordinary_preview))
 
-        settings.parallax.enabled = False
+        settings.background.motion_mode = ImageMotionMode.MANUAL
         disabled_export = renderer.render_frame(1.0, RenderQuality.EXPORT, include_stars=False)
         ordinary_export = ordinary.render_frame(1.0, RenderQuality.EXPORT, include_stars=False)
         np.testing.assert_array_equal(disabled_export, ordinary_export)

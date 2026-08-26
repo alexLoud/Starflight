@@ -7,8 +7,8 @@ import unittest
 
 import numpy as np
 
-from starflight.core.background import BackgroundRenderer
-from starflight.types.settings import BackgroundSettings
+from starflight.core.background import BackgroundRenderer, effective_background_settings
+from starflight.types.settings import BackgroundSettings, ImageMotionMode
 
 
 def _make_renderer(
@@ -22,6 +22,33 @@ def _make_renderer(
 
 
 class BackgroundScaleTests(unittest.TestCase):
+    def test_image_motion_modes_keep_only_their_active_camera_fields(self) -> None:
+        settings = BackgroundSettings(
+            motion_mode=ImageMotionMode.PARALLAX,
+            scale_percent=125.0,
+            zoom_percent=20.0,
+            rotation_degrees=15.0,
+            start_focus_enabled=True,
+            end_focus_enabled=True,
+            fill_frame=True,
+        )
+
+        parallax = effective_background_settings(settings)
+        self.assertEqual(parallax.scale_percent, 125.0)
+        self.assertFalse(parallax.fill_frame)
+        self.assertEqual(parallax.zoom_percent, 0.0)
+        self.assertEqual(parallax.rotation_degrees, 0.0)
+        self.assertFalse(parallax.start_focus_enabled)
+        self.assertFalse(parallax.end_focus_enabled)
+
+        settings.motion_mode = ImageMotionMode.MANUAL
+        settings.fill_frame = False
+        manual = effective_background_settings(settings)
+        self.assertEqual(manual.scale_percent, 125.0)
+        self.assertFalse(manual.fill_frame)
+        self.assertEqual(manual.zoom_percent, 20.0)
+        self.assertEqual(manual.rotation_degrees, 15.0)
+
     def test_linear_scale_has_constant_rate(self) -> None:
         renderer = _make_renderer()
         settings = BackgroundSettings(
@@ -58,9 +85,35 @@ class BackgroundScaleTests(unittest.TestCase):
             cos_a = math.cos(angle)
             sin_a = math.sin(angle)
             center_x, center_y = renderer._desired_source_center(progress, settings)
-            required = renderer._required_scale(progress, settings, cos_a, sin_a, center_x, center_y)
+            required = renderer._required_scale(
+                progress, settings, cos_a, sin_a, center_x, center_y
+            )
             linear = renderer._linear_scale(progress, settings)
             self.assertGreaterEqual(linear, required - 1e-9)
+
+    def test_rotation_without_fill_frame_does_not_change_scale(self) -> None:
+        renderer = _make_renderer()
+        settings = BackgroundSettings(
+            rotation_degrees=15.0,
+            fill_frame=False,
+            zoom_percent=0.0,
+        )
+
+        start = renderer._linear_scale(0.0, settings)
+        end = renderer._linear_scale(1.0, settings)
+        cover = max(renderer.width / renderer.source_w, renderer.height / renderer.source_h)
+
+        self.assertAlmostEqual(start, cover)
+        self.assertAlmostEqual(end, cover)
+
+    def test_fill_frame_can_increase_scale_for_rotation(self) -> None:
+        renderer = _make_renderer()
+        settings = BackgroundSettings(rotation_degrees=15.0, fill_frame=True, zoom_percent=0.0)
+
+        start = renderer._linear_scale(0.0, settings)
+        end = renderer._linear_scale(1.0, settings)
+
+        self.assertGreater(end, start)
 
     def test_rotation_angle_stays_linear(self) -> None:
         settings = BackgroundSettings(rotation_degrees=18.0)

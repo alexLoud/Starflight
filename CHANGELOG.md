@@ -4,7 +4,7 @@
 
 - New App start screen
 - Easing for camera movement (Linear, Ease-In, Ease-Out, Ease-In/Out)
-- New parallax zoom effect for images (experimental)
+- New image movement workflow with manual and parallax zoom modes plus a resolution-matched crop editor
 - Parallax exports show continuous progress across all three export phases
 - Several UI fixed
 - Preview refreshes only when settings actually change the image; section toggles, parallax, fps, resize, and language no longer trigger full rebuilds

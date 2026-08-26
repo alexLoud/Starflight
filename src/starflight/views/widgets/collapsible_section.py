@@ -48,6 +48,8 @@ class CollapsibleSection(QWidget):
         self._icon = icon
         self._expanded = expanded
         self._nested = nested
+        self._available = True
+        self.setProperty("available", True)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0 if nested else 12)
@@ -178,6 +180,20 @@ class CollapsibleSection(QWidget):
 
         self._icon = icon
         self._set_icon(icon)
+
+    def set_available(self, available: bool) -> None:
+        """Dim the header and disable content when the section does not apply."""
+
+        available = bool(available)
+        if self._available == available:
+            return
+        self._available = available
+        self.setProperty("available", available)
+        self._content.setEnabled(available)
+        for widget in (self, self._header, self._title_label, self._arrow_label, self._icon_label):
+            widget.style().unpolish(widget)
+            widget.style().polish(widget)
+            widget.update()
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
         if event.button() == Qt.MouseButton.LeftButton:

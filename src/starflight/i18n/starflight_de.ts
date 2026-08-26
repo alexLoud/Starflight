@@ -86,6 +86,19 @@
     </message>
 </context>
 <context>
+    <name>CropControl</name>
+    <message>
+        <location filename="../views/widgets/crop_control.py" line="162"/>
+        <source>No image loaded</source>
+        <translation>Kein Bild geladen</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/crop_control.py" line="172"/>
+        <source>Crop: {width} x {height} px · {scale}%</source>
+        <translation>Ausschnitt: {width} × {height} px · {scale} %</translation>
+    </message>
+</context>
+<context>
     <name>ErrorService</name>
     <message>
         <location filename="../services/error_service.py" line="216"/>
@@ -114,133 +127,133 @@
 <context>
     <name>ExportDialog</name>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="133"/>
+        <location filename="../views/dialogs/export_dialog.py" line="138"/>
         <source>Export video</source>
         <translation>Video exportieren</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="134"/>
+        <location filename="../views/dialogs/export_dialog.py" line="139"/>
         <source>Output file</source>
         <translation>Ausgabedatei</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="135"/>
+        <location filename="../views/dialogs/export_dialog.py" line="140"/>
         <source>Quality</source>
         <translation>Qualität</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="136"/>
+        <location filename="../views/dialogs/export_dialog.py" line="141"/>
         <source>Browse…</source>
         <translation>Durchsuchen…</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="137"/>
+        <location filename="../views/dialogs/export_dialog.py" line="142"/>
         <source>Cancel</source>
         <translation>Abbrechen</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="138"/>
+        <location filename="../views/dialogs/export_dialog.py" line="143"/>
         <source>Export</source>
         <translation>Exportieren</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="139"/>
+        <location filename="../views/dialogs/export_dialog.py" line="144"/>
         <source>Ready to export.</source>
         <translation>Bereit zum Export.</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="140"/>
+        <location filename="../views/dialogs/export_dialog.py" line="145"/>
         <source>High</source>
         <translation>Hoch</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="141"/>
+        <location filename="../views/dialogs/export_dialog.py" line="146"/>
         <source>Standard</source>
         <translation>Standard</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="155"/>
-        <location filename="../views/dialogs/export_dialog.py" line="164"/>
-        <location filename="../views/dialogs/export_dialog.py" line="173"/>
-        <location filename="../views/dialogs/export_dialog.py" line="181"/>
+        <location filename="../views/dialogs/export_dialog.py" line="160"/>
+        <location filename="../views/dialogs/export_dialog.py" line="169"/>
+        <location filename="../views/dialogs/export_dialog.py" line="178"/>
+        <location filename="../views/dialogs/export_dialog.py" line="186"/>
         <source>Export unavailable</source>
         <translation>Export nicht möglich</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="174"/>
+        <location filename="../views/dialogs/export_dialog.py" line="179"/>
         <source>Please choose an output file.</source>
         <translation>Bitte wähle eine Ausgabedatei.</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="182"/>
+        <location filename="../views/dialogs/export_dialog.py" line="187"/>
         <source>The output folder does not exist:
 {path}</source>
         <translation>Der Ausgabeordner existiert nicht:
 {path}</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="206"/>
-        <location filename="../views/dialogs/export_dialog.py" line="259"/>
+        <location filename="../views/dialogs/export_dialog.py" line="215"/>
+        <location filename="../views/dialogs/export_dialog.py" line="268"/>
         <source>Preparing parallax…</source>
         <translation>Parallax wird vorbereitet…</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="208"/>
-        <location filename="../views/dialogs/export_dialog.py" line="228"/>
-        <location filename="../views/dialogs/export_dialog.py" line="263"/>
+        <location filename="../views/dialogs/export_dialog.py" line="217"/>
+        <location filename="../views/dialogs/export_dialog.py" line="237"/>
+        <location filename="../views/dialogs/export_dialog.py" line="272"/>
         <source>Preparing stars…</source>
         <translation>Sterne werden vorbereitet…</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="156"/>
+        <location filename="../views/dialogs/export_dialog.py" line="161"/>
         <source>An export is already running.</source>
         <translation>Es läuft bereits ein Export.</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="242"/>
+        <location filename="../views/dialogs/export_dialog.py" line="251"/>
         <source>Rendering frames… {current} of {total}</source>
         <translation>Frames werden gerendert… {current} von {total}</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="266"/>
+        <location filename="../views/dialogs/export_dialog.py" line="275"/>
         <source>Rendering frames…</source>
         <translation>Frames werden gerendert…</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="281"/>
+        <location filename="../views/dialogs/export_dialog.py" line="290"/>
         <source>Export completed.</source>
         <translation>Export abgeschlossen.</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="284"/>
+        <location filename="../views/dialogs/export_dialog.py" line="293"/>
         <source>Export successful</source>
         <translation>Export erfolgreich</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="285"/>
+        <location filename="../views/dialogs/export_dialog.py" line="294"/>
         <source>Video saved to:
 {path}</source>
         <translation>Video gespeichert unter:
 {path}</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="294"/>
+        <location filename="../views/dialogs/export_dialog.py" line="303"/>
         <source>Export cancelled.</source>
         <translation>Export abgebrochen.</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="302"/>
+        <location filename="../views/dialogs/export_dialog.py" line="311"/>
         <source>Export failed due to an internal error.</source>
         <translation>Der Export ist aufgrund eines internen Fehlers fehlgeschlagen.</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="299"/>
-        <location filename="../views/dialogs/export_dialog.py" line="312"/>
+        <location filename="../views/dialogs/export_dialog.py" line="308"/>
+        <location filename="../views/dialogs/export_dialog.py" line="321"/>
         <source>Export failed</source>
         <translation>Export fehlgeschlagen</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="330"/>
+        <location filename="../views/dialogs/export_dialog.py" line="339"/>
         <source>Cancelling export…</source>
         <translation>Export wird abgebrochen…</translation>
     </message>
@@ -248,41 +261,41 @@
 <context>
     <name>ExportWorker</name>
     <message>
-        <location filename="../core/exporter.py" line="392"/>
+        <location filename="../core/exporter.py" line="393"/>
         <source>A rendered chunk has an invalid size ({actual_bytes} instead of {expected_bytes}).</source>
         <translation>Ein gerenderter Abschnitt hat eine ungültige Größe ({actual_bytes} statt {expected_bytes}).</translation>
     </message>
     <message>
-        <location filename="../core/exporter.py" line="679"/>
+        <location filename="../core/exporter.py" line="691"/>
         <source>Fade snapshots are missing for chunk starts: {starts}</source>
         <translation>Überblendungsstände fehlen für folgende Abschnittsanfänge: {starts}</translation>
     </message>
     <message>
-        <location filename="../core/exporter.py" line="397"/>
-        <location filename="../core/exporter.py" line="706"/>
+        <location filename="../core/exporter.py" line="398"/>
+        <location filename="../core/exporter.py" line="718"/>
         <source>FFmpeg could not be started.</source>
         <translation>FFmpeg konnte nicht gestartet werden.</translation>
     </message>
     <message>
-        <location filename="../core/exporter.py" line="401"/>
-        <location filename="../core/exporter.py" line="413"/>
-        <location filename="../core/exporter.py" line="827"/>
+        <location filename="../core/exporter.py" line="402"/>
+        <location filename="../core/exporter.py" line="414"/>
+        <location filename="../core/exporter.py" line="837"/>
         <source>FFmpeg error: {error}</source>
         <translation>FFmpeg-Fehler: {error}</translation>
     </message>
     <message>
-        <location filename="../core/exporter.py" line="584"/>
+        <location filename="../core/exporter.py" line="585"/>
         <source>FFmpeg was not found. Install FFmpeg and make sure it is available on PATH.</source>
         <translation>FFmpeg wurde nicht gefunden. Installiere FFmpeg und stelle sicher, dass es über PATH verfügbar ist.</translation>
     </message>
     <message>
-        <location filename="../core/exporter.py" line="402"/>
-        <location filename="../core/exporter.py" line="828"/>
+        <location filename="../core/exporter.py" line="403"/>
+        <location filename="../core/exporter.py" line="838"/>
         <source>Unknown error</source>
         <translation>Unbekannter Fehler</translation>
     </message>
     <message>
-        <location filename="../core/exporter.py" line="576"/>
+        <location filename="../core/exporter.py" line="577"/>
         <source>The output folder does not exist:
 {path}</source>
         <translation>Der Ausgabeordner existiert nicht:
@@ -644,402 +657,406 @@
 <context>
     <name>SettingsPanel</name>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="821"/>
+        <location filename="../views/widgets/settings_panel.py" line="832"/>
         <source>Project &amp; Video</source>
         <translation>Projekt &amp; Video</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="822"/>
-        <source>Background</source>
-        <translation>Hintergrund</translation>
+        <location filename="../views/widgets/settings_panel.py" line="840"/>
+        <source>Crop</source>
+        <translation>Bildausschnitt</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="832"/>
-        <location filename="../views/widgets/settings_panel.py" line="834"/>
-        <source>Parallax</source>
-        <translation>Parallax</translation>
-    </message>
-    <message>
-        <location filename="../views/widgets/settings_panel.py" line="833"/>
-        <source>Beta</source>
-        <translation>Beta</translation>
-    </message>
-    <message>
-        <location filename="../views/widgets/settings_panel.py" line="837"/>
-        <source>Structural depth zoom applied during video export only. The preview does not show parallax.</source>
-        <translation>Struktureller Tiefen-Zoom nur beim Videoexport. In der Vorschau nicht sichtbar.</translation>
-    </message>
-    <message>
-        <location filename="../views/widgets/settings_panel.py" line="841"/>
-        <source>Enable parallax effect</source>
-        <translation>Parallax-Effekt aktivieren</translation>
-    </message>
-    <message>
-        <location filename="../views/widgets/settings_panel.py" line="842"/>
+        <location filename="../views/widgets/settings_panel.py" line="864"/>
         <source>Not visible in the preview</source>
         <translation>In der Vorschau nicht sichtbar</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="845"/>
+        <location filename="../views/widgets/settings_panel.py" line="867"/>
         <source>Stars — Appearance</source>
         <translation>Sterne — Erscheinung</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="846"/>
+        <location filename="../views/widgets/settings_panel.py" line="868"/>
         <source>Stars — Animation</source>
         <translation>Sterne — Animation</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="848"/>
+        <location filename="../views/widgets/settings_panel.py" line="870"/>
         <source>Load image…</source>
         <translation>Bild laden…</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="849"/>
+        <location filename="../views/widgets/settings_panel.py" line="871"/>
         <source>Image</source>
         <translation>Bild</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="852"/>
+        <location filename="../views/widgets/settings_panel.py" line="874"/>
         <source>Photo used as the flying-through background. Load a PNG or TIFF without embedded stars.</source>
         <translation>Dein Bild als Hintergrund für den Flug. Lade ein PNG oder TIFF ohne eingebettete Sterne.</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="856"/>
+        <location filename="../views/widgets/settings_panel.py" line="878"/>
         <source>Target resolution</source>
         <translation>Zielauflösung</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="859"/>
+        <location filename="../views/widgets/settings_panel.py" line="881"/>
         <source>Output size of the exported video. Higher values need more memory and take longer to export.</source>
         <translation>Ausgabegröße des exportierten Videos. Höhere Werte benötigen mehr Speicher und dauern länger beim Export.</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="863"/>
-        <location filename="../views/widgets/settings_panel.py" line="923"/>
-        <location filename="../views/widgets/settings_panel.py" line="1017"/>
+        <location filename="../views/widgets/settings_panel.py" line="885"/>
+        <location filename="../views/widgets/settings_panel.py" line="939"/>
+        <location filename="../views/widgets/settings_panel.py" line="1033"/>
         <source>Custom</source>
         <translation>Benutzerdefiniert</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="865"/>
+        <location filename="../views/widgets/settings_panel.py" line="887"/>
         <source>Manual width and height in pixels when no preset fits your target.</source>
         <translation>Manuelle Breite und Höhe in Pixeln, wenn keine Voreinstellung zu deinem Ziel passt.</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="867"/>
+        <location filename="../views/widgets/settings_panel.py" line="889"/>
         <source>Width</source>
         <translation>Breite</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="868"/>
+        <location filename="../views/widgets/settings_panel.py" line="890"/>
         <source>Height</source>
         <translation>Höhe</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="869"/>
+        <location filename="../views/widgets/settings_panel.py" line="891"/>
         <source>Video length</source>
         <translation>Videolänge</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="871"/>
+        <location filename="../views/widgets/settings_panel.py" line="893"/>
         <source>Total duration of the exported clip in seconds.</source>
         <translation>Gesamtdauer des exportierten Clips in Sekunden.</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="873"/>
+        <location filename="../views/widgets/settings_panel.py" line="895"/>
         <source>Frame rate</source>
         <translation>Bildrate</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="881"/>
-        <location filename="../views/widgets/settings_panel.py" line="882"/>
-        <location filename="../views/widgets/settings_panel.py" line="883"/>
+        <location filename="../views/widgets/settings_panel.py" line="903"/>
+        <location filename="../views/widgets/settings_panel.py" line="904"/>
+        <location filename="../views/widgets/settings_panel.py" line="905"/>
         <source>{fps} fps</source>
         <translation>{fps} Bilder/s</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="984"/>
-        <source>Easing</source>
-        <translation>Easing</translation>
-    </message>
-    <message>
-        <location filename="../views/widgets/settings_panel.py" line="987"/>
-        <source>How zoom, rotation, camera path, and star flight change over the clip. Ease-In ramps up at the start, Ease-Out ramps down at the end, Ease-In/Out does both. Linear keeps a constant speed. Ramp length follows clip length and flight speed.</source>
-        <translation>Wie sich Annäherung, Drehung, Kamerapfad und Sternflug über den Clip verändern. Ease-In beschleunigt am Anfang, Ease-Out bremst am Ende, Ease-In/Out macht beides. Linear hält eine gleichmäßige Geschwindigkeit. Die Rampenlänge folgt der Clip-Länge und der Fluggeschwindigkeit.</translation>
-    </message>
-    <message>
-        <location filename="../views/widgets/settings_panel.py" line="993"/>
-        <source>Linear</source>
-        <translation>Linear</translation>
-    </message>
-    <message>
-        <location filename="../views/widgets/settings_panel.py" line="885"/>
-        <source>Image scale</source>
-        <translation>Bildgröße</translation>
-    </message>
-    <message>
-        <location filename="../views/widgets/settings_panel.py" line="892"/>
-        <source>Zoom in</source>
-        <translation>Annäherung</translation>
-    </message>
-    <message>
-        <location filename="../views/widgets/settings_panel.py" line="896"/>
-        <source>Rotation</source>
-        <translation>Drehung</translation>
-    </message>
-    <message>
-        <location filename="../views/widgets/settings_panel.py" line="938"/>
-        <source>Pixel size of the largest nearby stars. Higher values make bright stars stand out more clearly.</source>
-        <translation>Pixelgröße der größten nahen Sterne. Höhere Werte lassen helle Sterne klarer hervortreten.</translation>
-    </message>
-    <message>
-        <location filename="../views/widgets/settings_panel.py" line="942"/>
-        <source>Size spread</source>
-        <translation>Größenverteilung</translation>
-    </message>
-    <message>
-        <location filename="../views/widgets/settings_panel.py" line="945"/>
-        <source>How many mid-sized and large stars appear. 0% keeps the compact default; higher values fill the field with more clearly larger stars.</source>
-        <translation>Wie viele mittelgroße und große Sterne erscheinen. 0 % behält das kompakte Standardfeld; höhere Werte füllen das Feld mit deutlich größeren Sternen.</translation>
-    </message>
-    <message>
-        <location filename="../views/widgets/settings_panel.py" line="955"/>
-        <source>Spread</source>
-        <translation>Verteilung</translation>
-    </message>
-    <message>
-        <location filename="../views/widgets/settings_panel.py" line="974"/>
-        <source>How colorful stars look. 0% = white stars, higher = more spectral color. Large bright stars lean blue; mid-sized stars often stay yellow or white.</source>
-        <translation>Wie farbig die Sterne wirken. 0 % = weiße Sterne, höher = mehr Spektralfarbe. Große helle Sterne tendieren zu Blau; mittlere bleiben oft gelb oder weiß.</translation>
-    </message>
-    <message>
-        <location filename="../views/widgets/settings_panel.py" line="994"/>
-        <source>Ease-In</source>
-        <translation>Ease-In</translation>
-    </message>
-    <message>
-        <location filename="../views/widgets/settings_panel.py" line="995"/>
-        <source>Ease-Out</source>
-        <translation>Ease-Out</translation>
-    </message>
-    <message>
-        <location filename="../views/widgets/settings_panel.py" line="996"/>
-        <source>Ease-In/Out</source>
-        <translation>Ease-In/Out</translation>
-    </message>
-    <message>
-        <location filename="../views/widgets/settings_panel.py" line="981"/>
-        <source>Star motion over time, independent of video length.</source>
-        <translation>Sternbewegung über die Zeit, unabhängig von der Videolänge.</translation>
-    </message>
-    <message>
-        <location filename="../views/widgets/settings_panel.py" line="1055"/>
-        <source>1920 × 1080 (1080p Landscape)</source>
-        <translation>1920 × 1080 (1080p Querformat)</translation>
-    </message>
-    <message>
-        <location filename="../views/widgets/settings_panel.py" line="1056"/>
-        <source>2560 × 1440 (1440p Landscape)</source>
-        <translation>2560 × 1440 (1440p Querformat)</translation>
-    </message>
-    <message>
-        <location filename="../views/widgets/settings_panel.py" line="1058"/>
-        <source>1080 × 1920 (1080p Portrait)</source>
-        <translation>1080 × 1920 (1080p Hochformat)</translation>
-    </message>
-    <message>
-        <location filename="../views/widgets/settings_panel.py" line="1059"/>
-        <source>1440 × 2560 (1440p Portrait)</source>
-        <translation>1440 × 2560 (1440p Hochformat)</translation>
-    </message>
-    <message>
-        <location filename="../views/widgets/settings_panel.py" line="1061"/>
-        <source>1080 × 1080 (1080p Square)</source>
-        <translation>1080 × 1080 (1080p Quadratisch)</translation>
-    </message>
-    <message>
-        <location filename="../views/widgets/settings_panel.py" line="1062"/>
-        <source>1440 × 1440 (1440p Square)</source>
-        <translation>1440 × 1440 (1440p Quadratisch)</translation>
-    </message>
-    <message>
-        <location filename="../views/widgets/settings_panel.py" line="1063"/>
-        <source>2160 × 2160 (4K Square)</source>
-        <translation>2160 × 2160 (4K Quadratisch)</translation>
-    </message>
-    <message>
-        <location filename="../views/widgets/settings_panel.py" line="1057"/>
-        <source>3840 × 2160 (4K Landscape)</source>
-        <translation>3840 × 2160 (4K Querformat)</translation>
-    </message>
-    <message>
-        <location filename="../views/widgets/settings_panel.py" line="1060"/>
-        <source>2160 × 3840 (4K Portrait)</source>
-        <translation>2160 × 3840 (4K Hochformat)</translation>
-    </message>
-    <message>
-        <location filename="../views/widgets/settings_panel.py" line="904"/>
+        <location filename="../views/widgets/settings_panel.py" line="918"/>
         <source>Frame edges</source>
         <translation>Randbereiche</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="911"/>
+        <location filename="../views/widgets/settings_panel.py" line="921"/>
+        <source>Automatically scales and shifts the image when needed so no black borders appear during focus and rotation.</source>
+        <translation>Skaliert und verschiebt das Bild bei Bedarf automatisch, damit bei Fokus und Drehung keine schwarzen Ränder entstehen.</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/settings_panel.py" line="925"/>
         <source>Avoid empty areas by
 scaling up</source>
         <translation>Leere Bereiche durch
 Vergrößerung vermeiden</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="843"/>
-        <location filename="../views/widgets/settings_panel.py" line="951"/>
+        <location filename="../views/widgets/settings_panel.py" line="1000"/>
+        <source>Easing</source>
+        <translation>Easing</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/settings_panel.py" line="1003"/>
+        <source>How zoom, rotation, camera path, and star flight change over the clip. Ease-In ramps up at the start, Ease-Out ramps down at the end, Ease-In/Out does both. Linear keeps a constant speed. Ramp length follows clip length and flight speed.</source>
+        <translation>Wie sich Annäherung, Drehung, Kamerapfad und Sternflug über den Clip verändern. Ease-In beschleunigt am Anfang, Ease-Out bremst am Ende, Ease-In/Out macht beides. Linear hält eine gleichmäßige Geschwindigkeit. Die Rampenlänge folgt der Clip-Länge und der Fluggeschwindigkeit.</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/settings_panel.py" line="1009"/>
+        <source>Linear</source>
+        <translation>Linear</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/settings_panel.py" line="907"/>
+        <source>Zoom in</source>
+        <translation>Annäherung</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/settings_panel.py" line="851"/>
+        <source>Optional start and target points. Each point is the center of the video frame in the active image area. Available only for manual movement.</source>
+        <translation>Optionale Start- und Zielpunkte. Jeder Punkt bildet die Mitte des Videoframes im aktiven Bildbereich. Nur bei manueller Bewegung verfügbar.</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/settings_panel.py" line="911"/>
+        <source>Rotation</source>
+        <translation>Drehung</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/settings_panel.py" line="954"/>
+        <source>Pixel size of the largest nearby stars. Higher values make bright stars stand out more clearly.</source>
+        <translation>Pixelgröße der größten nahen Sterne. Höhere Werte lassen helle Sterne klarer hervortreten.</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/settings_panel.py" line="958"/>
+        <source>Size spread</source>
+        <translation>Größenverteilung</translation>
+    </message>
+    <message>
         <location filename="../views/widgets/settings_panel.py" line="961"/>
+        <source>How many mid-sized and large stars appear. 0% keeps the compact default; higher values fill the field with more clearly larger stars.</source>
+        <translation>Wie viele mittelgroße und große Sterne erscheinen. 0 % behält das kompakte Standardfeld; höhere Werte füllen das Feld mit deutlich größeren Sternen.</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/settings_panel.py" line="971"/>
+        <source>Spread</source>
+        <translation>Verteilung</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/settings_panel.py" line="990"/>
+        <source>How colorful stars look. 0% = white stars, higher = more spectral color. Large bright stars lean blue; mid-sized stars often stay yellow or white.</source>
+        <translation>Wie farbig die Sterne wirken. 0 % = weiße Sterne, höher = mehr Spektralfarbe. Große helle Sterne tendieren zu Blau; mittlere bleiben oft gelb oder weiß.</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/settings_panel.py" line="1010"/>
+        <source>Ease-In</source>
+        <translation>Ease-In</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/settings_panel.py" line="1011"/>
+        <source>Ease-Out</source>
+        <translation>Ease-Out</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/settings_panel.py" line="1012"/>
+        <source>Ease-In/Out</source>
+        <translation>Ease-In/Out</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/settings_panel.py" line="997"/>
+        <source>Star motion over time, independent of video length.</source>
+        <translation>Sternbewegung über die Zeit, unabhängig von der Videolänge.</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/settings_panel.py" line="843"/>
+        <source>Source-image area used by every movement mode. The selection matches the target resolution aspect ratio and can be smaller than the largest fit. Pixels around the crop stay available during rotation.</source>
+        <translation>Bildbereich, den jede Bewegungsart verwendet. Die Auswahl folgt dem Seitenverhältnis der Zielauflösung und kann kleiner als der größte passende Bereich sein. Pixel rund um den Ausschnitt bleiben bei der Drehung sichtbar.</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/settings_panel.py" line="858"/>
+        <source>Manual movement enables zoom, rotation, and the camera path. Parallax zoom animates structural depth.</source>
+        <translation>Manuelle Bewegung aktiviert Zoom, Drehung und Kamerapfad. Parallax-Zoom animiert die räumliche Tiefe.</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/settings_panel.py" line="1071"/>
+        <source>1920 × 1080 (1080p Landscape)</source>
+        <translation>1920 × 1080 (1080p Querformat)</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/settings_panel.py" line="1072"/>
+        <source>2560 × 1440 (1440p Landscape)</source>
+        <translation>2560 × 1440 (1440p Querformat)</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/settings_panel.py" line="1074"/>
+        <source>1080 × 1920 (1080p Portrait)</source>
+        <translation>1080 × 1920 (1080p Hochformat)</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/settings_panel.py" line="1075"/>
+        <source>1440 × 2560 (1440p Portrait)</source>
+        <translation>1440 × 2560 (1440p Hochformat)</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/settings_panel.py" line="1077"/>
+        <source>1080 × 1080 (1080p Square)</source>
+        <translation>1080 × 1080 (1080p Quadratisch)</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/settings_panel.py" line="1078"/>
+        <source>1440 × 1440 (1440p Square)</source>
+        <translation>1440 × 1440 (1440p Quadratisch)</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/settings_panel.py" line="1079"/>
+        <source>2160 × 2160 (4K Square)</source>
+        <translation>2160 × 2160 (4K Quadratisch)</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/settings_panel.py" line="1073"/>
+        <source>3840 × 2160 (4K Landscape)</source>
+        <translation>3840 × 2160 (4K Querformat)</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/settings_panel.py" line="1076"/>
+        <source>2160 × 3840 (4K Portrait)</source>
+        <translation>2160 × 3840 (4K Hochformat)</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/settings_panel.py" line="865"/>
+        <location filename="../views/widgets/settings_panel.py" line="967"/>
+        <location filename="../views/widgets/settings_panel.py" line="977"/>
         <source>Strength</source>
         <translation>Stärke</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="963"/>
+        <location filename="../views/widgets/settings_panel.py" line="979"/>
         <source>Soft halo around bright stars. Set to 0% to turn glow off completely.</source>
         <translation>Weicher Halo um helle Sterne. Bei 0 % ist Leuchten komplett aus.</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="965"/>
+        <location filename="../views/widgets/settings_panel.py" line="981"/>
         <source>By depth</source>
         <translation>Nach Tiefe</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="967"/>
+        <location filename="../views/widgets/settings_panel.py" line="983"/>
         <source>Extra glow for nearby stars. Enabled when Strength is above 0%.</source>
         <translation>Zusätzliches Leuchten für nahe Sterne. Nur bedienbar, wenn Stärke über 0 % liegt.</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="970"/>
+        <location filename="../views/widgets/settings_panel.py" line="986"/>
         <source>Color</source>
         <translation>Farbe</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="971"/>
+        <location filename="../views/widgets/settings_panel.py" line="987"/>
         <source>Intensity</source>
         <translation>Intensität</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="957"/>
+        <location filename="../views/widgets/settings_panel.py" line="973"/>
         <source>More realistic mix of faint and bright stars.</source>
         <translation>Realistischere Mischung aus schwachen und hellen Sternen.</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="888"/>
-        <source>Base size of the source image in the video. 100% fills the frame; smaller values shrink the image, larger values zoom in further.</source>
-        <translation>Grundgröße des Quellbilds im Video. 100 % füllt den Rahmen; kleinere Werte verkleinern, größere zoomen weiter hinein.</translation>
-    </message>
-    <message>
-        <location filename="../views/widgets/settings_panel.py" line="823"/>
+        <location filename="../views/widgets/settings_panel.py" line="848"/>
         <source>Camera path</source>
         <translation>Kamerapfad</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="826"/>
-        <source>Optional start and target points. Each point is the center of the video frame. Enable a point to show its marker, then drag it on the preview. Only a target starts from the image center; only a start ends at the image center.</source>
-        <translation>Optionale Start- und Zielpunkte. Jeder Punkt ist die Mitte des Video-Ausschnitts. Aktiviere einen Punkt, um das Symbol zu sehen, und ziehe ihn dann in der Vorschau. Nur Ziel: Start in der Bildmitte. Nur Start: Ziel in der Bildmitte.</translation>
+        <location filename="../views/widgets/settings_panel.py" line="833"/>
+        <source>Image motion</source>
+        <translation>Bildbewegung</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="844"/>
+        <location filename="../views/widgets/settings_panel.py" line="836"/>
+        <source>Choose one movement type for the source image. Manual controls and parallax are kept separate so their motion does not hide each other.</source>
+        <translation>Wähle eine Bewegungsart für das Quellbild. Manuelle Steuerung und Parallax bleiben getrennt, damit sich ihre Bewegungen nicht gegenseitig überlagern.</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/settings_panel.py" line="855"/>
+        <source>Movement type</source>
+        <translation>Bewegungsart</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/settings_panel.py" line="862"/>
+        <source>Manual movement</source>
+        <translation>Manuelle Bewegung</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/settings_panel.py" line="863"/>
+        <source>Parallax zoom</source>
+        <translation>Parallax-Zoom</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/settings_panel.py" line="866"/>
         <source>Stars — Count &amp; Size</source>
         <translation>Sterne — Anzahl &amp; Größe</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="894"/>
+        <location filename="../views/widgets/settings_panel.py" line="909"/>
         <source>How strongly the image slowly enlarges over the full video length.</source>
         <translation>Wie stark sich das Bild über die gesamte Videolänge langsam vergrößert.</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="899"/>
+        <location filename="../views/widgets/settings_panel.py" line="914"/>
         <source>Slow rotation of the image over the full video length. Positive values rotate clockwise.</source>
         <translation>Langsame Drehung des Bilds über die gesamte Videolänge. Positive Werte drehen im Uhrzeigersinn.</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="907"/>
-        <source>Automatically scales and shifts the image when needed so no black borders appear during focus and rotation.</source>
-        <translation>Skaliert und verschiebt das Bild bei Bedarf automatisch, damit bei Fokus und Drehung keine schwarzen Ränder entstehen.</translation>
-    </message>
-    <message>
-        <location filename="../views/widgets/settings_panel.py" line="913"/>
+        <location filename="../views/widgets/settings_panel.py" line="929"/>
         <source>Density</source>
         <translation>Dichte</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="920"/>
+        <location filename="../views/widgets/settings_panel.py" line="936"/>
         <source>Low</source>
         <translation>Wenig</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="921"/>
+        <location filename="../views/widgets/settings_panel.py" line="937"/>
         <source>Medium</source>
         <translation>Mittel</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="922"/>
+        <location filename="../views/widgets/settings_panel.py" line="938"/>
         <source>High</source>
         <translation>Viel</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="924"/>
+        <location filename="../views/widgets/settings_panel.py" line="940"/>
         <source>Star count</source>
         <translation>Sternanzahl</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="926"/>
+        <location filename="../views/widgets/settings_panel.py" line="942"/>
         <source>More stars create a denser field. Very high values can slow export.</source>
         <translation>Mehr Sterne ergeben ein dichteres Feld. Sehr hohe Werte können den Export verlangsamen.</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="928"/>
+        <location filename="../views/widgets/settings_panel.py" line="944"/>
         <source>Smallest stars</source>
         <translation>Kleinste Sterne</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="935"/>
+        <location filename="../views/widgets/settings_panel.py" line="951"/>
         <source>Largest stars</source>
         <translation>Größte Sterne</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="950"/>
+        <location filename="../views/widgets/settings_panel.py" line="966"/>
         <source>Brightness</source>
         <translation>Helligkeit</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="960"/>
+        <location filename="../views/widgets/settings_panel.py" line="976"/>
         <source>Glow</source>
         <translation>Leuchten</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="876"/>
+        <location filename="../views/widgets/settings_panel.py" line="898"/>
         <source>Frames per second. 24 feels cinematic, 30 is standard, 60 is very smooth but heavier to export.</source>
         <translation>Bilder pro Sekunde. 24 wirkt filmisch, 30 ist Standard, 60 ist sehr flüssig, aber exportintensiver.</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="916"/>
+        <location filename="../views/widgets/settings_panel.py" line="932"/>
         <source>How many stars are generated. Presets set the count automatically; Custom lets you choose the exact number.</source>
         <translation>Anzahl der generierten Sterne. Voreinstellungen setzen die Anzahl automatisch; bei Benutzerdefiniert wählst du die genaue Zahl.</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="931"/>
+        <location filename="../views/widgets/settings_panel.py" line="947"/>
         <source>Pixel size of the faintest stars. Keep this below largest stars for a natural look.</source>
         <translation>Pixelgröße der schwächsten Sterne. Sollte unter der größten Sterngröße liegen für ein natürliches Ergebnis.</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="953"/>
+        <location filename="../views/widgets/settings_panel.py" line="969"/>
         <source>Overall brightness multiplier for all stars. 100% is the default look.</source>
         <translation>Gesamte Helligkeitsverstärkung aller Sterne. 100 % ist der Standardlook.</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="979"/>
+        <location filename="../views/widgets/settings_panel.py" line="995"/>
         <source>Flight speed</source>
         <translation>Fluggeschwindigkeit</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="809"/>
-        <location filename="../views/widgets/settings_panel.py" line="1175"/>
+        <location filename="../views/widgets/settings_panel.py" line="820"/>
+        <location filename="../views/widgets/settings_panel.py" line="1214"/>
         <source>No image loaded</source>
         <translation>Kein Bild geladen</translation>
     </message>
@@ -1210,6 +1227,14 @@ Vergrößerung vermeiden</translation>
         <location filename="../views/widgets/zoom_toolbar.py" line="173"/>
         <source>Stars off</source>
         <translation>Sterne aus</translation>
+    </message>
+</context>
+<context>
+    <name>_CropCanvas</name>
+    <message>
+        <location filename="../views/widgets/crop_control.py" line="207"/>
+        <source>Load an image to choose a crop.</source>
+        <translation>Lade ein Bild, um einen Bildausschnitt festzulegen.</translation>
     </message>
 </context>
 <context>

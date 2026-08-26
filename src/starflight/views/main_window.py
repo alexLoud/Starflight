@@ -549,6 +549,7 @@ class MainWindow(QMainWindow):
             self._update_window_title()
             self.preview_workspace.timeline.set_frame_index(0, emit_signal=False)
             self.refresh_preview()
+            self.preview_workspace.preview_panel.viewport.reset_to_fit()
             self._update_action_states()
 
     def export_video(self) -> None:

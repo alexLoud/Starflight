@@ -34,6 +34,13 @@ class EasingMode(str, Enum):
     EASE_IN_OUT = "ease_in_out"
 
 
+class ImageMotionMode(str, Enum):
+    """movement mode for the source image."""
+
+    MANUAL = "manual"
+    PARALLAX = "parallax"
+
+
 class ExportQuality(str, Enum):
     """export quality presets."""
 
@@ -109,9 +116,19 @@ class ResolutionSettings:
 
 
 @dataclass
+class CropSettings:
+    """normalized fixed-aspect source-image crop."""
+
+    center_x: float = 0.5
+    center_y: float = 0.5
+    scale: float = 1.0
+
+
+@dataclass
 class BackgroundSettings:
     """background camera movement settings."""
 
+    motion_mode: ImageMotionMode = ImageMotionMode.MANUAL
     scale_percent: float = 100.0
     zoom_percent: float = 0.0
     rotation_degrees: float = 0.0
@@ -129,7 +146,6 @@ class BackgroundSettings:
 class ParallaxSettings:
     """parallax export settings."""
 
-    enabled: bool = False
     strength: int = 4
 
 
@@ -164,9 +180,9 @@ class SidebarUiSettings:
     """persisted expand/collapse state for settings sidebar sections."""
 
     project_section_expanded: bool = True
-    background_section_expanded: bool = True
-    focus_section_expanded: bool = True
-    parallax_section_expanded: bool = True
+    image_motion_section_expanded: bool = True
+    crop_section_expanded: bool = False
+    focus_section_expanded: bool = False
     star_appearance_section_expanded: bool = True
     star_effects_section_expanded: bool = True
     star_animation_section_expanded: bool = True
@@ -179,6 +195,7 @@ class ProjectSettings:
     resolution: ResolutionSettings = field(default_factory=ResolutionSettings)
     duration_seconds: float = 10.0
     fps: int = 30
+    crop: CropSettings = field(default_factory=CropSettings)
     background: BackgroundSettings = field(default_factory=BackgroundSettings)
     parallax: ParallaxSettings = field(default_factory=ParallaxSettings)
     stars: StarSettings = field(default_factory=StarSettings)
@@ -284,6 +301,16 @@ def coerce_easing_mode(value: EasingMode | str | None) -> EasingMode:
     return EasingMode(value)
 
 
+def coerce_image_motion_mode(value: ImageMotionMode | str | None) -> ImageMotionMode:
+    """Normalize an image movement mode from enum or stored string."""
+
+    if value is None or value == "none":
+        return ImageMotionMode.MANUAL
+    if isinstance(value, ImageMotionMode):
+        return value
+    return ImageMotionMode(value)
+
+
 def _load_color_intensity(stars_data: dict[str, Any]) -> float:
     """
     load color intensity with backward compatibility for older projects.
@@ -311,6 +338,19 @@ def _load_easing_mode(background_data: dict[str, Any]) -> EasingMode:
     if "easing" not in background_data:
         return EasingMode.LINEAR
     return EasingMode(background_data["easing"])
+
+
+def _load_image_motion_mode(
+    background_data: dict[str, Any],
+    parallax_data: dict[str, Any],
+) -> ImageMotionMode:
+    """Load the movement mode and migrate projects saved before modes existed."""
+
+    if "motion_mode" in background_data:
+        return coerce_image_motion_mode(background_data["motion_mode"])
+    if bool(parallax_data.get("enabled", False)):
+        return ImageMotionMode.PARALLAX
+    return ImageMotionMode.MANUAL
 
 
 def _load_focus_points(background_data: dict[str, Any]) -> dict[str, float | bool]:
@@ -353,6 +393,19 @@ def _load_focus_points(background_data: dict[str, Any]) -> dict[str, float | boo
     }
 
 
+def _load_crop_settings(data: dict[str, Any]) -> CropSettings:
+    """Load crop values. Missing crop data uses the largest centered fit."""
+
+    crop_data = data.get("crop")
+    if crop_data is None:
+        return CropSettings()
+    return CropSettings(
+        center_x=float(crop_data.get("center_x", 0.5)),
+        center_y=float(crop_data.get("center_y", 0.5)),
+        scale=float(crop_data.get("scale", 1.0)),
+    )
+
+
 def settings_to_dict(settings: ProjectSettings) -> dict[str, Any]:
     """serialize settings to a json-compatible dict."""
 
@@ -360,6 +413,7 @@ def settings_to_dict(settings: ProjectSettings) -> dict[str, Any]:
     data["stars"]["density_preset"] = _enum_to_json_value(settings.stars.density_preset)
     data["export"]["quality"] = _enum_to_json_value(settings.export.quality)
     data["background"]["easing"] = _enum_to_json_value(settings.background.easing)
+    data["background"]["motion_mode"] = _enum_to_json_value(settings.background.motion_mode)
     return json.loads(json.dumps(data, ensure_ascii=False))
 
 
@@ -396,9 +450,14 @@ def settings_from_dict(data: dict[str, Any]) -> ProjectSettings:
 
     ui_settings = SidebarUiSettings(
         project_section_expanded=bool(ui_data.get("project_section_expanded", True)),
-        background_section_expanded=bool(ui_data.get("background_section_expanded", True)),
-        focus_section_expanded=bool(ui_data.get("focus_section_expanded", True)),
-        parallax_section_expanded=bool(ui_data.get("parallax_section_expanded", True)),
+        image_motion_section_expanded=bool(
+            ui_data.get(
+                "image_motion_section_expanded",
+                ui_data.get("background_section_expanded", True),
+            )
+        ),
+        crop_section_expanded=bool(ui_data.get("crop_section_expanded", False)),
+        focus_section_expanded=bool(ui_data.get("focus_section_expanded", False)),
         star_appearance_section_expanded=bool(
             ui_data.get("star_appearance_section_expanded", True)
         ),
@@ -413,7 +472,9 @@ def settings_from_dict(data: dict[str, Any]) -> ProjectSettings:
         ),
         duration_seconds=float(data.get("duration_seconds", 10.0)),
         fps=int(data.get("fps", 30)),
+        crop=_load_crop_settings(data),
         background=BackgroundSettings(
+            motion_mode=_load_image_motion_mode(background_data, parallax_data),
             scale_percent=float(background_data.get("scale_percent", 100.0)),
             zoom_percent=float(background_data.get("zoom_percent", 0.0)),
             rotation_degrees=float(background_data.get("rotation_degrees", 0.0)),
@@ -422,7 +483,6 @@ def settings_from_dict(data: dict[str, Any]) -> ProjectSettings:
             fill_frame=bool(background_data.get("fill_frame", False)),
         ),
         parallax=ParallaxSettings(
-            enabled=bool(parallax_data.get("enabled", False)),
             strength=int(parallax_data.get("strength", 4)),
         ),
         stars=stars,

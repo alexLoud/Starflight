@@ -260,6 +260,10 @@ class ProjectController:
         target_width, target_height = resolution_for_image_orientation(image_width, image_height)
         self.project.settings.resolution.width = target_width
         self.project.settings.resolution.height = target_height
+        crop = self.project.settings.crop
+        crop.center_x = 0.5
+        crop.center_y = 0.5
+        crop.scale = 1.0
         background = self.project.settings.background
         background.start_focus_enabled = False
         background.start_focus_x = 0.5

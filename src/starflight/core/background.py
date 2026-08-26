@@ -1,22 +1,26 @@
 """Render the source image with camera movement.
 
-The renderer builds an inverse affine transform for each frame. It can adjust the requested path
-when needed to keep the output frame covered during movement and rotation.
+The renderer builds an inverse affine transform for each frame. Extra zoom to cover empty
+corners is applied only when fill-frame is enabled.
 """
 
 from __future__ import annotations
 
 import math
+from dataclasses import replace
 
 import cv2
 import numpy as np
 
 from starflight.core.camera_motion import camera_motion_progress
+from starflight.core.crop import framing_base_scale, map_look_at_to_source
 from starflight.core.parallax import parallax_coordinate_maps
 from starflight.types.settings import (
     MAX_BACKGROUND_SCALE_PERCENT,
     MIN_BACKGROUND_SCALE_PERCENT,
     BackgroundSettings,
+    CropSettings,
+    ImageMotionMode,
 )
 
 _SCALE_SAMPLE_COUNT = 64
@@ -35,6 +39,21 @@ def _clamp(value: float, minimum: float, maximum: float) -> float:
     """
 
     return max(minimum, min(maximum, value))
+
+
+def effective_background_settings(settings: BackgroundSettings) -> BackgroundSettings:
+    """Return the camera settings active for the selected image movement mode."""
+
+    if settings.motion_mode == ImageMotionMode.MANUAL:
+        return settings
+    return replace(
+        settings,
+        zoom_percent=0.0,
+        rotation_degrees=0.0,
+        start_focus_enabled=False,
+        end_focus_enabled=False,
+        fill_frame=False,
+    )
 
 
 def resolve_camera_path(
@@ -94,6 +113,8 @@ class BackgroundRenderer:
         width: int,
         height: int,
         parallax_depth: np.ndarray | None = None,
+        crop: CropSettings | None = None,
+        crop_target_size: tuple[int, int] | None = None,
     ) -> None:
         """
         prepare background renderer using the full source image.
@@ -104,6 +125,10 @@ class BackgroundRenderer:
             target frame width
         height
             target frame height
+        crop
+            optional framing window on the full source image
+        crop_target_size
+            optional full-output size whose aspect ratio defines the crop window
         """
 
         self.width = width
@@ -111,6 +136,10 @@ class BackgroundRenderer:
         self.source_image = source_image
         self.source_h, self.source_w = source_image.shape[:2]
         self.parallax_depth = parallax_depth
+        self.crop = crop if crop is not None else CropSettings()
+        crop_width, crop_height = crop_target_size or (width, height)
+        self.crop_target_width = max(1, int(crop_width))
+        self.crop_target_height = max(1, int(crop_height))
         self._x_coords = np.arange(width, dtype=np.float32)[np.newaxis, :]
         self._y_coords = np.arange(height, dtype=np.float32)[:, np.newaxis]
         self._scale_envelope_cache_key: tuple[object, ...] | None = None
@@ -229,7 +258,16 @@ class BackgroundRenderer:
         """
 
         look_x, look_y = interpolate_camera_look_at(settings, progress)
-        return look_x * self.source_w, look_y * self.source_h
+        source_x, source_y = map_look_at_to_source(
+            look_x,
+            look_y,
+            self.crop,
+            self.source_w,
+            self.source_h,
+            self.crop_target_width,
+            self.crop_target_height,
+        )
+        return source_x * self.source_w, source_y * self.source_h
 
     def _scale_factor(self, settings: BackgroundSettings) -> float:
         """
@@ -272,9 +310,19 @@ class BackgroundRenderer:
         """
 
         scale_factor = self._scale_factor(settings)
-        base_cover_scale = max(self.width / self.source_w, self.height / self.source_h)
+        base_scale = framing_base_scale(
+            self.crop,
+            self.source_w,
+            self.source_h,
+            self.width,
+            self.height,
+            self.crop_target_width,
+            self.crop_target_height,
+        )
         zoom = 1.0 + (settings.zoom_percent / 100.0) * progress
-        requested_scale = base_cover_scale * scale_factor * zoom
+        requested_scale = base_scale * scale_factor * zoom
+        if not settings.fill_frame:
+            return requested_scale
 
         rotated_width = abs(cos_a) * self.width + abs(sin_a) * self.height
         rotated_height = abs(sin_a) * self.width + abs(cos_a) * self.height
@@ -282,16 +330,12 @@ class BackgroundRenderer:
             max(rotated_width / self.source_w, rotated_height / self.source_h) * scale_factor
         )
         scale = max(requested_scale, centered_rotation_scale)
-
-        if settings.fill_frame:
-            edge_x = max(1e-6, min(center_x, self.source_w - center_x))
-            edge_y = max(1e-6, min(center_y, self.source_h - center_y))
-            focus_safe_scale = (
-                max(rotated_width / (2.0 * edge_x), rotated_height / (2.0 * edge_y)) * scale_factor
-            )
-            scale = max(scale, focus_safe_scale)
-
-        return scale
+        edge_x = max(1e-6, min(center_x, self.source_w - center_x))
+        edge_y = max(1e-6, min(center_y, self.source_h - center_y))
+        focus_safe_scale = (
+            max(rotated_width / (2.0 * edge_x), rotated_height / (2.0 * edge_y)) * scale_factor
+        )
+        return max(scale, focus_safe_scale)
 
     def _scale_envelope_key(self, settings: BackgroundSettings) -> tuple[object, ...]:
         """
@@ -312,6 +356,11 @@ class BackgroundRenderer:
             settings.end_focus_enabled,
             settings.end_focus_x,
             settings.end_focus_y,
+            self.crop.center_x,
+            self.crop.center_y,
+            self.crop.scale,
+            self.crop_target_width,
+            self.crop_target_height,
         )
 
     def _compute_scale_envelope(self, settings: BackgroundSettings) -> tuple[float, float]:
@@ -418,8 +467,17 @@ class BackgroundRenderer:
         a, b, c = matrix[0]
         d, e, f = matrix[1]
         _, (end_x, end_y) = resolve_camera_path(settings)
-        focus_x = end_x * self.source_w
-        focus_y = end_y * self.source_h
+        source_x, source_y = map_look_at_to_source(
+            end_x,
+            end_y,
+            self.crop,
+            self.source_w,
+            self.source_h,
+            self.crop_target_width,
+            self.crop_target_height,
+        )
+        focus_x = source_x * self.source_w
+        focus_y = source_y * self.source_h
         determinant = a * e - b * d
         if abs(determinant) < 1e-8:
             return self.width / 2.0, self.height / 2.0

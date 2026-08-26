@@ -272,6 +272,19 @@ QWidget#collapsible_section_header:hover {{
     background-color: #2B3A4D;
 }}
 
+QWidget#collapsible_section[available="false"] QWidget#collapsible_section_header {{
+    background-color: #1A222C;
+}}
+
+QWidget#collapsible_section[available="false"] QWidget#collapsible_section_header:hover {{
+    background-color: #1A222C;
+}}
+
+QWidget#collapsible_section[available="false"] QLabel#collapsible_section_title,
+QWidget#collapsible_section[available="false"] QLabel#collapsible_section_arrow {{
+    color: {TEXT_DISABLED};
+}}
+
 QLabel#collapsible_section_arrow {{
     color: {TEXT_MUTED};
     font-size: 20px;
@@ -288,17 +301,20 @@ QLabel#collapsible_section_title {{
     font-size: 12px;
 }}
 
-QLabel#focus_points_summary {{
+QLabel#focus_points_summary,
+QLabel#crop_summary {{
     color: {TEXT_MUTED};
     font-size: 11px;
     padding: 0;
 }}
 
-QWidget#focus_points_control {{
+QWidget#focus_points_control,
+QWidget#crop_control {{
     background: transparent;
 }}
 
-QWidget#focus_points_canvas {{
+QWidget#focus_points_canvas,
+QWidget#crop_canvas {{
     background: transparent;
 }}
 

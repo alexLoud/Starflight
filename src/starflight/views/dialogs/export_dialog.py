@@ -23,7 +23,12 @@ from PySide6.QtWidgets import (
 from starflight.core.exporter import EXPORT_CANCELLED, ExportWorker
 from starflight.i18n import tr_validation
 from starflight.services.error_service import ErrorService
-from starflight.types.settings import ExportQuality, Project, export_crf_for_quality
+from starflight.types.settings import (
+    ExportQuality,
+    ImageMotionMode,
+    Project,
+    export_crf_for_quality,
+)
 from starflight.utils.validation import validate_project_for_export
 from starflight.views.dialogs.video_save_dialog import VideoSaveDialog
 
@@ -198,7 +203,11 @@ class ExportDialog(QDialog):
         self.output_edit.setEnabled(False)
         self.quality_combo.setEnabled(False)
         self.cancel_button.setEnabled(True)
-        self._export_phase = "parallax" if self.project.settings.parallax.enabled else "preparing"
+        self._export_phase = (
+            "parallax"
+            if self.project.settings.background.motion_mode == ImageMotionMode.PARALLAX
+            else "preparing"
+        )
         self._export_finished = False
         self.progress_bar.setRange(0, 100)
         self.progress_bar.setValue(0)

@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import numpy as np
 
-from starflight.core.background import BackgroundRenderer
+from starflight.core.background import BackgroundRenderer, effective_background_settings
 from starflight.core.camera_motion import camera_motion_progress
 from starflight.core.parallax import parallax_strength_for_level
 from starflight.core.star_renderer import StarRenderer
-from starflight.types.settings import ProjectSettings, RenderQuality
+from starflight.types.settings import ImageMotionMode, ProjectSettings, RenderQuality
 from starflight.utils.image import bgr_to_rgb
 
 
@@ -20,6 +20,7 @@ class FrameRenderer:
         source_image_bgr: np.ndarray,
         settings: ProjectSettings,
         parallax_depth: np.ndarray | None = None,
+        crop_target_size: tuple[int, int] | None = None,
     ) -> None:
         """
         initialize renderers for the current settings.
@@ -28,6 +29,8 @@ class FrameRenderer:
             loaded source image in bgr format
         settings
             project settings
+        crop_target_size
+            optional full-output size whose exact aspect ratio defines the preview crop
         """
 
         width = settings.resolution.width
@@ -38,6 +41,8 @@ class FrameRenderer:
             width,
             height,
             parallax_depth=parallax_depth,
+            crop=settings.crop,
+            crop_target_size=crop_target_size or (width, height),
         )
         self.stars = StarRenderer(settings.stars, width, height)
 
@@ -59,20 +64,22 @@ class FrameRenderer:
         """
 
         duration = self.settings.duration_seconds
+        background_settings = effective_background_settings(self.settings.background)
         motion_progress = camera_motion_progress(
             time_seconds,
             duration,
-            self.settings.background,
+            background_settings,
             self.settings.stars.speed,
         )
         background_bgr = self.background.render(
             time_seconds,
             duration,
-            self.settings.background,
+            background_settings,
             self.settings.stars.speed,
             parallax_strength=(
                 parallax_strength_for_level(self.settings.parallax.strength)
-                if quality == RenderQuality.EXPORT and self.settings.parallax.enabled
+                if quality == RenderQuality.EXPORT
+                and self.settings.background.motion_mode == ImageMotionMode.PARALLAX
                 else 0.0
             ),
         )
@@ -98,7 +105,8 @@ class FrameRenderer:
             normalized animation progress 0..1
         """
 
-        return self.background.focus_screen_position(progress, self.settings.background)
+        background_settings = effective_background_settings(self.settings.background)
+        return self.background.focus_screen_position(progress, background_settings)
 
 
 def _composite_additive(background: np.ndarray, stars: np.ndarray) -> np.ndarray:
@@ -119,6 +127,7 @@ def create_renderer(
     source_image_bgr: np.ndarray,
     settings: ProjectSettings,
     parallax_depth: np.ndarray | None = None,
+    crop_target_size: tuple[int, int] | None = None,
 ) -> FrameRenderer:
     """
     create a frame renderer for source image and settings.
@@ -127,6 +136,13 @@ def create_renderer(
         source image in bgr format
     settings
         project settings
+    crop_target_size
+        optional full-output size whose exact aspect ratio defines the preview crop
     """
 
-    return FrameRenderer(source_image_bgr, settings, parallax_depth=parallax_depth)
+    return FrameRenderer(
+        source_image_bgr,
+        settings,
+        parallax_depth=parallax_depth,
+        crop_target_size=crop_target_size,
+    )

@@ -8,6 +8,7 @@ from starflight.core.camera_motion import camera_motion_progress
 from starflight.types.settings import (
     BackgroundSettings,
     EasingMode,
+    ImageMotionMode,
     resolution_for_image_orientation,
     settings_from_dict,
     settings_to_dict,
@@ -100,6 +101,7 @@ class SettingsCompatibilityTests(unittest.TestCase):
     def test_old_projects_keep_linear_easing(self) -> None:
         settings = settings_from_dict({"background": {"zoom_percent": 10.0}})
         self.assertEqual(settings.background.easing, EasingMode.LINEAR)
+        self.assertEqual(settings.background.motion_mode, ImageMotionMode.MANUAL)
 
     def test_legacy_hold_and_preset_fields_are_ignored(self) -> None:
         settings = settings_from_dict(
