@@ -88,7 +88,13 @@ class TimelineWidget(QWidget):
 
         self.time_label = self._transport.caption_label
 
-    def configure(self, duration_seconds: float, fps: int) -> None:
+    def configure(
+        self,
+        duration_seconds: float,
+        fps: int,
+        *,
+        preserve_time: bool = False,
+    ) -> None:
         """
         configure timeline duration and frame rate.
 
@@ -96,12 +102,20 @@ class TimelineWidget(QWidget):
             clip duration
         fps
             frames per second
+        preserve_time
+            keep the current playhead time when remapping frames
         """
 
+        previous_time = self.current_time_seconds() if preserve_time else None
         self._duration_seconds = max(0.1, duration_seconds)
         self._fps = max(1, fps)
         self._total_frames = max(1, round(self._duration_seconds * self._fps) - 1)
-        self._current_frame = min(self._current_frame, self._total_frames)
+        if previous_time is not None:
+            self._current_frame = int(
+                max(0, min(self._total_frames, round(previous_time * self._fps))),
+            )
+        else:
+            self._current_frame = min(self._current_frame, self._total_frames)
         self._update_timer_interval()
         self._update_time_label()
         self.update()
@@ -207,8 +221,7 @@ class TimelineWidget(QWidget):
         track_left = _SIDE_PANEL_WIDTH
         track_right = self.width() - self._zoom_panel_width()
         track_width = max(1.0, track_right - track_left)
-        track_rect = QRectF(track_left, 0, track_width, self.height())
-        painter.fillRect(track_rect, QColor(PANEL_BG))
+        painter.fillRect(self.rect(), QColor(PANEL_BG))
 
         ruler_rect = QRectF(track_left + _PADDING, 6, track_width - _PADDING * 2, _RULER_HEIGHT)
         track_area = QRectF(

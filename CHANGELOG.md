@@ -2,14 +2,20 @@
 
 ## [Unreleased]
 
-- New start screen
+- New App start screen
 - Easing for camera movement (Linear, Ease-In, Ease-Out, Ease-In/Out)
+- New parallax zoom effect for images (experimental)
+- Parallax exports show continuous progress across all three export phases
+- Several UI fixed
+- Preview refreshes only when settings actually change the image; section toggles, parallax, fps, resize, and language no longer trigger full rebuilds
 
 ## [1.0.3] - 2026-08-24
 
 - Reset buttons for sidebar settings to restore defaults
 - Background zoom and rotation now scale at a constant rate from the first to the last frame
 - Fixed Windows video export failures (FFmpeg pipe crash, hidden console window, and output path when the default Desktop folder is missing)
+
+
 
 ## [1.0.2] - 2026-08-23
 
@@ -32,4 +38,3 @@
 ## [1.0.0] - 2026-08-22
 
 - Initial release
-

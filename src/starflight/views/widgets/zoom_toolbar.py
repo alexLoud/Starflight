@@ -42,6 +42,7 @@ class ZoomToolbar(QWidget):
         super().__init__(parent)
         self._viewport = viewport
         self.setObjectName("timeline_zoom")
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setAutoFillBackground(True)
         self.setFixedWidth(ZOOM_PANEL_WIDTH)
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Expanding)

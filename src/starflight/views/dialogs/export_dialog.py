@@ -70,6 +70,7 @@ class ExportDialog(QDialog):
         self._error_service = error_service
         self._worker: ExportWorker | None = None
         self._export_phase = "idle"
+        self._export_finished = False
 
         self.setModal(True)
         self.resize(560, 260)
@@ -197,10 +198,14 @@ class ExportDialog(QDialog):
         self.output_edit.setEnabled(False)
         self.quality_combo.setEnabled(False)
         self.cancel_button.setEnabled(True)
-        self._export_phase = "preparing"
+        self._export_phase = "parallax" if self.project.settings.parallax.enabled else "preparing"
+        self._export_finished = False
         self.progress_bar.setRange(0, 100)
         self.progress_bar.setValue(0)
-        self.status_label.setText(self.tr("Preparing stars…"))
+        if self._export_phase == "parallax":
+            self.status_label.setText(self.tr("Preparing parallax…"))
+        else:
+            self.status_label.setText(self.tr("Preparing stars…"))
 
         self._worker = ExportWorker(
             self.project,
@@ -249,6 +254,10 @@ class ExportDialog(QDialog):
         """
 
         self._export_phase = phase
+        if phase == "parallax":
+            self.progress_bar.setRange(0, 100)
+            self.status_label.setText(self.tr("Preparing parallax…"))
+            return
         if phase == "preparing":
             self.progress_bar.setRange(0, 100)
             self.status_label.setText(self.tr("Preparing stars…"))
@@ -256,7 +265,17 @@ class ExportDialog(QDialog):
         if phase == "rendering":
             self.status_label.setText(self.tr("Rendering frames…"))
 
+    def _release_worker(self) -> None:
+        """wait for the export worker thread to finish and drop the reference."""
+
+        worker = self._worker
+        self._worker = None
+        if worker is not None:
+            worker.wait()
+
     def _on_success(self, output_path: str) -> None:
+        self._export_finished = True
+        self._release_worker()
         self.progress_bar.setRange(0, 100)
         self.progress_bar.setValue(100)
         self.status_label.setText(self.tr("Export completed."))
@@ -268,6 +287,7 @@ class ExportDialog(QDialog):
         self.accept()
 
     def _on_error(self, failure: object) -> None:
+        self._release_worker()
         self._restore_export_controls()
         self.progress_bar.setRange(0, 100)
         if failure == EXPORT_CANCELLED:
@@ -313,7 +333,7 @@ class ExportDialog(QDialog):
         self.reject()
 
     def closeEvent(self, event) -> None:
-        if self._worker is not None and self._worker.isRunning():
+        if not self._export_finished and self._worker is not None and self._worker.isRunning():
             self._worker.cancel()
         super().closeEvent(event)
 

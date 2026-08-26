@@ -6,6 +6,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QIcon, QMouseEvent
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget
 
+from starflight.views.widgets.section_badge import SectionBadge
 from starflight.views.widgets.setting_label import SettingHintIcon
 
 _ICON_SIZE = 16
@@ -76,6 +77,9 @@ class CollapsibleSection(QWidget):
             "collapsible_section_title_nested" if nested else "collapsible_section_title",
         )
 
+        self._badge = SectionBadge("", self._header)
+        self._badge.setVisible(False)
+
         self._hint_icon = SettingHintIcon(self._header)
         self._hint_icon.setVisible(False)
 
@@ -87,7 +91,10 @@ class CollapsibleSection(QWidget):
         if not nested:
             header_layout.addWidget(self._icon_label)
             header_layout.addSpacing(10)
-        header_layout.addWidget(self._title_label, stretch=1)
+        header_layout.addWidget(self._title_label)
+        header_layout.addSpacing(8)
+        header_layout.addWidget(self._badge, 0, Qt.AlignmentFlag.AlignVCenter)
+        header_layout.addStretch(1)
         header_layout.addWidget(self._hint_icon)
         header_layout.addSpacing(6)
         header_layout.addWidget(self._arrow_label)
@@ -145,6 +152,21 @@ class CollapsibleSection(QWidget):
         """
 
         self._hint_icon.set_hint(hint)
+
+    def set_badge(self, badge: str | None) -> None:
+        """
+        update optional badge text shown beside the section title.
+
+        badge
+            short badge label such as beta, or none to hide
+        """
+
+        if badge:
+            self._badge.set_text(badge)
+            self._badge.setVisible(True)
+            return
+        self._badge.set_text("")
+        self._badge.setVisible(False)
 
     def set_icon(self, icon: QIcon) -> None:
         """

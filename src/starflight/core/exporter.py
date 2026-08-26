@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from collections.abc import Callable
 from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
 from contextlib import suppress
 from io import BufferedIOBase
@@ -23,7 +24,12 @@ import numpy as np
 from PySide6.QtCore import QThread, Signal
 
 from starflight.app.settings import DEFAULT_RENDER_WORKER_COUNT, max_available_render_workers
+from starflight.core.background import resolve_camera_path
 from starflight.core.camera_motion import camera_motion_progress
+from starflight.core.parallax import (
+    create_parallax_depth,
+    smooth_parallax_depth_for_strength,
+)
 from starflight.core.project import resolve_source_image_path
 from starflight.core.renderer import FrameRenderer, create_renderer
 from starflight.types.settings import Project, ProjectSettings, RenderQuality
@@ -167,6 +173,34 @@ class _WallClockProgress:
         self._emit_progress(self.scale, self.scale)
 
 
+class _LinearProgressPhase:
+    """Map normalized work in one export phase to a fixed global range."""
+
+    def __init__(
+        self,
+        scale: int,
+        start: int,
+        end: int,
+        emit_progress: Callable[[int, int], None],
+    ) -> None:
+        self.scale = scale
+        self.start = start
+        self.end = end
+        self._emit_progress = emit_progress
+        self._value = start - 1
+
+    def update(self, fraction: float) -> None:
+        """Publish monotonic progress for normalized phase completion 0..1."""
+
+        amount = max(0.0, min(float(fraction), 1.0))
+        value = round(self.start + (self.end - self.start) * amount)
+        value = max(self._value, min(self.end, value))
+        if value == self._value:
+            return
+        self._value = value
+        self._emit_progress(value, self.scale)
+
+
 def _advance_star_fade_state(renderer: FrameRenderer, time_seconds: float) -> None:
     """
     advance export star fade continuity without rendering pixels.
@@ -202,6 +236,7 @@ def _render_export_chunk(
     chunk_path: str,
     fade_continuous: set[int],
     fade_starts: dict[int, float],
+    parallax_depth: np.ndarray | None,
 ) -> tuple[int, int, str]:
     """
     render a contiguous export range into a raw rgb file on disk.
@@ -229,7 +264,7 @@ def _render_export_chunk(
     """
 
     source_image = load_image_bgr(image_path)
-    renderer = create_renderer(source_image, settings)
+    renderer = create_renderer(source_image, settings, parallax_depth=parallax_depth)
     renderer.stars.field.import_fade_state(fade_continuous, fade_starts)
 
     with open(chunk_path, "wb") as handle:
@@ -253,6 +288,10 @@ class ExportWorker(QThread):
     finished_error = Signal(object)
 
     _PROGRESS_SCALE = 10000
+    _PARALLAX_PROGRESS_START = 100
+    _PARALLAX_PROGRESS_END = 4500
+    _STAR_PREP_PROGRESS_END = 5000
+    _RENDER_PROGRESS_END = _PROGRESS_SCALE - 1
 
     def __init__(
         self,
@@ -374,6 +413,36 @@ class ExportWorker(QThread):
                 self.tr("FFmpeg error: {error}").format(error=stderr or exc)
             ) from exc
 
+    def _create_parallax_depth_with_progress(
+        self,
+        source_image: np.ndarray,
+        focus: tuple[float, float],
+        progress: _LinearProgressPhase,
+    ) -> np.ndarray:
+        """
+        build parallax depth while publishing monotonic export progress.
+
+        source_image
+            loaded bgr source image
+        focus
+            normalized parallax focus point
+        progress
+            linear progress range for parallax preparation
+        """
+
+        def on_parallax_progress(fraction: float) -> None:
+            if self._cancel_requested:
+                raise RuntimeError(EXPORT_CANCELLED)
+            progress.update(fraction)
+
+        depth = create_parallax_depth(
+            source_image,
+            focus,
+            on_progress=on_parallax_progress,
+        )
+        on_parallax_progress(1.0)
+        return depth
+
     def _build_fade_snapshots(
         self,
         image_path: Path,
@@ -382,7 +451,9 @@ class ExportWorker(QThread):
         fps: float,
         chunk_starts: set[int],
         worker_count: int,
-        progress: _WallClockProgress,
+        progress: _WallClockProgress | None,
+        parallax_depth: np.ndarray | None,
+        phase_progress: _LinearProgressPhase | None = None,
     ) -> dict[int, tuple[set[int], dict[int, float]]]:
         """
         build fade-state snapshots while updating wall-clock export progress.
@@ -400,12 +471,18 @@ class ExportWorker(QThread):
         worker_count
             parallel render worker count used for render-time estimate
         progress
-            shared monotonic wall-clock progress tracker
+            wall-clock progress tracker for exports without parallax
+        phase_progress
+            fixed progress range for star preparation with parallax
         """
 
         self.status_changed.emit("preparing")
+        if phase_progress is not None:
+            phase_progress.update(0.0)
         source_image = load_image_bgr(str(image_path))
-        renderer = create_renderer(source_image, settings)
+        renderer = create_renderer(source_image, settings, parallax_depth=parallax_depth)
+        if phase_progress is not None:
+            phase_progress.update(0.15)
         snapshots: dict[int, tuple[set[int], dict[int, float]]] = {
             0: renderer.stars.field.export_fade_state(),
         }
@@ -417,31 +494,32 @@ class ExportWorker(QThread):
             if next_frame in chunk_starts:
                 snapshots[next_frame] = renderer.stars.field.export_fade_state()
 
-        load_t0 = time.perf_counter()
-        probe_image = load_image_bgr(str(image_path))
-        load_s = max(time.perf_counter() - load_t0, 1e-6)
+        if progress is not None:
+            load_t0 = time.perf_counter()
+            probe_image = load_image_bgr(str(image_path))
+            load_s = max(time.perf_counter() - load_t0, 1e-6)
 
-        setup_t0 = time.perf_counter()
-        probe = create_renderer(probe_image, settings)
-        setup_s = max(time.perf_counter() - setup_t0, 1e-6)
+            setup_t0 = time.perf_counter()
+            probe = create_renderer(probe_image, settings, parallax_depth=parallax_depth)
+            setup_s = max(time.perf_counter() - setup_t0, 1e-6)
 
-        frame_samples: list[float] = []
-        for sample_index in range(3):
+            frame_samples: list[float] = []
+            for sample_index in range(3):
+                if self._cancel_requested:
+                    raise RuntimeError(EXPORT_CANCELLED)
+                frame_t0 = time.perf_counter()
+                probe.render_frame(sample_index / max(fps, 1.0), RenderQuality.EXPORT)
+                frame_samples.append(max(time.perf_counter() - frame_t0, 1e-6))
+            del probe
             if self._cancel_requested:
                 raise RuntimeError(EXPORT_CANCELLED)
-            frame_t0 = time.perf_counter()
-            probe.render_frame(sample_index / max(fps, 1.0), RenderQuality.EXPORT)
-            frame_samples.append(max(time.perf_counter() - frame_t0, 1e-6))
-        del probe
-        if self._cancel_requested:
-            raise RuntimeError(EXPORT_CANCELLED)
 
-        avg_frame_s = sum(frame_samples) / len(frame_samples)
-        # probe is single-process; real export contends across workers + ffmpeg
-        effective_parallelism = max(1.0, float(worker_count) * 0.25)
-        progress.set_render_estimate(
-            (load_s + setup_s) + (total_frames * avg_frame_s / effective_parallelism)
-        )
+            avg_frame_s = sum(frame_samples) / len(frame_samples)
+            # probe is single-process; real export contends across workers + ffmpeg
+            effective_parallelism = max(1.0, float(worker_count) * 0.25)
+            progress.set_render_estimate(
+                (load_s + setup_s) + (total_frames * avg_frame_s / effective_parallelism)
+            )
 
         fade_t0 = time.perf_counter()
 
@@ -449,6 +527,11 @@ class ExportWorker(QThread):
             """publish preparation progress from remaining fade + render estimates."""
 
             done_frames = max(0, min(done_frames, total_frames))
+            if phase_progress is not None:
+                phase_progress.update(0.15 + 0.85 * done_frames / total_frames)
+                return
+            if progress is None:
+                return
             fade_elapsed = max(time.perf_counter() - fade_t0, 1e-6)
             if done_frames <= 0:
                 remaining_prep = fade_elapsed
@@ -538,10 +621,47 @@ class ExportWorker(QThread):
             ranges.append((start, end))
         chunk_starts = {start for start, _end in ranges}
 
-        progress = _WallClockProgress(
-            self._PROGRESS_SCALE,
-            self.progress_changed.emit,
-        )
+        progress: _WallClockProgress | None = None
+        star_phase_progress: _LinearProgressPhase | None = None
+        render_phase_progress: _LinearProgressPhase | None = None
+        parallax_depth = None
+        if settings.parallax.enabled:
+            parallax_progress = _LinearProgressPhase(
+                self._PROGRESS_SCALE,
+                self._PARALLAX_PROGRESS_START,
+                self._PARALLAX_PROGRESS_END,
+                self.progress_changed.emit,
+            )
+            star_phase_progress = _LinearProgressPhase(
+                self._PROGRESS_SCALE,
+                self._PARALLAX_PROGRESS_END,
+                self._STAR_PREP_PROGRESS_END,
+                self.progress_changed.emit,
+            )
+            render_phase_progress = _LinearProgressPhase(
+                self._PROGRESS_SCALE,
+                self._STAR_PREP_PROGRESS_END,
+                self._RENDER_PROGRESS_END,
+                self.progress_changed.emit,
+            )
+            self.status_changed.emit("parallax")
+            source_image = load_image_bgr(str(image_path))
+            _start_focus, end_focus = resolve_camera_path(settings.background)
+            parallax_depth = self._create_parallax_depth_with_progress(
+                source_image,
+                end_focus,
+                parallax_progress,
+            )
+            parallax_depth = smooth_parallax_depth_for_strength(
+                parallax_depth,
+                settings.parallax.strength,
+            )
+            del source_image
+        else:
+            progress = _WallClockProgress(
+                self._PROGRESS_SCALE,
+                self.progress_changed.emit,
+            )
         fade_snapshots = self._build_fade_snapshots(
             image_path,
             settings,
@@ -550,6 +670,8 @@ class ExportWorker(QThread):
             chunk_starts,
             chunk_count,
             progress,
+            parallax_depth,
+            star_phase_progress,
         )
         missing = chunk_starts - set(fade_snapshots.keys())
         if missing:
@@ -561,8 +683,11 @@ class ExportWorker(QThread):
 
         self.status_changed.emit("rendering")
         self.frame_progress.emit(0, total_frames)
-        # keep the bar moving with render-only remaining; never reset/jump back
-        progress.update(progress.render_estimate_s)
+        if render_phase_progress is not None:
+            render_phase_progress.update(0.0)
+        elif progress is not None:
+            # keep the bar moving with render-only remaining; never reset/jump back
+            progress.update(progress.render_estimate_s)
 
         temp_dir = tempfile.mkdtemp(prefix="starflight_export_")
         try:
@@ -588,16 +713,21 @@ class ExportWorker(QThread):
 
                     nonlocal last_frame_emitted
                     rendered = max(0, min(int(rendered), total_frames))
-                    render_elapsed = max(time.perf_counter() - render_t0, 1e-6)
-                    if rendered <= 0:
-                        remaining_render = progress.render_estimate_s
-                    elif rendered >= total_frames:
-                        remaining_render = 0.0
-                    else:
-                        remaining_render = (render_elapsed / rendered) * (total_frames - rendered)
-                        # refine estimate for later updates while workers warm up
-                        progress.set_render_estimate((render_elapsed / rendered) * total_frames)
-                    progress.update(remaining_render)
+                    if render_phase_progress is not None:
+                        render_phase_progress.update(rendered / total_frames)
+                    elif progress is not None:
+                        render_elapsed = max(time.perf_counter() - render_t0, 1e-6)
+                        if rendered <= 0:
+                            remaining_render = progress.render_estimate_s
+                        elif rendered >= total_frames:
+                            remaining_render = 0.0
+                        else:
+                            remaining_render = (render_elapsed / rendered) * (
+                                total_frames - rendered
+                            )
+                            # refine estimate for later updates while workers warm up
+                            progress.set_render_estimate((render_elapsed / rendered) * total_frames)
+                        progress.update(remaining_render)
                     if rendered != last_frame_emitted:
                         last_frame_emitted = rendered
                         self.frame_progress.emit(rendered, total_frames)
@@ -626,6 +756,7 @@ class ExportWorker(QThread):
                                     str(Path(temp_dir) / f"chunk_{start:06d}.rgb"),
                                     fade_snapshots[start][0],
                                     fade_snapshots[start][1],
+                                    parallax_depth,
                                 ): start
                                 for start, end in ranges
                             }
@@ -675,7 +806,7 @@ class ExportWorker(QThread):
                     finally:
                         self._pool = None
 
-                    emit_render_progress(total_frames)
+                emit_render_progress(total_frames)
 
                 process.stdin.close()
                 return_code = process.wait()
@@ -696,7 +827,10 @@ class ExportWorker(QThread):
                 )
             )
 
-        progress.complete()
+        if progress is not None:
+            progress.complete()
+        else:
+            self.progress_changed.emit(self._PROGRESS_SCALE, self._PROGRESS_SCALE)
         self.finished_success.emit(str(self.output_path))
 
     @staticmethod

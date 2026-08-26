@@ -12,6 +12,7 @@ import cv2
 import numpy as np
 
 from starflight.core.camera_motion import camera_motion_progress
+from starflight.core.parallax import parallax_coordinate_maps
 from starflight.types.settings import (
     MAX_BACKGROUND_SCALE_PERCENT,
     MIN_BACKGROUND_SCALE_PERCENT,
@@ -87,7 +88,13 @@ def interpolate_camera_look_at(
 class BackgroundRenderer:
     """cached background renderer for a source image."""
 
-    def __init__(self, source_image: np.ndarray, width: int, height: int) -> None:
+    def __init__(
+        self,
+        source_image: np.ndarray,
+        width: int,
+        height: int,
+        parallax_depth: np.ndarray | None = None,
+    ) -> None:
         """
         prepare background renderer using the full source image.
 
@@ -103,6 +110,7 @@ class BackgroundRenderer:
         self.height = height
         self.source_image = source_image
         self.source_h, self.source_w = source_image.shape[:2]
+        self.parallax_depth = parallax_depth
         self._x_coords = np.arange(width, dtype=np.float32)[np.newaxis, :]
         self._y_coords = np.arange(height, dtype=np.float32)[:, np.newaxis]
         self._scale_envelope_cache_key: tuple[object, ...] | None = None
@@ -115,6 +123,7 @@ class BackgroundRenderer:
         duration_seconds: float,
         settings: BackgroundSettings,
         flight_speed: float = 1.0,
+        parallax_strength: float = 0.0,
     ) -> np.ndarray:
         """
         render background frame at a given time.
@@ -136,7 +145,22 @@ class BackgroundRenderer:
             flight_speed,
         )
         matrix = self._build_transform_matrix(progress, settings)
+        if self.parallax_depth is not None and parallax_strength > 0.0 and progress > 0.0:
+            return self._remap_parallax(matrix, progress, parallax_strength)
         return self._remap(matrix)
+
+    def _coordinate_maps(self, matrix: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """Build source-space coordinate maps from one inverse affine matrix."""
+
+        map_x = np.asarray(
+            matrix[0, 0] * self._x_coords + matrix[0, 1] * self._y_coords + matrix[0, 2],
+            dtype=np.float32,
+        )
+        map_y = np.asarray(
+            matrix[1, 0] * self._x_coords + matrix[1, 1] * self._y_coords + matrix[1, 2],
+            dtype=np.float32,
+        )
+        return map_x, map_y
 
     def _remap(self, matrix: np.ndarray) -> np.ndarray:
         """
@@ -146,19 +170,41 @@ class BackgroundRenderer:
             2x3 affine matrix mapping output pixels to source coordinates
         """
 
-        map_x = np.asarray(
-            matrix[0, 0] * self._x_coords
-            + matrix[0, 1] * self._y_coords
-            + matrix[0, 2],
-            dtype=np.float32,
-        )
-        map_y = np.asarray(
-            matrix[1, 0] * self._x_coords
-            + matrix[1, 1] * self._y_coords
-            + matrix[1, 2],
-            dtype=np.float32,
+        map_x, map_y = self._coordinate_maps(matrix)
+
+        return cv2.remap(
+            self.source_image,
+            map_x,
+            map_y,
+            interpolation=cv2.INTER_LANCZOS4,
+            borderMode=cv2.BORDER_CONSTANT,
+            borderValue=(0, 0, 0),
         )
 
+    def _remap_parallax(
+        self,
+        matrix: np.ndarray,
+        progress: float,
+        strength: float,
+    ) -> np.ndarray:
+        """Apply continuous parallax after the complete background camera transform."""
+
+        if self.parallax_depth is None:
+            return self._remap(matrix)
+        base_map_x, base_map_y = self._coordinate_maps(matrix)
+        output_center_x = self.width / 2.0
+        output_center_y = self.height / 2.0
+        center_x = matrix[0, 0] * output_center_x + matrix[0, 1] * output_center_y + matrix[0, 2]
+        center_y = matrix[1, 0] * output_center_x + matrix[1, 1] * output_center_y + matrix[1, 2]
+        map_x, map_y = parallax_coordinate_maps(
+            self.parallax_depth,
+            base_map_x,
+            base_map_y,
+            (self.source_w, self.source_h),
+            (float(center_x), float(center_y)),
+            progress,
+            strength,
+        )
         return cv2.remap(
             self.source_image,
             map_x,
@@ -276,7 +322,13 @@ class BackgroundRenderer:
             background settings
         """
 
-        start = self._required_scale(0.0, settings, 1.0, 0.0, *self._desired_source_center(0.0, settings))
+        start = self._required_scale(
+            0.0,
+            settings,
+            1.0,
+            0.0,
+            *self._desired_source_center(0.0, settings),
+        )
         max_slope = 0.0
         for index in range(1, _SCALE_SAMPLE_COUNT + 1):
             progress = index / _SCALE_SAMPLE_COUNT

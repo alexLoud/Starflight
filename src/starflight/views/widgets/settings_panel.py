@@ -83,6 +83,9 @@ class SettingsPanel(QWidget):
     """project settings sidebar."""
 
     settings_changed = Signal()
+    ui_state_changed = Signal()
+    meta_settings_changed = Signal()
+    timeline_settings_changed = Signal()
     load_image_requested = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -122,6 +125,11 @@ class SettingsPanel(QWidget):
             icon=load_icon_asset("section-camera.svg"),
             expanded=True,
         )
+        self.parallax_section = CollapsibleSection(
+            "",
+            icon=load_icon_asset("section-effects.svg"),
+            expanded=True,
+        )
         self.star_appearance_section = CollapsibleSection(
             "",
             icon=load_icon_asset("section-stars.svg"),
@@ -141,6 +149,7 @@ class SettingsPanel(QWidget):
         self._build_project_section(self.project_section.content_layout)
         self._build_background_section(self.background_section.content_layout)
         self._build_focus_section(self.focus_section.content_layout)
+        self._build_parallax_section(self.parallax_section.content_layout)
         self._build_star_appearance_section(self.star_appearance_section.content_layout)
         self._build_star_effects_section(self.star_effects_section.content_layout)
         self._build_star_animation_section(self.star_animation_section.content_layout)
@@ -149,6 +158,7 @@ class SettingsPanel(QWidget):
             self.project_section,
             self.background_section,
             self.focus_section,
+            self.parallax_section,
             self.star_appearance_section,
             self.star_effects_section,
             self.star_animation_section,
@@ -234,7 +244,13 @@ class SettingsPanel(QWidget):
 
         form.addRow(label, self._wrap_setting_field(field, reset_handler))
 
-    def _reset_slider_value(self, row: SliderSpinBoxRow, value: float) -> None:
+    def _reset_slider_value(
+        self,
+        row: SliderSpinBoxRow,
+        value: float,
+        *,
+        emit_change: Callable[[], None] | None = None,
+    ) -> None:
         """
         restore one slider row and persist the change.
 
@@ -242,10 +258,15 @@ class SettingsPanel(QWidget):
             slider row to update
         value
             default value to apply
+        emit_change
+            optional signal emitter; defaults to preview settings_changed
         """
 
         row.set_value(value)
-        self._emit_settings_changed()
+        if emit_change is None:
+            self._emit_settings_changed()
+        else:
+            emit_change()
 
     def _reset_density(self) -> None:
         """restore star density preset and count to defaults."""
@@ -291,6 +312,7 @@ class SettingsPanel(QWidget):
         image_layout.setSpacing(6)
 
         self.load_image_button = QPushButton()
+        self.load_image_button.setObjectName("primary_button")
         self.load_image_button.clicked.connect(self.load_image_requested.emit)
         image_layout.addWidget(self.load_image_button)
 
@@ -345,7 +367,7 @@ class SettingsPanel(QWidget):
         self.fps_combo = NoWheelComboBox()
         for fps in (24, 30, 60):
             self.fps_combo.addItem(f"{fps}", fps)
-        self.fps_combo.currentIndexChanged.connect(self._emit_settings_changed)
+        self.fps_combo.currentIndexChanged.connect(self._emit_timeline_settings_changed)
         self._style_field(self.fps_combo)
         self._label_fps = self._create_setting_label()
         form.addRow(self._label_fps, self.fps_combo)
@@ -437,18 +459,75 @@ class SettingsPanel(QWidget):
         self._style_field(self.focus_points)
         layout.addWidget(self.focus_points)
 
+    def _build_parallax_section(self, layout: QVBoxLayout) -> None:
+        """Build the export-only parallax section."""
+
+        form = QFormLayout()
+        self._configure_form(form)
+
+        self.parallax_checkbox = QCheckBox()
+        self.parallax_checkbox.toggled.connect(self._on_parallax_toggled)
+        self.parallax_preview_hint = QLabel()
+        self.parallax_preview_hint.setObjectName("section_hint")
+        self.parallax_preview_hint.setWordWrap(True)
+        enable_column = QWidget()
+        enable_layout = QVBoxLayout(enable_column)
+        enable_layout.setContentsMargins(0, 0, 0, 0)
+        enable_layout.setSpacing(4)
+        enable_layout.addWidget(self.parallax_checkbox)
+        enable_layout.addWidget(self.parallax_preview_hint)
+        self._label_parallax = self._create_setting_label()
+        form.addRow(self._label_parallax, enable_column)
+
+        self.parallax_strength_row = SliderSpinBoxRow(
+            1.0,
+            10.0,
+            decimals=0,
+            step=1.0,
+        )
+        self.parallax_strength_row.value_changed.connect(self._emit_meta_settings_changed)
+        self._style_field(self.parallax_strength_row)
+        self._label_parallax_strength = self._create_setting_label()
+        self._add_setting_row(
+            form,
+            self._label_parallax_strength,
+            self.parallax_strength_row,
+            lambda: self._reset_slider_value(
+                self.parallax_strength_row,
+                _DEFAULT_SETTINGS.parallax.strength,
+                emit_change=self._emit_meta_settings_changed,
+            ),
+        )
+        layout.addLayout(form)
+        self._sync_parallax_controls()
+
+    def _on_parallax_toggled(self, *_args: object) -> None:
+        """Update the strength control and persist the activation state."""
+
+        self._sync_parallax_controls()
+        self._emit_meta_settings_changed()
+
+    def _sync_parallax_controls(self) -> None:
+        """Enable strength controls and show the preview hint while active."""
+
+        enabled = self.parallax_checkbox.isChecked()
+        self.parallax_strength_row.setEnabled(enabled)
+        self._label_parallax_strength.setEnabled(enabled)
+        self.parallax_preview_hint.setVisible(enabled)
+
     def _connect_section_state_signals(self) -> None:
-        """wire section expand/collapse changes to project dirty tracking."""
+        """wire section expand/collapse to ui-state dirty tracking only."""
 
         for section in (
             self.project_section,
             self.background_section,
             self.focus_section,
+            self.parallax_section,
             self.star_appearance_section,
             self.star_effects_section,
             self.star_animation_section,
         ):
-            section.expanded_changed.connect(self._emit_settings_changed)
+            section.expanded_changed.connect(self._emit_ui_state_changed)
 
     def _apply_ui_state(self, settings: ProjectSettings) -> None:
         """restore sidebar section expand/collapse state from project settings."""
@@ -457,6 +536,7 @@ class SettingsPanel(QWidget):
         self.project_section.set_expanded(ui.project_section_expanded)
         self.background_section.set_expanded(ui.background_section_expanded)
         self.focus_section.set_expanded(ui.focus_section_expanded)
+        self.parallax_section.set_expanded(ui.parallax_section_expanded)
         self.star_appearance_section.set_expanded(ui.star_appearance_section_expanded)
         self.star_effects_section.set_expanded(ui.star_effects_section_expanded)
         self.star_animation_section.set_expanded(ui.star_animation_section_expanded)
@@ -468,6 +548,7 @@ class SettingsPanel(QWidget):
         ui.project_section_expanded = self.project_section.is_expanded
         ui.background_section_expanded = self.background_section.is_expanded
         ui.focus_section_expanded = self.focus_section.is_expanded
+        ui.parallax_section_expanded = self.parallax_section.is_expanded
         ui.star_appearance_section_expanded = self.star_appearance_section.is_expanded
         ui.star_effects_section_expanded = self.star_effects_section.is_expanded
         ui.star_animation_section_expanded = self.star_animation_section.is_expanded
@@ -748,6 +829,18 @@ class SettingsPanel(QWidget):
                 "image center.",
             ),
         )
+        self.parallax_section.set_title(self.tr("Parallax"))
+        self.parallax_section.set_badge(self.tr("Beta"))
+        self._label_parallax.set_text(self.tr("Parallax"))
+        self._label_parallax.set_hint(
+            self.tr(
+                "Structural depth zoom applied during video export only. "
+                "The preview does not show parallax.",
+            ),
+        )
+        self.parallax_checkbox.setText(self.tr("Enable parallax effect"))
+        self.parallax_preview_hint.setText(self.tr("Not visible in the preview"))
+        self._label_parallax_strength.set_text(self.tr("Strength"))
         self.star_appearance_section.set_title(self.tr("Stars — Count & Size"))
         self.star_effects_section.set_title(self.tr("Stars — Appearance"))
         self.star_animation_section.set_title(self.tr("Stars — Animation"))
@@ -885,10 +978,7 @@ class SettingsPanel(QWidget):
 
         self._label_speed.set_text(self.tr("Flight speed"))
         self._label_speed.set_hint(
-            self.tr(
-                "Star motion over time, independent of video length. "
-                "1.0 matches the previous default feel of a 10s clip."
-            ),
+            self.tr("Star motion over time, independent of video length."),
         )
 
         self._label_easing.set_text(self.tr("Easing"))
@@ -986,6 +1076,24 @@ class SettingsPanel(QWidget):
     def _emit_settings_changed(self, *_args: object) -> None:
         if not self._updates_blocked():
             self.settings_changed.emit()
+
+    def _emit_ui_state_changed(self, *_args: object) -> None:
+        """emit sidebar-only ui changes without triggering a preview refresh."""
+
+        if not self._updates_blocked():
+            self.ui_state_changed.emit()
+
+    def _emit_meta_settings_changed(self, *_args: object) -> None:
+        """emit export/meta settings that do not affect the preview image."""
+
+        if not self._updates_blocked():
+            self.meta_settings_changed.emit()
+
+    def _emit_timeline_settings_changed(self, *_args: object) -> None:
+        """emit timeline-only settings that keep the current preview frame."""
+
+        if not self._updates_blocked():
+            self.timeline_settings_changed.emit()
 
     def _on_resolution_changed(self) -> None:
         if self._updates_blocked():
@@ -1091,6 +1199,9 @@ class SettingsPanel(QWidget):
         if easing_index >= 0:
             self.easing_combo.setCurrentIndex(easing_index)
         self.fill_frame_checkbox.setChecked(background.fill_frame)
+        self.parallax_checkbox.setChecked(settings.parallax.enabled)
+        self.parallax_strength_row.set_value(settings.parallax.strength)
+        self._sync_parallax_controls()
         self._sync_focus_controls(project)
 
         stars = settings.stars
@@ -1131,6 +1242,8 @@ class SettingsPanel(QWidget):
         background.rotation_degrees = float(self.rotation_row.value())
         background.easing = coerce_easing_mode(self.easing_combo.currentData())
         background.fill_frame = self.fill_frame_checkbox.isChecked()
+        settings.parallax.enabled = self.parallax_checkbox.isChecked()
+        settings.parallax.strength = int(self.parallax_strength_row.value())
         (
             start_enabled,
             start_x,

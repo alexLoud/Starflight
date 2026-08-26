@@ -6,6 +6,7 @@ import numpy as np
 
 from starflight.core.background import BackgroundRenderer
 from starflight.core.camera_motion import camera_motion_progress
+from starflight.core.parallax import parallax_strength_for_level
 from starflight.core.star_renderer import StarRenderer
 from starflight.types.settings import ProjectSettings, RenderQuality
 from starflight.utils.image import bgr_to_rgb
@@ -14,7 +15,12 @@ from starflight.utils.image import bgr_to_rgb
 class FrameRenderer:
     """cached frame renderer for a project."""
 
-    def __init__(self, source_image_bgr: np.ndarray, settings: ProjectSettings) -> None:
+    def __init__(
+        self,
+        source_image_bgr: np.ndarray,
+        settings: ProjectSettings,
+        parallax_depth: np.ndarray | None = None,
+    ) -> None:
         """
         initialize renderers for the current settings.
 
@@ -27,7 +33,12 @@ class FrameRenderer:
         width = settings.resolution.width
         height = settings.resolution.height
         self.settings = settings
-        self.background = BackgroundRenderer(source_image_bgr, width, height)
+        self.background = BackgroundRenderer(
+            source_image_bgr,
+            width,
+            height,
+            parallax_depth=parallax_depth,
+        )
         self.stars = StarRenderer(settings.stars, width, height)
 
     def render_frame(
@@ -59,6 +70,11 @@ class FrameRenderer:
             duration,
             self.settings.background,
             self.settings.stars.speed,
+            parallax_strength=(
+                parallax_strength_for_level(self.settings.parallax.strength)
+                if quality == RenderQuality.EXPORT and self.settings.parallax.enabled
+                else 0.0
+            ),
         )
         background_rgb = bgr_to_rgb(background_bgr).astype(np.float32)
         if not include_stars:
@@ -99,7 +115,11 @@ def _composite_additive(background: np.ndarray, stars: np.ndarray) -> np.ndarray
     return 255.0 - (255.0 - background) * (255.0 - stars_clamped) / 255.0
 
 
-def create_renderer(source_image_bgr: np.ndarray, settings: ProjectSettings) -> FrameRenderer:
+def create_renderer(
+    source_image_bgr: np.ndarray,
+    settings: ProjectSettings,
+    parallax_depth: np.ndarray | None = None,
+) -> FrameRenderer:
     """
     create a frame renderer for source image and settings.
 
@@ -109,4 +129,4 @@ def create_renderer(source_image_bgr: np.ndarray, settings: ProjectSettings) -> 
         project settings
     """
 
-    return FrameRenderer(source_image_bgr, settings)
+    return FrameRenderer(source_image_bgr, settings, parallax_depth=parallax_depth)

@@ -126,6 +126,14 @@ class BackgroundSettings:
 
 
 @dataclass
+class ParallaxSettings:
+    """parallax export settings."""
+
+    enabled: bool = False
+    strength: int = 4
+
+
+@dataclass
 class StarSettings:
     """star appearance and animation settings."""
 
@@ -158,6 +166,7 @@ class SidebarUiSettings:
     project_section_expanded: bool = True
     background_section_expanded: bool = True
     focus_section_expanded: bool = True
+    parallax_section_expanded: bool = True
     star_appearance_section_expanded: bool = True
     star_effects_section_expanded: bool = True
     star_animation_section_expanded: bool = True
@@ -171,6 +180,7 @@ class ProjectSettings:
     duration_seconds: float = 10.0
     fps: int = 30
     background: BackgroundSettings = field(default_factory=BackgroundSettings)
+    parallax: ParallaxSettings = field(default_factory=ParallaxSettings)
     stars: StarSettings = field(default_factory=StarSettings)
     export: ExportSettings = field(default_factory=ExportSettings)
     ui: SidebarUiSettings = field(default_factory=SidebarUiSettings)
@@ -360,6 +370,7 @@ def settings_from_dict(data: dict[str, Any]) -> ProjectSettings:
     export_data = data.get("export", {})
     resolution_data = data.get("resolution", {})
     background_data = data.get("background", {})
+    parallax_data = data.get("parallax", {})
     ui_data = data.get("ui", {})
 
     stars = StarSettings(
@@ -387,6 +398,7 @@ def settings_from_dict(data: dict[str, Any]) -> ProjectSettings:
         project_section_expanded=bool(ui_data.get("project_section_expanded", True)),
         background_section_expanded=bool(ui_data.get("background_section_expanded", True)),
         focus_section_expanded=bool(ui_data.get("focus_section_expanded", True)),
+        parallax_section_expanded=bool(ui_data.get("parallax_section_expanded", True)),
         star_appearance_section_expanded=bool(
             ui_data.get("star_appearance_section_expanded", True)
         ),
@@ -408,6 +420,10 @@ def settings_from_dict(data: dict[str, Any]) -> ProjectSettings:
             easing=_load_easing_mode(background_data),
             **_load_focus_points(background_data),
             fill_frame=bool(background_data.get("fill_frame", False)),
+        ),
+        parallax=ParallaxSettings(
+            enabled=bool(parallax_data.get("enabled", False)),
+            strength=int(parallax_data.get("strength", 4)),
         ),
         stars=stars,
         export=export_settings,

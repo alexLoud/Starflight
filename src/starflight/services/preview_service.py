@@ -16,9 +16,10 @@ class PreviewService:
     """manages preview renderer cache and frame rendering."""
 
     def __init__(self) -> None:
-        self._preview_renderer = None
+        self._preview_renderer: FrameRenderer | None = None
         self._preview_settings: ProjectSettings | None = None
         self._loaded_image_bgr: np.ndarray | None = None
+        self._loaded_image_path: str | None = None
         self._last_preview_frame: np.ndarray | None = None
 
     @property
@@ -33,6 +34,7 @@ class PreviewService:
         self._preview_renderer = None
         self._preview_settings = None
         self._loaded_image_bgr = None
+        self._loaded_image_path = None
         self._last_preview_frame = None
 
     def validate(self, project: Project, project_path: Path | None) -> ValidationResult:
@@ -82,15 +84,25 @@ class PreviewService:
         if image_path is None:
             return False, None, "preview_missing_image"
 
-        if self._preview_renderer is None or self._preview_settings != preview_settings:
+        image_path_key = str(image_path)
+        if self._loaded_image_bgr is None or self._loaded_image_path != image_path_key:
             try:
-                self._loaded_image_bgr = load_image_bgr(str(image_path))
+                self._loaded_image_bgr = load_image_bgr(image_path_key)
             except (OSError, ValueError) as exc:
                 return False, None, str(exc)
-            self._preview_settings = preview_settings.clone()
+            self._loaded_image_path = image_path_key
+            self._preview_renderer = None
+
+        if self._preview_renderer is None or _needs_renderer_rebuild(
+            self._preview_settings,
+            preview_settings,
+        ):
+            self._preview_settings = _cache_settings(preview_settings)
             self._preview_renderer = create_renderer(self._loaded_image_bgr, preview_settings)
         else:
+            self._preview_renderer.settings = preview_settings.clone()
             _sync_star_render_settings(self._preview_renderer, preview_settings)
+            self._preview_settings = _cache_settings(preview_settings)
 
         frame = self._preview_renderer.render_frame(
             time_seconds,
@@ -99,6 +111,35 @@ class PreviewService:
         )
         self._last_preview_frame = frame
         return True, frame, ""
+
+
+def _cache_settings(settings: ProjectSettings) -> ProjectSettings:
+    """clone settings with ui state cleared so sidebar layout never spoils the cache."""
+
+    cached = settings.clone()
+    cached.ui = type(cached.ui)()
+    return cached
+
+
+def _needs_renderer_rebuild(
+    current: ProjectSettings | None,
+    incoming: ProjectSettings,
+) -> bool:
+    """return true when resolution or star-field structure requires a new renderer."""
+
+    if current is None:
+        return True
+    if current.resolution != incoming.resolution:
+        return True
+
+    current_stars = current.stars
+    incoming_stars = incoming.stars
+    return (
+        current_stars.star_count != incoming_stars.star_count
+        or current_stars.density_preset != incoming_stars.density_preset
+        or current_stars.seed != incoming_stars.seed
+        or current_stars.size_spread != incoming_stars.size_spread
+    )
 
 
 def _sync_star_render_settings(renderer: FrameRenderer, preview_settings: ProjectSettings) -> None:

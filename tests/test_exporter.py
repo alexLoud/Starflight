@@ -20,6 +20,7 @@ from starflight.core.exporter import (
     _ffmpeg_output_arg,
     _ffmpeg_popen_kwargs,
     _is_closed_pipe_error,
+    _LinearProgressPhase,
     _stream_file_to_pipe,
 )
 from starflight.types.settings import Project
@@ -124,7 +125,51 @@ class ExportPipeTests(unittest.TestCase):
             os.unlink(path)
 
 
-class ExportOutputPathTests(unittest.TestCase):
+class ExportProgressTests(unittest.TestCase):
+    def test_linear_phase_progress_stays_in_its_global_range(self) -> None:
+        updates: list[tuple[int, int]] = []
+        progress = _LinearProgressPhase(
+            100,
+            1,
+            40,
+            lambda current, total: updates.append((current, total)),
+        )
+
+        for fraction in (0.0, 0.5, 0.25, 1.0):
+            progress.update(fraction)
+
+        self.assertEqual(updates, [(1, 100), (20, 100), (40, 100)])
+
+    def test_parallax_depth_creation_updates_export_progress(self) -> None:
+        worker = ExportWorker(Project(), Path("out.mp4"))
+        updates: list[tuple[int, int]] = []
+        source_image = __import__("numpy").zeros((64, 64, 3), dtype=__import__("numpy").uint8)
+
+        def fake_create_parallax_depth(source_bgr, focus, *, on_progress=None):
+            if on_progress is not None:
+                on_progress(0.0)
+                on_progress(0.5)
+                on_progress(1.0)
+            return __import__("numpy").ones((32, 32), dtype=__import__("numpy").float32)
+
+        with patch(
+            "starflight.core.exporter.create_parallax_depth",
+            side_effect=fake_create_parallax_depth,
+        ):
+            progress = _LinearProgressPhase(
+                100,
+                1,
+                40,
+                lambda current, total: updates.append((current, total)),
+            )
+            worker._create_parallax_depth_with_progress(
+                source_image,
+                (0.5, 0.5),
+                progress=progress,
+            )
+
+        self.assertEqual(updates, [(1, 100), (20, 100), (40, 100)])
+
     def test_ffmpeg_output_arg_uses_file_url_on_windows(self) -> None:
         windows_path = MagicMock()
         windows_path.expanduser.return_value = windows_path

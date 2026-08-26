@@ -30,9 +30,7 @@ from PySide6.QtWidgets import (
 
 from starflight.views.theme import (
     BORDER,
-    CHECKER_A,
-    CHECKER_B,
-    SURFACE_ALT_BG,
+    PANEL_BG,
     TEXT_MUTED,
 )
 
@@ -267,7 +265,7 @@ class _FocusPointsCanvas(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
         canvas = QRectF(0, 0, float(self.width()), float(self.height()))
-        painter.fillRect(canvas, QColor(SURFACE_ALT_BG))
+        painter.fillRect(canvas, QColor(PANEL_BG))
         painter.setPen(QPen(QColor(BORDER), 1))
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawRoundedRect(canvas.adjusted(0.5, 0.5, -0.5, -0.5), 4, 4)
@@ -282,7 +280,6 @@ class _FocusPointsCanvas(QWidget):
             return
 
         image_rect = self._image_rect()
-        self._paint_checkerboard(painter, canvas)
         painter.drawImage(image_rect, owner._qimage)
 
         if not self.isEnabled():
@@ -405,23 +402,6 @@ class _FocusPointsCanvas(QWidget):
         x = (point.x() - image_rect.left()) / image_rect.width()
         y = (point.y() - image_rect.top()) / image_rect.height()
         return QPointF(max(0.0, min(1.0, x)), max(0.0, min(1.0, y)))
-
-    def _paint_checkerboard(self, painter: QPainter, rect: QRectF) -> None:
-        tile = 8.0
-        cols = int(rect.width() // tile) + 1
-        rows = int(rect.height() // tile) + 1
-        for row in range(rows):
-            for col in range(cols):
-                color = CHECKER_A if (row + col) % 2 == 0 else CHECKER_B
-                painter.fillRect(
-                    QRectF(
-                        rect.left() + col * tile,
-                        rect.top() + row * tile,
-                        tile,
-                        tile,
-                    ),
-                    QColor(color),
-                )
 
     def _paint_path(self, painter: QPainter, start: QPointF, end: QPointF) -> None:
         painter.setPen(QPen(QColor("#F4F7FB"), 1.5, Qt.PenStyle.SolidLine))

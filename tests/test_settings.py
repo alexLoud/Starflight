@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 import unittest
 
-from starflight.types.settings import settings_from_dict
+from starflight.types.settings import settings_from_dict, settings_to_dict
 
 
 class SettingsConversionTests(unittest.TestCase):
@@ -31,6 +31,17 @@ class SettingsConversionTests(unittest.TestCase):
         settings = settings_from_dict({"duration_seconds": math.nan})
 
         self.assertTrue(math.isnan(settings.duration_seconds))
+
+    def test_parallax_defaults_off_and_round_trips_when_enabled(self) -> None:
+        defaults = settings_from_dict({}).parallax
+        self.assertFalse(defaults.enabled)
+        self.assertEqual(defaults.strength, 4)
+
+        settings = settings_from_dict({"parallax": {"enabled": True, "strength": 10}})
+        restored = settings_from_dict(settings_to_dict(settings))
+
+        self.assertTrue(restored.parallax.enabled)
+        self.assertEqual(restored.parallax.strength, 10)
 
 
 if __name__ == "__main__":

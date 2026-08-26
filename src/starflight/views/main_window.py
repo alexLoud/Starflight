@@ -267,8 +267,10 @@ class MainWindow(QMainWindow):
 
     def _connect_signals(self) -> None:
         self.settings_panel.settings_changed.connect(self._on_settings_changed)
+        self.settings_panel.ui_state_changed.connect(self._on_non_preview_settings_changed)
+        self.settings_panel.meta_settings_changed.connect(self._on_non_preview_settings_changed)
+        self.settings_panel.timeline_settings_changed.connect(self._on_timeline_settings_changed)
         self.settings_panel.load_image_requested.connect(self.load_image)
-        self.preview_workspace.resized.connect(self._on_preview_resized)
         self.preview_workspace.timeline.frame_index_changed.connect(self._on_frame_changed)
         self.preview_workspace.zoom_toolbar.stars_enabled_changed.connect(
             self._on_preview_stars_changed,
@@ -326,8 +328,8 @@ class MainWindow(QMainWindow):
         self.settings_panel.retranslate_ui()
         self.preview_workspace.retranslate_ui()
         self._update_window_title()
-        if self._workspace_active:
-            self.refresh_preview()
+        if self._workspace_active and not self._project_controller.project.source_image:
+            self.preview_workspace.preview_panel.show_empty_preview_message()
 
     def _update_command_texts(self) -> None:
         titles = {
@@ -416,6 +418,28 @@ class MainWindow(QMainWindow):
     def _sync_project_from_ui(self) -> None:
         self.settings_panel.apply_to_project(self._project_controller.project)
 
+    def _on_non_preview_settings_changed(self) -> None:
+        """persist ui/meta settings that do not change the preview image."""
+
+        self._sync_project_from_ui()
+        self._project_controller.mark_dirty()
+        self._update_window_title()
+        self._update_action_states()
+
+    def _on_timeline_settings_changed(self) -> None:
+        """update timeline fps while keeping the current preview time."""
+
+        self._sync_project_from_ui()
+        self._project_controller.mark_dirty()
+        project = self._project_controller.project
+        self.preview_workspace.timeline.configure(
+            project.settings.duration_seconds,
+            project.settings.fps,
+            preserve_time=True,
+        )
+        self._update_window_title()
+        self._update_action_states()
+
     def _on_settings_changed(self) -> None:
         self._sync_project_from_ui()
         self._project_controller.mark_dirty()
@@ -427,20 +451,11 @@ class MainWindow(QMainWindow):
         self.preview_workspace.timeline.configure(
             project.settings.duration_seconds,
             project.settings.fps,
+            preserve_time=True,
         )
-        self._preview_controller.invalidate()
         self._update_window_title()
         self._refresh_timer.start()
         self._update_action_states()
-
-    def _on_preview_resized(self) -> None:
-        if not self._workspace_active:
-            return
-        last_frame = self._preview_service.last_preview_frame
-        self._preview_controller.invalidate()
-        if last_frame is not None:
-            self.preview_workspace.preview_panel.show_frame(last_frame)
-        self._refresh_timer.start()
 
     def _on_frame_changed(self, _frame_index: int) -> None:
         self.refresh_preview(sync_settings=False)

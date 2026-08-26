@@ -35,6 +35,7 @@ class TimelineSidePanel(QWidget):
 
         super().__init__(parent)
         self.setObjectName(object_name)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setAutoFillBackground(True)
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Expanding)
 

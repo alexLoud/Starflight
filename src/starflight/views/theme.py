@@ -190,6 +190,11 @@ QWidget#timeline_zoom {{
     border-left: 1px solid {BORDER};
 }}
 
+QWidget#preview_footer {{
+    background-color: {PANEL_BG};
+    border-top: 1px solid {BORDER};
+}}
+
 QLabel#zoom_level_label {{
     color: {TEXT_MUTED};
     font-size: 11px;
@@ -534,7 +539,6 @@ QLabel#about_dialog_link a:hover {{
 
 QWidget#timeline_widget {{
     background-color: {PANEL_BG};
-    border-top: 1px solid {BORDER};
 }}
 
 QToolButton#setting_reset_button {{

@@ -30,7 +30,7 @@ class PreviewPanel(QWidget):
         container_layout.addWidget(self.viewport)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(12, 12, 8, 4)
+        layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(0)
         layout.addWidget(container, stretch=1)
 
