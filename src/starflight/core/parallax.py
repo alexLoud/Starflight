@@ -11,22 +11,27 @@ import cv2
 import numpy as np
 
 PARALLAX_LAYER_COUNT = 4
-PARALLAX_STRENGTH_PER_LEVEL = 0.05
+PARALLAX_STRENGTH_PER_LEVEL = 0.06
 _ANALYSIS_LONG_EDGE = 1920
 _INNER_AREA = 0.12
 _OUTER_AREA = 0.50
 _DEPTH_MIN = 0.12
 _DEPTH_TRANSITION_SCALE = 0.20
+_RENDER_DEPTH_MIN = 0.08
+_RENDER_DEPTH_GAMMA = 0.82
+_MIN_RENDER_DEPTH_RANGE = 1e-4
+_WARP_MAX_ITERATIONS = 24
+_WARP_CONVERGENCE_SOURCE_PIXELS = 0.05
 
 
 def parallax_strength_for_level(level: int) -> float:
-    """Map the user-facing strength level 1..10 to 5..50 percent zoom."""
+    """Map the user-facing strength level 1..10 to 6..60 percent zoom."""
 
     return max(1, min(int(level), 10)) * PARALLAX_STRENGTH_PER_LEVEL
 
 
 def smooth_parallax_depth_for_strength(depth: np.ndarray, level: int) -> np.ndarray:
-    """Broaden depth transitions enough for a strong, fold-free zoom field."""
+    """Broaden transitions and redistribute contrast toward the inner layers."""
 
     strength = parallax_strength_for_level(level)
     sigma = min(depth.shape) * _DEPTH_TRANSITION_SCALE * strength
@@ -36,7 +41,14 @@ def smooth_parallax_depth_for_strength(depth: np.ndarray, level: int) -> np.ndar
         sigma,
         borderType=cv2.BORDER_REFLECT_101,
     )
-    return np.clip(smoothed, float(depth.min()), float(depth.max())).astype(np.float32)
+    smoothed = np.clip(smoothed, float(depth.min()), float(depth.max()))
+    low = float(smoothed.min())
+    high = float(smoothed.max())
+    if high - low <= _MIN_RENDER_DEPTH_RANGE:
+        return smoothed.astype(np.float32)
+    normalized = np.clip((smoothed - low) / (high - low), 0.0, 1.0)
+    curved = np.power(normalized, _RENDER_DEPTH_GAMMA)
+    return (_RENDER_DEPTH_MIN + (1.0 - _RENDER_DEPTH_MIN) * curved).astype(np.float32)
 
 
 def _normalize(values: np.ndarray) -> np.ndarray:
@@ -245,6 +257,12 @@ def _nested_hard_masks(
     )
     report(0.90)
     height, width = score.shape
+    if float(np.ptp(score)) <= 1e-6:
+        report(1.0)
+        return np.zeros(
+            (height, width, PARALLAX_LAYER_COUNT - 1),
+            dtype=np.bool_,
+        )
     seed = _structural_seed(score, focus)
     kernel_radius = max(2, round(min(height, width) * 0.012))
     kernel_size = kernel_radius * 2 + 1
@@ -437,20 +455,9 @@ def parallax_coordinate_maps(
     source_width, source_height = source_size
     center_x, center_y = center
     amount = max(0.0, min(float(progress), 1.0))
-    local_depth = _sample_depth(
-        depth,
-        base_map_x,
-        base_map_y,
-        source_width,
-        source_height,
-    )
-
     map_x = base_map_x
     map_y = base_map_y
-    for _iteration in range(3):
-        factor = 1.0 + strength * local_depth * amount
-        map_x = center_x + (base_map_x - center_x) / factor
-        map_y = center_y + (base_map_y - center_y) / factor
+    for _iteration in range(_WARP_MAX_ITERATIONS):
         local_depth = _sample_depth(
             depth,
             map_x,
@@ -458,6 +465,17 @@ def parallax_coordinate_maps(
             source_width,
             source_height,
         )
+        factor = 1.0 + strength * local_depth * amount
+        next_map_x = center_x + (base_map_x - center_x) / factor
+        next_map_y = center_y + (base_map_y - center_y) / factor
+        maximum_delta = max(
+            float(np.max(np.abs(next_map_x - map_x))),
+            float(np.max(np.abs(next_map_y - map_y))),
+        )
+        map_x = next_map_x
+        map_y = next_map_y
+        if maximum_delta <= _WARP_CONVERGENCE_SOURCE_PIXELS:
+            break
     return map_x.astype(np.float32), map_y.astype(np.float32)
 
 

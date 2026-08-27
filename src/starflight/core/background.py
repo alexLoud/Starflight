@@ -48,6 +48,7 @@ def effective_background_settings(settings: BackgroundSettings) -> BackgroundSet
         return settings
     return replace(
         settings,
+        scale_percent=100.0,
         zoom_percent=0.0,
         rotation_degrees=0.0,
         start_focus_enabled=False,

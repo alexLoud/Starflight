@@ -21,9 +21,17 @@ from starflight.core.exporter import (
     _ffmpeg_popen_kwargs,
     _is_closed_pipe_error,
     _LinearProgressPhase,
+    _prepare_parallax_render_input,
     _stream_file_to_pipe,
 )
-from starflight.types.settings import Project
+from starflight.core.renderer import create_renderer
+from starflight.types.settings import (
+    CropSettings,
+    ImageMotionMode,
+    Project,
+    ProjectSettings,
+    RenderQuality,
+)
 from starflight.views.dialogs.export_dialog import default_export_output_path
 
 
@@ -43,6 +51,51 @@ class ExportResourceTests(unittest.TestCase):
     def test_worker_count_clamps_configured_value_to_available_cpus(self) -> None:
         with patch("starflight.app.settings.os.cpu_count", return_value=64):
             self.assertEqual(_export_worker_count(100), 63)
+
+    def test_parallax_render_input_uses_only_the_selected_crop(self) -> None:
+        np = __import__("numpy")
+        source = np.arange(80 * 120 * 3, dtype=np.uint16).reshape(80, 120, 3)
+        settings = ProjectSettings()
+        settings.resolution.width = 20
+        settings.resolution.height = 40
+        settings.crop = CropSettings(center_x=1 / 6, center_y=0.5, scale=0.5)
+        settings.background.motion_mode = ImageMotionMode.PARALLAX
+
+        prepared_source, prepared_settings = _prepare_parallax_render_input(source, settings)
+
+        self.assertEqual(prepared_source.shape, (40, 20, 3))
+        np.testing.assert_array_equal(prepared_source, source[20:60, 10:30])
+        self.assertEqual(prepared_settings.crop, CropSettings())
+        self.assertEqual(settings.crop.scale, 0.5)
+
+    def test_cropped_parallax_start_frame_matches_the_crop_preview(self) -> None:
+        np = __import__("numpy")
+        yy, xx = np.mgrid[0:80, 0:120]
+        source = np.stack((xx, yy, xx + yy), axis=2).astype(np.uint8)
+        settings = ProjectSettings()
+        settings.resolution.width = 20
+        settings.resolution.height = 40
+        settings.duration_seconds = 1.0
+        settings.crop = CropSettings(center_x=1 / 6, center_y=0.5, scale=0.5)
+        settings.background.motion_mode = ImageMotionMode.PARALLAX
+
+        preview = create_renderer(source, settings).render_frame(
+            0.0,
+            RenderQuality.PREVIEW,
+            include_stars=False,
+        )
+        prepared_source, prepared_settings = _prepare_parallax_render_input(source, settings)
+        export = create_renderer(
+            prepared_source,
+            prepared_settings,
+            parallax_depth=np.ones(prepared_source.shape[:2], dtype=np.float32),
+        ).render_frame(
+            0.0,
+            RenderQuality.EXPORT,
+            include_stars=False,
+        )
+
+        np.testing.assert_array_equal(export, preview)
 
 
 class ExportPipeTests(unittest.TestCase):

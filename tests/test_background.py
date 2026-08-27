@@ -34,7 +34,7 @@ class BackgroundScaleTests(unittest.TestCase):
         )
 
         parallax = effective_background_settings(settings)
-        self.assertEqual(parallax.scale_percent, 125.0)
+        self.assertEqual(parallax.scale_percent, 100.0)
         self.assertFalse(parallax.fill_frame)
         self.assertEqual(parallax.zoom_percent, 0.0)
         self.assertEqual(parallax.rotation_degrees, 0.0)

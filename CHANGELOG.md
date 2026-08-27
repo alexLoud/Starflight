@@ -6,8 +6,7 @@
 - Easing for camera movement (Linear, Ease-In, Ease-Out, Ease-In/Out)
 - New image movement workflow with manual and parallax zoom modes plus a resolution-matched crop editor
 - Parallax exports show continuous progress across all three export phases
-- Several UI fixed
-- Preview refreshes only when settings actually change the image; section toggles, parallax, fps, resize, and language no longer trigger full rebuilds
+- Several UI fixes
 
 ## [1.0.3] - 2026-08-24
 
@@ -38,3 +37,4 @@
 ## [1.0.0] - 2026-08-22
 
 - Initial release
+

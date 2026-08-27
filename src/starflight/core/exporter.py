@@ -24,16 +24,21 @@ import numpy as np
 from PySide6.QtCore import QThread, Signal
 
 from starflight.app.settings import DEFAULT_RENDER_WORKER_COUNT, max_available_render_workers
-from starflight.core.background import effective_background_settings, resolve_camera_path
 from starflight.core.camera_motion import camera_motion_progress
-from starflight.core.crop import map_look_at_to_source
+from starflight.core.crop import crop_source_image
 from starflight.core.parallax import (
     create_parallax_depth,
     smooth_parallax_depth_for_strength,
 )
 from starflight.core.project import resolve_source_image_path
 from starflight.core.renderer import FrameRenderer, create_renderer
-from starflight.types.settings import ImageMotionMode, Project, ProjectSettings, RenderQuality
+from starflight.types.settings import (
+    CropSettings,
+    ImageMotionMode,
+    Project,
+    ProjectSettings,
+    RenderQuality,
+)
 from starflight.utils.image import load_image_bgr
 from starflight.utils.validation import ffmpeg_executable
 
@@ -111,6 +116,25 @@ def _export_worker_count(configured: int | None = None) -> int:
 
     requested = configured if configured is not None else DEFAULT_RENDER_WORKER_COUNT
     return min(max(1, requested), max_available_render_workers())
+
+
+def _prepare_parallax_render_input(
+    source_image: np.ndarray,
+    settings: ProjectSettings,
+) -> tuple[np.ndarray, ProjectSettings]:
+    """Apply the selected crop before parallax analysis and frame rendering."""
+
+    if settings.background.motion_mode != ImageMotionMode.PARALLAX:
+        return source_image, settings
+    cropped_source = crop_source_image(
+        source_image,
+        settings.crop,
+        settings.resolution.width,
+        settings.resolution.height,
+    )
+    render_settings = settings.clone()
+    render_settings.crop = CropSettings()
+    return cropped_source, render_settings
 
 
 class _WallClockProgress:
@@ -265,7 +289,12 @@ def _render_export_chunk(
     """
 
     source_image = load_image_bgr(image_path)
-    renderer = create_renderer(source_image, settings, parallax_depth=parallax_depth)
+    source_image, render_settings = _prepare_parallax_render_input(source_image, settings)
+    renderer = create_renderer(
+        source_image,
+        render_settings,
+        parallax_depth=parallax_depth,
+    )
     renderer.stars.field.import_fade_state(fade_continuous, fade_starts)
 
     with open(chunk_path, "wb") as handle:
@@ -481,7 +510,12 @@ class ExportWorker(QThread):
         if phase_progress is not None:
             phase_progress.update(0.0)
         source_image = load_image_bgr(str(image_path))
-        renderer = create_renderer(source_image, settings, parallax_depth=parallax_depth)
+        source_image, render_settings = _prepare_parallax_render_input(source_image, settings)
+        renderer = create_renderer(
+            source_image,
+            render_settings,
+            parallax_depth=parallax_depth,
+        )
         if phase_progress is not None:
             phase_progress.update(0.15)
         snapshots: dict[int, tuple[set[int], dict[int, float]]] = {
@@ -647,21 +681,13 @@ class ExportWorker(QThread):
             )
             self.status_changed.emit("parallax")
             source_image = load_image_bgr(str(image_path))
-            source_h, source_w = source_image.shape[:2]
-            background_settings = effective_background_settings(settings.background)
-            _start_focus, end_focus = resolve_camera_path(background_settings)
-            end_focus = map_look_at_to_source(
-                end_focus[0],
-                end_focus[1],
-                settings.crop,
-                source_w,
-                source_h,
-                settings.resolution.width,
-                settings.resolution.height,
+            source_image, _render_settings = _prepare_parallax_render_input(
+                source_image,
+                settings,
             )
             parallax_depth = self._create_parallax_depth_with_progress(
                 source_image,
-                end_focus,
+                (0.5, 0.5),
                 parallax_progress,
             )
             parallax_depth = smooth_parallax_depth_for_strength(
