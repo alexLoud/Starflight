@@ -33,13 +33,14 @@ class BackgroundScaleTests(unittest.TestCase):
             fill_frame=True,
         )
 
+        # temporary test: parallax keeps zoom/rotation/focus/fill-frame
         parallax = effective_background_settings(settings)
-        self.assertEqual(parallax.scale_percent, 100.0)
-        self.assertFalse(parallax.fill_frame)
-        self.assertEqual(parallax.zoom_percent, 0.0)
-        self.assertEqual(parallax.rotation_degrees, 0.0)
-        self.assertFalse(parallax.start_focus_enabled)
-        self.assertFalse(parallax.end_focus_enabled)
+        self.assertEqual(parallax.scale_percent, 125.0)
+        self.assertTrue(parallax.fill_frame)
+        self.assertEqual(parallax.zoom_percent, 20.0)
+        self.assertEqual(parallax.rotation_degrees, 15.0)
+        self.assertTrue(parallax.start_focus_enabled)
+        self.assertTrue(parallax.end_focus_enabled)
 
         settings.motion_mode = ImageMotionMode.MANUAL
         settings.fill_frame = False

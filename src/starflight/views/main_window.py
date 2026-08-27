@@ -10,7 +10,15 @@ from pathlib import Path
 
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QAction, QCloseEvent
-from PySide6.QtWidgets import QMainWindow, QMenu, QSplitter, QStackedWidget, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QMainWindow,
+    QMenu,
+    QMessageBox,
+    QSplitter,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
+)
 
 from starflight.app.constants import (
     APP_DISPLAY_NAME,
@@ -28,7 +36,9 @@ from starflight.services.recent_projects_service import (
     remember_recent_project,
     remove_recent_project,
 )
+from starflight.types.preset import LookPreset, apply_look
 from starflight.views.dialogs.about_dialog import AboutDialog
+from starflight.views.dialogs.presets_dialog import PresetsDialog
 from starflight.views.dialogs.settings_dialog import SettingsDialog
 from starflight.views.widgets.main_toolbar import MainToolbar
 from starflight.views.widgets.preview_workspace import PreviewWorkspace
@@ -58,6 +68,7 @@ class MainWindow(QMainWindow):
         self._recent_projects_menu: QMenu | None = None
 
         self._workspace_active = False
+        self._active_look_preset_id: str | None = None
 
         self._build_ui()
         self._connect_signals()
@@ -65,10 +76,19 @@ class MainWindow(QMainWindow):
         self._apply_project_to_ui()
 
     def build_shell(self) -> None:
-        """build toolbar and menu after commands are registered."""
+        """build top bar and menu after commands are registered."""
 
-        self._toolbar = MainToolbar(self._context.command_registry, self)
-        self.addToolBar(self._toolbar)
+        self._toolbar = MainToolbar(self._context.command_registry)
+        central = self.centralWidget()
+        wrapper = QWidget()
+        wrapper.setObjectName("central_wrapper")
+        wrapper_layout = QVBoxLayout(wrapper)
+        wrapper_layout.setContentsMargins(0, 0, 0, 0)
+        wrapper_layout.setSpacing(0)
+        wrapper_layout.addWidget(self._toolbar)
+        wrapper_layout.addWidget(central)
+        self.setCentralWidget(wrapper)
+        wrapper_layout.activate()
         self._build_menu_from_registry()
         self._setup_recent_projects_menu()
         self._setup_menu_separators()
@@ -185,6 +205,7 @@ class MainWindow(QMainWindow):
             self._refresh_recent_projects_menu()
             return
 
+        self._active_look_preset_id = None
         self._remember_current_project()
         self._preview_controller.invalidate()
         self._show_workspace()
@@ -339,6 +360,8 @@ class MainWindow(QMainWindow):
             "app.file.save_as": self.tr("Save as…"),
             "app.file.quit": self.tr("Quit"),
             "app.project.load_image": self.tr("Load image…"),
+            "app.project.presets": self.tr("Presets"),
+            "app.project.reset_settings": self.tr("Reset all settings"),
             "app.project.export": self.tr("Export video…"),
             "app.settings.open": self.tr("Settings…"),
             "app.help.about": self.tr("About Starflight"),
@@ -498,6 +521,7 @@ class MainWindow(QMainWindow):
         if not self._project_controller.confirm_discard_changes(self):
             return
         self._project_controller.new_project()
+        self._active_look_preset_id = None
         self._preview_controller.invalidate()
         self.preview_workspace.preview_panel.viewport.reset_zoom()
         self._show_workspace()
@@ -508,6 +532,7 @@ class MainWindow(QMainWindow):
             return
         if not self._project_controller.open_project(self):
             return
+        self._active_look_preset_id = None
         self._remember_current_project()
         self._preview_controller.invalidate()
         self._show_workspace()
@@ -551,6 +576,62 @@ class MainWindow(QMainWindow):
             self.refresh_preview()
             self.preview_workspace.preview_panel.viewport.reset_to_fit()
             self._update_action_states()
+
+    def open_presets(self) -> None:
+        """open the look preset library and apply a selected look."""
+
+        self._sync_project_from_ui()
+        dialog = PresetsDialog(
+            get_settings=lambda: self._project_controller.project.settings,
+            parent=self,
+            selected_id=self._active_look_preset_id,
+        )
+        dialog.preset_applied.connect(self._apply_look_preset)
+        dialog.exec()
+        self._active_look_preset_id = dialog.selected_id
+
+    def reset_settings_keep_image(self) -> None:
+        """ask, then restore default settings while keeping the loaded image."""
+
+        answer = QMessageBox.question(
+            self,
+            self.tr("Reset settings"),
+            self.tr("Reset all settings? The loaded image will be kept."),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        self._apply_settings_reset()
+
+    def _apply_settings_reset(self) -> None:
+        """restore default settings while keeping the loaded source image."""
+
+        self._project_controller.reset_settings_keep_image()
+        self._active_look_preset_id = None
+        self._preview_controller.invalidate()
+        self._apply_project_to_ui()
+        if self._workspace_active:
+            self.preview_workspace.preview_panel.viewport.reset_to_fit()
+
+    def _apply_look_preset(self, preset: LookPreset) -> None:
+        """
+        merge a look preset into the current project and refresh the preview.
+
+        preset
+            selected look preset
+        """
+
+        apply_look(self._project_controller.project.settings, preset)
+        self._active_look_preset_id = preset.id
+        self.settings_panel.set_project(
+            self._project_controller.project,
+            project_path=self._project_controller.project_path,
+        )
+        self._project_controller.mark_dirty()
+        self._update_window_title()
+        self._refresh_timer.start()
+        self._update_action_states()
 
     def export_video(self) -> None:
         self._sync_project_from_ui()

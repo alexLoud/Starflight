@@ -7,7 +7,6 @@ corners is applied only when fill-frame is enabled.
 from __future__ import annotations
 
 import math
-from dataclasses import replace
 
 import cv2
 import numpy as np
@@ -20,7 +19,6 @@ from starflight.types.settings import (
     MIN_BACKGROUND_SCALE_PERCENT,
     BackgroundSettings,
     CropSettings,
-    ImageMotionMode,
 )
 
 _SCALE_SAMPLE_COUNT = 64
@@ -44,17 +42,7 @@ def _clamp(value: float, minimum: float, maximum: float) -> float:
 def effective_background_settings(settings: BackgroundSettings) -> BackgroundSettings:
     """Return the camera settings active for the selected image movement mode."""
 
-    if settings.motion_mode == ImageMotionMode.MANUAL:
-        return settings
-    return replace(
-        settings,
-        scale_percent=100.0,
-        zoom_percent=0.0,
-        rotation_degrees=0.0,
-        start_focus_enabled=False,
-        end_focus_enabled=False,
-        fill_frame=False,
-    )
+    return settings
 
 
 def resolve_camera_path(
@@ -153,7 +141,8 @@ class BackgroundRenderer:
         duration_seconds: float,
         settings: BackgroundSettings,
         flight_speed: float = 1.0,
-        parallax_strength: float = 0.0,
+        parallax_travel: float = 0.0,
+        parallax_lateral_percent: float = 0.0,
     ) -> np.ndarray:
         """
         render background frame at a given time.
@@ -175,8 +164,13 @@ class BackgroundRenderer:
             flight_speed,
         )
         matrix = self._build_transform_matrix(progress, settings)
-        if self.parallax_depth is not None and parallax_strength > 0.0 and progress > 0.0:
-            return self._remap_parallax(matrix, progress, parallax_strength)
+        if self.parallax_depth is not None and parallax_travel > 0.0 and progress > 0.0:
+            return self._remap_parallax(
+                matrix,
+                progress,
+                parallax_travel,
+                parallax_lateral_percent,
+            )
         return self._remap(matrix)
 
     def _coordinate_maps(self, matrix: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -215,7 +209,8 @@ class BackgroundRenderer:
         self,
         matrix: np.ndarray,
         progress: float,
-        strength: float,
+        travel: float,
+        lateral_percent: float,
     ) -> np.ndarray:
         """Apply continuous parallax after the complete background camera transform."""
 
@@ -233,7 +228,8 @@ class BackgroundRenderer:
             (self.source_w, self.source_h),
             (float(center_x), float(center_y)),
             progress,
-            strength,
+            travel,
+            lateral_percent,
         )
         return cv2.remap(
             self.source_image,

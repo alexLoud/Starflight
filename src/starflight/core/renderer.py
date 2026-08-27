@@ -6,7 +6,7 @@ import numpy as np
 
 from starflight.core.background import BackgroundRenderer, effective_background_settings
 from starflight.core.camera_motion import camera_motion_progress
-from starflight.core.parallax import parallax_strength_for_level
+from starflight.core.parallax import parallax_motion_for_strength
 from starflight.core.star_renderer import StarRenderer
 from starflight.types.settings import ImageMotionMode, ProjectSettings, RenderQuality
 from starflight.utils.image import bgr_to_rgb
@@ -71,17 +71,22 @@ class FrameRenderer:
             background_settings,
             self.settings.stars.speed,
         )
+        parallax_enabled = (
+            quality == RenderQuality.EXPORT
+            and self.settings.background.motion_mode == ImageMotionMode.PARALLAX
+        )
+        parallax_travel, parallax_lateral_percent = (
+            parallax_motion_for_strength(self.settings.parallax.strength)
+            if parallax_enabled
+            else (0.0, 0.0)
+        )
         background_bgr = self.background.render(
             time_seconds,
             duration,
             background_settings,
             self.settings.stars.speed,
-            parallax_strength=(
-                parallax_strength_for_level(self.settings.parallax.strength)
-                if quality == RenderQuality.EXPORT
-                and self.settings.background.motion_mode == ImageMotionMode.PARALLAX
-                else 0.0
-            ),
+            parallax_travel=parallax_travel,
+            parallax_lateral_percent=parallax_lateral_percent,
         )
         background_rgb = bgr_to_rgb(background_bgr).astype(np.float32)
         if not include_stars:

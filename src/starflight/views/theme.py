@@ -113,42 +113,60 @@ QMenu::separator {{
     margin: 4px 8px;
 }}
 
-QToolBar#toolbar_main {{
-    background-color: {PANEL_BG};
+QFrame#toolbar_main {{
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #18212D, stop:1 {PANEL_BG});
     border-bottom: 1px solid {BORDER};
-    spacing: 4px;
-    padding: 4px 10px;
 }}
 
-QToolBar#toolbar_main::separator {{
-    width: 1px;
-    background: {BORDER_FOCUS};
-    margin: 6px 10px;
-}}
-
-QToolBar#toolbar_main QToolButton {{
-    background-color: transparent;
+QToolButton#toolbar_button {{
+    background: transparent;
     border: 1px solid transparent;
-    border-radius: 5px;
-    padding: 4px 10px;
-    margin: 0 2px;
-    min-width: 0;
-    min-height: 28px;
-    color: {TEXT_PRIMARY};
-    font-size: 12px;
+    border-radius: 8px;
+    color: {TEXT_FORM_LABEL_DISABLED};
+    font-weight: 400;
+    padding: 6px 10px;
 }}
 
-QToolBar#toolbar_main QToolButton:hover {{
+QToolButton#toolbar_button:hover {{
     background-color: {SURFACE_BG};
     border-color: {BORDER};
 }}
 
-QToolBar#toolbar_main QToolButton:pressed {{
+QToolButton#toolbar_button:pressed {{
     background-color: {ACCENT_PRESSED};
     border-color: {ACCENT};
 }}
 
-QToolBar#toolbar_main QToolButton:disabled {{
+QToolButton#toolbar_button:disabled {{
+    color: {TEXT_DISABLED};
+}}
+
+QToolButton#toolbar_export_button {{
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 {ACCENT_HOVER}, stop:1 {ACCENT});
+    border: 1px solid {ACCENT};
+    border-radius: 8px;
+    color: #FFFFFF;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 7px 16px;
+}}
+
+QToolButton#toolbar_export_button:hover {{
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #5790CF, stop:1 #4376AE);
+    border-color: {ACCENT_HOVER};
+}}
+
+QToolButton#toolbar_export_button:pressed {{
+    background: {ACCENT_PRESSED};
+    border-color: {ACCENT_PRESSED};
+}}
+
+QToolButton#toolbar_export_button:disabled {{
+    background: {SURFACE_BG};
+    border-color: {BORDER};
     color: {TEXT_DISABLED};
 }}
 
@@ -261,7 +279,8 @@ QWidget#collapsible_section {{
 }}
 
 QWidget#collapsible_section_header {{
-    background-color: #243040;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #273444, stop:1 #212C3B);
     border: none;
     border-top: 1px solid #334155;
     border-bottom: 1px solid {BORDER};
@@ -269,7 +288,8 @@ QWidget#collapsible_section_header {{
 }}
 
 QWidget#collapsible_section_header:hover {{
-    background-color: #2B3A4D;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #2D3D52, stop:1 #263344);
 }}
 
 QWidget#collapsible_section[available="false"] QWidget#collapsible_section_header {{
@@ -401,7 +421,8 @@ QWidget#welcome_splash_meta_bar {{
 }}
 
 QFrame#welcome_action_button {{
-    background-color: {PANEL_BG};
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+        stop:0 #1C2534, stop:1 #131A24);
     color: {TEXT_PRIMARY};
     border: 1px solid {BORDER};
     border-radius: 12px;
@@ -409,18 +430,21 @@ QFrame#welcome_action_button {{
 }}
 
 QFrame#welcome_action_button:hover {{
-    background-color: {SURFACE_BG};
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+        stop:0 #222E40, stop:1 #17202C);
     border-color: {BORDER_FOCUS};
 }}
 
 QFrame#welcome_action_button:focus {{
-    background-color: {SURFACE_BG};
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+        stop:0 #222E40, stop:1 #17202C);
     border-color: {ACCENT_HOVER};
 }}
 
 QLabel#welcome_action_icon {{
-    background-color: rgba(58, 110, 165, 70);
-    border: 1px solid rgba(122, 186, 232, 70);
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+        stop:0 rgba(74, 130, 190, 95), stop:1 rgba(58, 110, 165, 55));
+    border: 1px solid rgba(122, 186, 232, 85);
     border-radius: 10px;
 }}
 
@@ -606,15 +630,22 @@ QPushButton:disabled {{
 }}
 
 QPushButton#primary_button {{
-    background-color: {ACCENT};
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 {ACCENT_HOVER}, stop:1 {ACCENT});
     border-color: {ACCENT};
     color: #FFFFFF;
     font-weight: 600;
 }}
 
 QPushButton#primary_button:hover {{
-    background-color: {ACCENT_HOVER};
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #5790CF, stop:1 #4376AE);
     border-color: {ACCENT_HOVER};
+}}
+
+QPushButton#primary_button:pressed {{
+    background: {ACCENT_PRESSED};
+    border-color: {ACCENT_PRESSED};
 }}
 
 QPushButton#primary_button:disabled {{
@@ -915,6 +946,156 @@ QProgressBar::chunk {{
 QDialog {{
     background-color: {APP_BG};
     color: {TEXT_PRIMARY};
+}}
+
+QScrollArea#presets_scroll {{
+    background-color: {APP_BG};
+    border: none;
+}}
+
+QWidget#presets_content {{
+    background-color: {APP_BG};
+}}
+
+QFrame#presets_header {{
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+        stop:0 #1B2635, stop:0.5 #131B27, stop:1 {APP_BG});
+    border-bottom: 1px solid {BORDER};
+}}
+
+QLabel#presets_header_icon {{
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+        stop:0 rgba(74, 130, 190, 95), stop:1 rgba(58, 110, 165, 55));
+    border: 1px solid rgba(122, 186, 232, 85);
+    border-radius: 11px;
+}}
+
+QLabel#presets_title {{
+    color: {TEXT_PRIMARY};
+    background-color: transparent;
+    font-size: 17px;
+    font-weight: 600;
+}}
+
+QLabel#presets_subtitle {{
+    color: {TEXT_MUTED};
+    background-color: transparent;
+    font-size: 12px;
+}}
+
+QLabel#preset_section_title {{
+    color: {TEXT_MUTED};
+    background-color: transparent;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.6px;
+    padding: 8px 2px 2px 2px;
+}}
+
+QLabel#preset_empty_label {{
+    color: {TEXT_MUTED};
+    font-size: 12px;
+    padding: 14px 16px;
+    background-color: {PANEL_BG};
+    border: 1px dashed {BORDER};
+    border-radius: 10px;
+}}
+
+QFrame#preset_card {{
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+        stop:0 #1C2534, stop:1 #131A24);
+    color: {TEXT_PRIMARY};
+    border: 1px solid {BORDER};
+    border-radius: 12px;
+}}
+
+QFrame#preset_card:hover {{
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+        stop:0 #222E40, stop:1 #17202C);
+    border-color: {BORDER_FOCUS};
+}}
+
+QFrame#preset_card:focus {{
+    border-color: {ACCENT_HOVER};
+}}
+
+QFrame#preset_card[selected="true"] {{
+    border: 1px solid {ACCENT_HOVER};
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+        stop:0 #22385A, stop:1 #162031);
+}}
+
+QLabel#preset_card_title {{
+    color: {TEXT_PRIMARY};
+    background-color: transparent;
+    font-size: 13px;
+    font-weight: 600;
+}}
+
+QLabel#preset_card_description {{
+    color: {TEXT_MUTED};
+    background-color: transparent;
+    font-size: 11px;
+}}
+
+QToolButton#preset_card_delete {{
+    background-color: transparent;
+    border: none;
+    border-radius: 11px;
+    color: {TEXT_MUTED};
+    font-size: 12px;
+    font-weight: 600;
+    padding: 0;
+}}
+
+QToolButton#preset_card_delete:hover {{
+    background-color: rgba(232, 106, 90, 55);
+    color: #FF9B8B;
+}}
+
+QToolButton#preset_card_delete:pressed {{
+    background-color: {TIMELINE_PLAYHEAD};
+    color: #FFFFFF;
+}}
+
+QFrame#presets_footer {{
+    background-color: {PANEL_BG};
+    border-top: 1px solid {BORDER};
+}}
+
+QFrame#preset_create_action {{
+    background-color: {SURFACE_BG};
+    border: 1px solid {BORDER};
+    border-radius: 12px;
+}}
+
+QFrame#preset_create_action:hover {{
+    background-color: #1E2836;
+    border-color: {BORDER_FOCUS};
+}}
+
+QFrame#preset_create_action:focus {{
+    border-color: {ACCENT_HOVER};
+}}
+
+QLabel#preset_create_icon {{
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+        stop:0 rgba(74, 130, 190, 95), stop:1 rgba(58, 110, 165, 55));
+    border: 1px solid rgba(122, 186, 232, 85);
+    border-radius: 11px;
+}}
+
+QLabel#preset_create_title {{
+    color: {TEXT_PRIMARY};
+    background-color: transparent;
+    font-size: 13px;
+    font-weight: 600;
+}}
+
+QLabel#preset_create_hint {{
+    color: {TEXT_MUTED};
+    background-color: transparent;
+    font-size: 11px;
 }}
 
 QFileDialog {{

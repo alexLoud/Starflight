@@ -36,11 +36,12 @@ from starflight.types.settings import (
     DensityPreset,
     EasingMode,
     ImageMotionMode,
+    ParallaxStrength,
     Project,
     ProjectSettings,
     coerce_density_preset,
     coerce_easing_mode,
-    coerce_image_motion_mode,
+    coerce_parallax_strength,
     density_preset_from_count,
 )
 from starflight.utils.image import bgr_to_rgb, load_image_bgr, numpy_rgb_to_qimage
@@ -158,7 +159,7 @@ class SettingsPanel(QWidget):
         self._build_image_motion_section(self.image_motion_section.content_layout)
         self._build_crop_section(self.crop_section.content_layout)
         self._build_focus_section(self.focus_section.content_layout)
-        self._sync_image_motion_controls()
+        self._sync_parallax_controls()
         self._build_star_appearance_section(self.star_appearance_section.content_layout)
         self._build_star_effects_section(self.star_effects_section.content_layout)
         self._build_star_animation_section(self.star_animation_section.content_layout)
@@ -311,6 +312,16 @@ class SettingsPanel(QWidget):
             self.easing_combo.blockSignals(False)
         self._emit_settings_changed()
 
+    def _reset_parallax_strength(self) -> None:
+        """Restore the default V4 parallax strength preset."""
+
+        index = self.parallax_strength_combo.findData(_DEFAULT_SETTINGS.parallax.strength)
+        if index >= 0:
+            self.parallax_strength_combo.blockSignals(True)
+            self.parallax_strength_combo.setCurrentIndex(index)
+            self.parallax_strength_combo.blockSignals(False)
+        self._emit_meta_settings_changed()
+
     def _build_project_section(self, layout: QVBoxLayout) -> None:
         form = QFormLayout()
         self._configure_form(form)
@@ -384,22 +395,10 @@ class SettingsPanel(QWidget):
         layout.addLayout(form)
 
     def _build_image_motion_section(self, layout: QVBoxLayout) -> None:
-        """Build controls shared by the mutually exclusive image movement modes."""
+        """Build zoom/rotation controls and the optional parallax group."""
 
-        form = QFormLayout()
-        self._configure_form(form)
-        self._image_motion_form = form
-
-        self.motion_mode_combo = NoWheelComboBox()
-        for mode in (
-            ImageMotionMode.MANUAL,
-            ImageMotionMode.PARALLAX,
-        ):
-            self.motion_mode_combo.addItem("", mode)
-        self.motion_mode_combo.currentIndexChanged.connect(self._on_motion_mode_changed)
-        self._style_field(self.motion_mode_combo)
-        self._label_motion_mode = self._create_setting_label()
-        form.addRow(self._label_motion_mode, self.motion_mode_combo)
+        camera_form = QFormLayout()
+        self._configure_form(camera_form)
 
         self.zoom_row = SliderSpinBoxRow(
             0.0,
@@ -412,7 +411,7 @@ class SettingsPanel(QWidget):
         self._style_field(self.zoom_row)
         self._label_zoom = self._create_setting_label()
         self._add_setting_row(
-            form,
+            camera_form,
             self._label_zoom,
             self.zoom_row,
             lambda: self._reset_slider_value(
@@ -432,7 +431,7 @@ class SettingsPanel(QWidget):
         self._style_field(self.rotation_row)
         self._label_rotation = self._create_setting_label()
         self._add_setting_row(
-            form,
+            camera_form,
             self._label_rotation,
             self.rotation_row,
             lambda: self._reset_slider_value(
@@ -444,34 +443,46 @@ class SettingsPanel(QWidget):
         self.fill_frame_checkbox = QCheckBox()
         self.fill_frame_checkbox.toggled.connect(self._emit_settings_changed)
         self._label_fill_frame = self._create_setting_label()
-        form.addRow(self._label_fill_frame, self.fill_frame_checkbox)
+        camera_form.addRow(self._label_fill_frame, self.fill_frame_checkbox)
+        layout.addLayout(camera_form)
 
-        self.parallax_strength_row = SliderSpinBoxRow(
-            1.0,
-            10.0,
-            decimals=0,
-            step=1.0,
-        )
-        self.parallax_strength_row.value_changed.connect(self._emit_meta_settings_changed)
-        self._style_field(self.parallax_strength_row)
-        self._label_parallax_strength = self._create_setting_label()
-        self._add_setting_row(
-            form,
-            self._label_parallax_strength,
-            self.parallax_strength_row,
-            lambda: self._reset_slider_value(
-                self.parallax_strength_row,
-                _DEFAULT_SETTINGS.parallax.strength,
-                emit_change=self._emit_meta_settings_changed,
-            ),
-        )
+        layout.addWidget(self._create_group_separator())
 
+        self._parallax_group_title = self._create_group_title("")
+        layout.addWidget(self._parallax_group_title)
+
+        parallax_form = QFormLayout()
+        self._configure_form(parallax_form)
+
+        self.parallax_checkbox = QCheckBox()
+        self.parallax_checkbox.toggled.connect(self._on_parallax_toggled)
         self.parallax_preview_hint = QLabel()
         self.parallax_preview_hint.setObjectName("section_hint")
         self.parallax_preview_hint.setWordWrap(True)
-        form.addRow(self.parallax_preview_hint)
+        enable_column = QWidget()
+        enable_layout = QVBoxLayout(enable_column)
+        enable_layout.setContentsMargins(0, 0, 0, 0)
+        enable_layout.setSpacing(4)
+        enable_layout.addWidget(self.parallax_checkbox)
+        enable_layout.addWidget(self.parallax_preview_hint)
+        self._label_parallax = self._create_setting_label()
+        parallax_form.addRow(self._label_parallax, enable_column)
 
-        layout.addLayout(form)
+        self.parallax_strength_combo = NoWheelComboBox()
+        for strength in ParallaxStrength:
+            self.parallax_strength_combo.addItem("", strength)
+        self.parallax_strength_combo.currentIndexChanged.connect(
+            self._emit_meta_settings_changed,
+        )
+        self._style_field(self.parallax_strength_combo)
+        self._label_parallax_strength = self._create_setting_label()
+        self._add_setting_row(
+            parallax_form,
+            self._label_parallax_strength,
+            self.parallax_strength_combo,
+            self._reset_parallax_strength,
+        )
+        layout.addLayout(parallax_form)
 
     def _build_crop_section(self, layout: QVBoxLayout) -> None:
         """Build the fixed-aspect crop editor shared by all movement modes."""
@@ -494,10 +505,10 @@ class SettingsPanel(QWidget):
         self._style_field(self.focus_points)
         layout.addWidget(self.focus_points)
 
-    def _on_motion_mode_changed(self, *_args: object) -> None:
-        """Update conditional controls and persist the selected movement mode."""
+    def _on_parallax_toggled(self, *_args: object) -> None:
+        """Update strength controls and persist the parallax activation state."""
 
-        self._sync_image_motion_controls()
+        self._sync_parallax_controls()
         self._emit_settings_changed()
 
     def _on_crop_changed(self) -> None:
@@ -509,24 +520,13 @@ class SettingsPanel(QWidget):
         self._sync_focus_crop_image()
         self._emit_settings_changed()
 
-    def _sync_image_motion_controls(self) -> None:
-        """Show only controls that apply to the selected image movement mode."""
+    def _sync_parallax_controls(self) -> None:
+        """Enable strength controls and show the preview hint while active."""
 
-        mode = coerce_image_motion_mode(self.motion_mode_combo.currentData())
-        manual_visible = mode == ImageMotionMode.MANUAL
-        parallax_visible = mode == ImageMotionMode.PARALLAX
-
-        self._image_motion_form.setRowVisible(self._label_zoom, manual_visible)
-        self._image_motion_form.setRowVisible(self._label_rotation, manual_visible)
-        self._image_motion_form.setRowVisible(self._label_fill_frame, manual_visible)
-        self._image_motion_form.setRowVisible(
-            self._label_parallax_strength,
-            parallax_visible,
-        )
-        self.parallax_preview_hint.setVisible(parallax_visible)
-        self.focus_section.set_available(manual_visible)
-        self._sync_focus_availability()
-        self._sync_crop_editor_state()
+        enabled = self.parallax_checkbox.isChecked()
+        self.parallax_strength_combo.setEnabled(enabled)
+        self._label_parallax_strength.setEnabled(enabled)
+        self.parallax_preview_hint.setVisible(enabled)
 
     def _connect_section_state_signals(self) -> None:
         """wire section expand/collapse to ui-state dirty tracking only."""
@@ -834,11 +834,11 @@ class SettingsPanel(QWidget):
         """refresh all translatable texts."""
 
         self.project_section.set_title(self.tr("Project & Video"))
-        self.image_motion_section.set_title(self.tr("Image motion"))
+        self.image_motion_section.set_title(self.tr("Starless — Animation"))
         self.image_motion_section.set_hint(
             self.tr(
-                "Choose one movement type for the source image. Manual controls and "
-                "parallax are kept separate so their motion does not hide each other.",
+                "Zoom, rotation, and frame filling for the source image. "
+                "Parallax adds structural depth during export.",
             ),
         )
         self.crop_section.set_title(self.tr("Crop"))
@@ -853,18 +853,22 @@ class SettingsPanel(QWidget):
         self.focus_section.set_hint(
             self.tr(
                 "Optional start and target points. Each point is the center of the video "
-                "frame in the active image area. Available only for manual movement.",
+                "frame in the active image area.",
             ),
         )
-        self._label_motion_mode.set_text(self.tr("Movement type"))
-        self._label_motion_mode.set_hint(
+        self._parallax_group_title.setText(self.tr("Parallax"))
+        self._label_parallax.set_text(self.tr("Parallax"))
+        self._label_parallax.set_hint(
             self.tr(
-                "Manual movement enables zoom, rotation, and the camera path. "
-                "Parallax zoom animates structural depth.",
+                "Structural depth zoom applied during video export only. "
+                "The preview does not show parallax.",
             ),
         )
-        self.motion_mode_combo.setItemText(0, self.tr("Manual movement"))
-        self.motion_mode_combo.setItemText(1, self.tr("Parallax zoom"))
+        self.parallax_checkbox.setText(self.tr("Enable parallax effect"))
+        self.parallax_strength_combo.setItemText(0, self.tr("Light"))
+        self.parallax_strength_combo.setItemText(1, self.tr("Medium"))
+        self.parallax_strength_combo.setItemText(2, self.tr("Strong"))
+        self.parallax_strength_combo.setItemText(3, self.tr("Very strong"))
         self.parallax_preview_hint.setText(self.tr("Not visible in the preview"))
         self._label_parallax_strength.set_text(self.tr("Strength"))
         self.star_appearance_section.set_title(self.tr("Stars — Count & Size"))
@@ -1244,16 +1248,18 @@ class SettingsPanel(QWidget):
             self.fps_combo.setCurrentIndex(fps_index)
 
         background = settings.background
-        motion_mode_index = self.motion_mode_combo.findData(background.motion_mode)
-        if motion_mode_index >= 0:
-            self.motion_mode_combo.setCurrentIndex(motion_mode_index)
+        self.parallax_checkbox.setChecked(background.motion_mode == ImageMotionMode.PARALLAX)
         self.zoom_row.set_value(background.zoom_percent)
         self.rotation_row.set_value(background.rotation_degrees)
         self.fill_frame_checkbox.setChecked(background.fill_frame)
         easing_index = self.easing_combo.findData(background.easing)
         if easing_index >= 0:
             self.easing_combo.setCurrentIndex(easing_index)
-        self.parallax_strength_row.set_value(settings.parallax.strength)
+        parallax_strength_index = self.parallax_strength_combo.findData(
+            settings.parallax.strength,
+        )
+        if parallax_strength_index >= 0:
+            self.parallax_strength_combo.setCurrentIndex(parallax_strength_index)
         self.crop_control.set_crop(
             settings.crop.center_x,
             settings.crop.center_y,
@@ -1270,7 +1276,7 @@ class SettingsPanel(QWidget):
             background.end_focus_x,
             background.end_focus_y,
         )
-        self._sync_image_motion_controls()
+        self._sync_parallax_controls()
 
         stars = settings.stars
         density_index = self.density_combo.findData(stars.density_preset)
@@ -1288,7 +1294,7 @@ class SettingsPanel(QWidget):
         self.magnitude_realism_row.set_value(stars.magnitude_realism * 100.0)
         self.speed_row.set_value(stars.speed)
         self._apply_ui_state(settings)
-        self._sync_image_motion_controls()
+        self._sync_parallax_controls()
         self._end_update_block()
 
     def apply_to_project(self, project: Project) -> None:
@@ -1311,12 +1317,18 @@ class SettingsPanel(QWidget):
         settings.crop.scale = crop_scale
 
         background = settings.background
-        background.motion_mode = coerce_image_motion_mode(self.motion_mode_combo.currentData())
+        background.motion_mode = (
+            ImageMotionMode.PARALLAX
+            if self.parallax_checkbox.isChecked()
+            else ImageMotionMode.MANUAL
+        )
         background.zoom_percent = float(self.zoom_row.value())
         background.rotation_degrees = float(self.rotation_row.value())
         background.easing = coerce_easing_mode(self.easing_combo.currentData())
         background.fill_frame = self.fill_frame_checkbox.isChecked()
-        settings.parallax.strength = int(self.parallax_strength_row.value())
+        settings.parallax.strength = coerce_parallax_strength(
+            self.parallax_strength_combo.currentData(),
+        )
         (
             start_enabled,
             start_x,
@@ -1453,12 +1465,9 @@ class SettingsPanel(QWidget):
         self.crop_control.setEnabled(self._source_qimage is not None)
 
     def _sync_focus_availability(self) -> None:
-        """Enable camera-path controls only for manual movement with a loaded image."""
+        """Enable camera-path controls when a source image is loaded."""
 
-        manual = coerce_image_motion_mode(self.motion_mode_combo.currentData()) == (
-            ImageMotionMode.MANUAL
-        )
-        self.focus_points.setEnabled(manual and self._source_qimage is not None)
+        self.focus_points.setEnabled(self._source_qimage is not None)
 
 
 __all__ = ["SettingsPanel"]

@@ -41,6 +41,15 @@ class ImageMotionMode(str, Enum):
     PARALLAX = "parallax"
 
 
+class ParallaxStrength(str, Enum):
+    """perceptually calibrated V4 parallax strength presets."""
+
+    LIGHT = "light"
+    MEDIUM = "medium"
+    STRONG = "strong"
+    VERY_STRONG = "very_strong"
+
+
 class ExportQuality(str, Enum):
     """export quality presets."""
 
@@ -146,7 +155,7 @@ class BackgroundSettings:
 class ParallaxSettings:
     """parallax export settings."""
 
-    strength: int = 4
+    strength: ParallaxStrength = ParallaxStrength.MEDIUM
 
 
 @dataclass
@@ -221,6 +230,31 @@ class Project:
         """return a deep copy of the project."""
 
         return deepcopy(self)
+
+
+def reset_project_settings(
+    project: Project,
+    image_size: tuple[int, int] | None = None,
+) -> None:
+    """
+    restore default settings while keeping the project name and source image.
+
+    project
+        project to reset
+    image_size
+        optional source image width and height used to pick the default resolution
+    """
+
+    source_image = project.source_image
+    name = project.name
+    project.settings = ProjectSettings()
+    project.source_image = source_image
+    project.name = name
+    if image_size is None:
+        return
+    width, height = resolution_for_image_orientation(image_size[0], image_size[1])
+    project.settings.resolution.width = width
+    project.settings.resolution.height = height
 
 
 def density_preset_from_count(star_count: int) -> DensityPreset:
@@ -309,6 +343,27 @@ def coerce_image_motion_mode(value: ImageMotionMode | str | None) -> ImageMotion
     if isinstance(value, ImageMotionMode):
         return value
     return ImageMotionMode(value)
+
+
+def coerce_parallax_strength(
+    value: ParallaxStrength | str | int | float | None,
+) -> ParallaxStrength:
+    """Normalize a V4 preset and migrate the former numeric strength scale."""
+
+    if value is None:
+        return ParallaxStrength.MEDIUM
+    if isinstance(value, ParallaxStrength):
+        return value
+    if isinstance(value, str) and not value.isdigit():
+        return ParallaxStrength(value)
+    level = int(value)
+    if level <= 3:
+        return ParallaxStrength.LIGHT
+    if level <= 6:
+        return ParallaxStrength.MEDIUM
+    if level <= 8:
+        return ParallaxStrength.STRONG
+    return ParallaxStrength.VERY_STRONG
 
 
 def _load_color_intensity(stars_data: dict[str, Any]) -> float:
@@ -414,6 +469,7 @@ def settings_to_dict(settings: ProjectSettings) -> dict[str, Any]:
     data["export"]["quality"] = _enum_to_json_value(settings.export.quality)
     data["background"]["easing"] = _enum_to_json_value(settings.background.easing)
     data["background"]["motion_mode"] = _enum_to_json_value(settings.background.motion_mode)
+    data["parallax"]["strength"] = _enum_to_json_value(settings.parallax.strength)
     return json.loads(json.dumps(data, ensure_ascii=False))
 
 
@@ -483,7 +539,7 @@ def settings_from_dict(data: dict[str, Any]) -> ProjectSettings:
             fill_frame=bool(background_data.get("fill_frame", False)),
         ),
         parallax=ParallaxSettings(
-            strength=int(parallax_data.get("strength", 4)),
+            strength=coerce_parallax_strength(parallax_data.get("strength")),
         ),
         stars=stars,
         export=export_settings,

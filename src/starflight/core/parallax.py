@@ -10,45 +10,122 @@ from concurrent.futures import TimeoutError as FutureTimeoutError
 import cv2
 import numpy as np
 
+from starflight.types.settings import ParallaxStrength, coerce_parallax_strength
+
 PARALLAX_LAYER_COUNT = 4
-PARALLAX_STRENGTH_PER_LEVEL = 0.06
 _ANALYSIS_LONG_EDGE = 1920
 _INNER_AREA = 0.12
 _OUTER_AREA = 0.50
 _DEPTH_MIN = 0.12
-_DEPTH_TRANSITION_SCALE = 0.20
-_RENDER_DEPTH_MIN = 0.08
-_RENDER_DEPTH_GAMMA = 0.82
-_MIN_RENDER_DEPTH_RANGE = 1e-4
-_WARP_MAX_ITERATIONS = 24
-_WARP_CONVERGENCE_SOURCE_PIXELS = 0.05
+_V4_INITIAL_SMOOTHING_SCALE = 0.10
+_V4_FINAL_SMOOTHING_SCALE = 0.14
+_V4_DEPTH_MIN = 0.08
+_V4_DEPTH_GAMMA = 0.82
+_V4_DISPARITY_GAMMA = 0.66
+_V4_PLANE_BLEND = 0.18
+_V4_MIN_DEPTH_RANGE = 1e-4
+_V4_INVERSE_BISECTION_ITERATIONS = 24
+_V4_MOTION: dict[ParallaxStrength, tuple[float, float]] = {
+    ParallaxStrength.LIGHT: (0.230769, 0.540865),
+    ParallaxStrength.MEDIUM: (0.375, 0.878906),
+    ParallaxStrength.STRONG: (0.543147, 1.273),
+    ParallaxStrength.VERY_STRONG: (0.64, 1.5),
+}
 
 
-def parallax_strength_for_level(level: int) -> float:
-    """Map the user-facing strength level 1..10 to 6..60 percent zoom."""
+def parallax_motion_for_strength(
+    strength: ParallaxStrength | str | int | float,
+) -> tuple[float, float]:
+    """Return perspective travel and lateral motion for one V4 preset."""
 
-    return max(1, min(int(level), 10)) * PARALLAX_STRENGTH_PER_LEVEL
+    return _V4_MOTION[coerce_parallax_strength(strength)]
 
 
-def smooth_parallax_depth_for_strength(depth: np.ndarray, level: int) -> np.ndarray:
-    """Broaden transitions and redistribute contrast toward the inner layers."""
+def _soft_five_plane_disparity(depth: np.ndarray) -> np.ndarray:
+    """Convert continuous V3 depth into five softly separated disparity bands."""
 
-    strength = parallax_strength_for_level(level)
-    sigma = min(depth.shape) * _DEPTH_TRANSITION_SCALE * strength
+    low = float(depth.min())
+    high = float(depth.max())
+    normalized = np.clip((depth - low) / max(high - low, 1e-6), 0.0, 1.0)
+    thresholds = np.array((0.125, 0.375, 0.625, 0.875), dtype=np.float32)
+    transition_half_width = 0.10
+    disparity = np.zeros_like(normalized, dtype=np.float32)
+    for threshold in thresholds:
+        transition = np.clip(
+            (normalized - (threshold - transition_half_width)) / (2.0 * transition_half_width),
+            0.0,
+            1.0,
+        )
+        transition = transition * transition * (3.0 - 2.0 * transition)
+        disparity += transition / len(thresholds)
+    return disparity
+
+
+def prepare_parallax_depth_v4(
+    depth: np.ndarray,
+    on_progress: Callable[[float], None] | None = None,
+) -> np.ndarray:
+    """Prepare the shared soft five-plane disparity field used by every V4 preset."""
+
+    def report(fraction: float) -> None:
+        if on_progress is not None:
+            on_progress(max(0.0, min(1.0, fraction)))
+
+    report(0.0)
+    low = float(depth.min())
+    high = float(depth.max())
+    if high - low <= _V4_MIN_DEPTH_RANGE:
+        report(1.0)
+        return np.clip(depth, 0.0, 1.0).astype(np.float32)
+
+    sigma = min(depth.shape) * _V4_INITIAL_SMOOTHING_SCALE
     smoothed = cv2.GaussianBlur(
         depth,
         (0, 0),
         sigma,
         borderType=cv2.BORDER_REFLECT_101,
     )
-    smoothed = np.clip(smoothed, float(depth.min()), float(depth.max()))
-    low = float(smoothed.min())
-    high = float(smoothed.max())
-    if high - low <= _MIN_RENDER_DEPTH_RANGE:
-        return smoothed.astype(np.float32)
-    normalized = np.clip((smoothed - low) / (high - low), 0.0, 1.0)
-    curved = np.power(normalized, _RENDER_DEPTH_GAMMA)
-    return (_RENDER_DEPTH_MIN + (1.0 - _RENDER_DEPTH_MIN) * curved).astype(np.float32)
+    smoothed = np.clip(smoothed, low, high)
+    report(0.25)
+
+    smoothed_low = float(smoothed.min())
+    smoothed_high = float(smoothed.max())
+    continuous = np.clip(
+        (smoothed - smoothed_low) / max(smoothed_high - smoothed_low, 1e-6),
+        0.0,
+        1.0,
+    )
+    continuous = _V4_DEPTH_MIN + (1.0 - _V4_DEPTH_MIN) * np.power(
+        continuous,
+        _V4_DEPTH_GAMMA,
+    )
+    report(0.45)
+
+    normalized = (continuous - float(continuous.min())) / max(
+        float(np.ptp(continuous)),
+        1e-6,
+    )
+    five_plane = _soft_five_plane_disparity(continuous)
+    disparity = (1.0 - _V4_PLANE_BLEND) * normalized
+    disparity += _V4_PLANE_BLEND * five_plane
+    disparity = np.power(np.clip(disparity, 0.0, 1.0), _V4_DISPARITY_GAMMA)
+    report(0.65)
+
+    disparity = cv2.GaussianBlur(
+        disparity,
+        (0, 0),
+        min(disparity.shape) * _V4_FINAL_SMOOTHING_SCALE,
+        borderType=cv2.BORDER_REFLECT_101,
+    )
+    disparity_low = float(disparity.min())
+    disparity_high = float(disparity.max())
+    prepared = np.clip(
+        (disparity - disparity_low) / max(disparity_high - disparity_low, 1e-6),
+        0.0,
+        1.0,
+    ).astype(np.float32)
+    report(1.0)
+    return prepared
 
 
 def _normalize(values: np.ndarray) -> np.ndarray:
@@ -442,46 +519,56 @@ def _sample_depth(
 
 
 def parallax_coordinate_maps(
-    depth: np.ndarray,
+    disparity: np.ndarray,
     base_map_x: np.ndarray,
     base_map_y: np.ndarray,
     source_size: tuple[int, int],
     center: tuple[float, float],
     progress: float,
-    strength: float = PARALLAX_STRENGTH_PER_LEVEL * 4,
+    travel: float,
+    lateral_percent: float,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Add continuous depth-dependent magnification to an existing camera map."""
+    """Solve the inverse V4 perspective map with guaranteed bounded convergence."""
 
     source_width, source_height = source_size
     center_x, center_y = center
     amount = max(0.0, min(float(progress), 1.0))
-    map_x = base_map_x
-    map_y = base_map_y
-    for _iteration in range(_WARP_MAX_ITERATIONS):
-        local_depth = _sample_depth(
-            depth,
+    if amount <= 0.0 or travel <= 0.0:
+        return base_map_x.astype(np.float32), base_map_y.astype(np.float32)
+
+    vector_x = base_map_x - center_x
+    vector_y = base_map_y - center_y
+
+    def maps_for(local_disparity: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        source_scale = np.maximum(1.0 - travel * local_disparity * amount, 0.20)
+        map_x = center_x + vector_x * source_scale
+        map_y = center_y + vector_y * source_scale
+        map_x += source_width * lateral_percent * 0.01 * local_disparity * amount
+        return map_x, map_y
+
+    lower = np.zeros(base_map_x.shape, dtype=np.float32)
+    upper = np.ones(base_map_x.shape, dtype=np.float32)
+    for _iteration in range(_V4_INVERSE_BISECTION_ITERATIONS):
+        local_disparity = (lower + upper) * 0.5
+        map_x, map_y = maps_for(local_disparity)
+        sampled_disparity = _sample_depth(
+            disparity,
             map_x,
             map_y,
             source_width,
             source_height,
         )
-        factor = 1.0 + strength * local_depth * amount
-        next_map_x = center_x + (base_map_x - center_x) / factor
-        next_map_y = center_y + (base_map_y - center_y) / factor
-        maximum_delta = max(
-            float(np.max(np.abs(next_map_x - map_x))),
-            float(np.max(np.abs(next_map_y - map_y))),
-        )
-        map_x = next_map_x
-        map_y = next_map_y
-        if maximum_delta <= _WARP_CONVERGENCE_SOURCE_PIXELS:
-            break
+        search_upper = local_disparity >= sampled_disparity
+        upper = np.where(search_upper, local_disparity, upper)
+        lower = np.where(search_upper, lower, local_disparity)
+
+    map_x, map_y = maps_for((lower + upper) * 0.5)
     return map_x.astype(np.float32), map_y.astype(np.float32)
 
 
 __all__ = [
     "create_parallax_depth",
     "parallax_coordinate_maps",
-    "parallax_strength_for_level",
-    "smooth_parallax_depth_for_strength",
+    "parallax_motion_for_strength",
+    "prepare_parallax_depth_v4",
 ]

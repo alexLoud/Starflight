@@ -15,9 +15,10 @@ from starflight.services.project_service import (
     make_relative_image_path,
     new_project,
     normalize_project_path,
+    resolve_source_image_path,
     save_project,
 )
-from starflight.types.settings import resolution_for_image_orientation
+from starflight.types.settings import reset_project_settings, resolution_for_image_orientation
 from starflight.utils.image import read_image_dimensions
 from starflight.views.dialogs.image_open_dialog import ImageOpenDialog
 from starflight.views.dialogs.project_open_dialog import ProjectOpenDialog
@@ -112,6 +113,20 @@ class ProjectController:
         self.project_path = None
         self._dirty = False
         return self.project
+
+    def reset_settings_keep_image(self) -> None:
+        """reset all project settings without removing the loaded image."""
+
+        image_size: tuple[int, int] | None = None
+        if self.project.source_image:
+            image_path = resolve_source_image_path(self.project_path, self.project.source_image)
+            if image_path is not None and image_path.is_file():
+                try:
+                    image_size = read_image_dimensions(str(image_path))
+                except (OSError, ValueError):
+                    image_size = None
+        reset_project_settings(self.project, image_size)
+        self._dirty = True
 
     def open_project(self, parent: QWidget) -> bool:
         """

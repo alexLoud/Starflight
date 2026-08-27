@@ -205,9 +205,22 @@ class ExportProgressTests(unittest.TestCase):
                 on_progress(1.0)
             return __import__("numpy").ones((32, 32), dtype=__import__("numpy").float32)
 
-        with patch(
-            "starflight.core.exporter.create_parallax_depth",
-            side_effect=fake_create_parallax_depth,
+        def fake_prepare_parallax_depth(depth, on_progress=None):
+            if on_progress is not None:
+                on_progress(0.0)
+                on_progress(0.5)
+                on_progress(1.0)
+            return depth
+
+        with (
+            patch(
+                "starflight.core.exporter.create_parallax_depth",
+                side_effect=fake_create_parallax_depth,
+            ),
+            patch(
+                "starflight.core.exporter.prepare_parallax_depth_v4",
+                side_effect=fake_prepare_parallax_depth,
+            ),
         ):
             progress = _LinearProgressPhase(
                 100,
@@ -221,7 +234,10 @@ class ExportProgressTests(unittest.TestCase):
                 progress=progress,
             )
 
-        self.assertEqual(updates, [(1, 100), (20, 100), (40, 100)])
+        self.assertEqual(
+            updates,
+            [(1, 100), (16, 100), (30, 100), (35, 100), (40, 100)],
+        )
 
     def test_ffmpeg_output_arg_uses_file_url_on_windows(self) -> None:
         windows_path = MagicMock()

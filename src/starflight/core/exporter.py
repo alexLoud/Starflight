@@ -28,7 +28,7 @@ from starflight.core.camera_motion import camera_motion_progress
 from starflight.core.crop import crop_source_image
 from starflight.core.parallax import (
     create_parallax_depth,
-    smooth_parallax_depth_for_strength,
+    prepare_parallax_depth_v4,
 )
 from starflight.core.project import resolve_source_image_path
 from starflight.core.renderer import FrameRenderer, create_renderer
@@ -463,15 +463,23 @@ class ExportWorker(QThread):
         def on_parallax_progress(fraction: float) -> None:
             if self._cancel_requested:
                 raise RuntimeError(EXPORT_CANCELLED)
-            progress.update(fraction)
+            progress.update(0.75 * fraction)
 
-        depth = create_parallax_depth(
+        raw_depth = create_parallax_depth(
             source_image,
             focus,
             on_progress=on_parallax_progress,
         )
-        on_parallax_progress(1.0)
-        return depth
+
+        def on_v4_progress(fraction: float) -> None:
+            if self._cancel_requested:
+                raise RuntimeError(EXPORT_CANCELLED)
+            progress.update(0.75 + 0.25 * fraction)
+
+        return prepare_parallax_depth_v4(
+            raw_depth,
+            on_progress=on_v4_progress,
+        )
 
     def _build_fade_snapshots(
         self,
@@ -689,10 +697,6 @@ class ExportWorker(QThread):
                 source_image,
                 (0.5, 0.5),
                 parallax_progress,
-            )
-            parallax_depth = smooth_parallax_depth_for_strength(
-                parallax_depth,
-                settings.parallax.strength,
             )
             del source_image
         else:

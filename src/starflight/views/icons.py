@@ -14,6 +14,8 @@ COMMAND_ICON_FILES: dict[str, str] = {
     "app.file.save": "file-save.svg",
     "app.file.save_as": "file-save-as.svg",
     "app.file.quit": "file-quit.svg",
+    "app.project.presets": "presets.svg",
+    "app.project.reset_settings": "reset-all.svg",
     "app.project.export": "export-video.svg",
 }
 
@@ -22,6 +24,8 @@ TOOLBAR_ICON_FILES: list[str] = [
     "app.file.open",
     "app.file.save",
     "app.file.save_as",
+    "app.project.presets",
+    "app.project.reset_settings",
     "app.project.export",
 ]
 

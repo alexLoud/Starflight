@@ -3,10 +3,10 @@
 ## [Unreleased]
 
 - New App start screen
+- Preset library
 - Easing for camera movement (Linear, Ease-In, Ease-Out, Ease-In/Out)
-- New image movement workflow with manual and parallax zoom modes plus a resolution-matched crop editor
-- Parallax exports show continuous progress across all three export phases
-- Several UI fixes
+- New Parallax effect for starless images
+- Several UI improvements
 
 ## [1.0.3] - 2026-08-24
 
