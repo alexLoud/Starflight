@@ -4,8 +4,9 @@
 
 - New App start screen
 - Preset library
-- Easing for camera movement (Linear, Ease-In, Ease-Out, Ease-In/Out)
 - New Parallax effect for starless images
+- Easing for camera movement (Linear, Ease-In, Ease-Out, Ease-In/Out)
+- Stars in the Preview now matches the configured size, brightness, glow, and color
 - Several UI improvements and redesigns
 
 ## [1.0.3] - 2026-08-24

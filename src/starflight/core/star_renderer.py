@@ -245,7 +245,7 @@ def _add_star_psf(
     white_core_strength = _clamp((radius - 1.8) / 2.4, 0.0, 1.0)
     white_mix_scale = _clamp(1.0 - chroma * 1.65, 0.12, 1.0)
     white_mix_scale *= 1.0 - _clamp(color_intensity, 0.0, 1.0) * 0.72
-    white_mix = np.clip(pinpoint ** 1.6, 0.0, 1.0) * white_core_strength * 0.28 * white_mix_scale
+    white_mix = np.clip(pinpoint**1.6, 0.0, 1.0) * white_core_strength * 0.28 * white_mix_scale
     local_color = body_color[np.newaxis, np.newaxis, :] * (1.0 - white_mix[:, :, np.newaxis])
     local_color += white_mix[:, :, np.newaxis] * np.array([1.0, 1.0, 1.0], dtype=np.float32)
 
@@ -406,6 +406,7 @@ class StarRenderer:
         quality: RenderQuality,
         view_center_at_progress: Callable[[float], tuple[float, float]] | None = None,
         motion_progress: float | None = None,
+        track_visibility: bool | None = None,
     ) -> np.ndarray:
         """
         render star rgb layer at a given time.
@@ -420,6 +421,8 @@ class StarRenderer:
             optional callback returning the screen-space aim point
         motion_progress
             optional eased progress for look-at and star travel
+        track_visibility
+            whether to update sequential export fade state
         """
 
         projections = self.field.project_at_time(
@@ -428,6 +431,7 @@ class StarRenderer:
             view_center_at_progress,
             quality,
             motion_progress,
+            track_visibility,
         )
         width = self.field.width
         height = self.field.height

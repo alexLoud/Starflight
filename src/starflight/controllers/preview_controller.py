@@ -69,16 +69,17 @@ class PreviewController:
         returns True when frame was rendered
         """
 
+        preview_settings = self.build_preview_settings(project, preview_panel)
         if use_parallax_preview:
             frame = self._preview_service.render_parallax_frame(
                 timeline_time_seconds,
+                preview_settings,
                 include_stars=include_stars,
             )
             if frame is not None:
                 preview_panel.show_frame(frame)
                 return True
 
-        preview_settings = self.build_preview_settings(project, preview_panel)
         ok, frame, message = self._preview_service.render_frame(
             project,
             project_path,

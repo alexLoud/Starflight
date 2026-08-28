@@ -4,9 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import cv2
 import numpy as np
 
-from starflight.core.renderer import FrameRenderer, create_renderer
+from starflight.core.background import effective_background_settings
+from starflight.core.camera_motion import camera_motion_progress
+from starflight.core.renderer import FrameRenderer, composite_star_layer, create_renderer
+from starflight.core.star_renderer import StarRenderer
 from starflight.services.parallax_preview_service import (
     PARALLAX_PREVIEW_ITERATIONS,
     PreparedParallaxPreview,
@@ -26,6 +30,8 @@ class PreviewService:
         self._loaded_image_path: str | None = None
         self._last_preview_frame: np.ndarray | None = None
         self._parallax_preview_renderer: FrameRenderer | None = None
+        self._parallax_star_renderer: StarRenderer | None = None
+        self._parallax_star_settings: ProjectSettings | None = None
 
     @property
     def last_preview_frame(self) -> np.ndarray | None:
@@ -42,6 +48,8 @@ class PreviewService:
         self._loaded_image_path = None
         self._last_preview_frame = None
         self._parallax_preview_renderer = None
+        self._parallax_star_renderer = None
+        self._parallax_star_settings = None
 
     @property
     def has_parallax_preview(self) -> bool:
@@ -58,15 +66,20 @@ class PreviewService:
             parallax_depth=preview.disparity,
             parallax_iterations=PARALLAX_PREVIEW_ITERATIONS,
         )
+        self._parallax_star_renderer = None
+        self._parallax_star_settings = None
 
     def clear_parallax_preview(self) -> None:
         """Discard only the explicitly generated parallax preview."""
 
         self._parallax_preview_renderer = None
+        self._parallax_star_renderer = None
+        self._parallax_star_settings = None
 
     def render_parallax_frame(
         self,
         time_seconds: float,
+        preview_settings: ProjectSettings,
         *,
         include_stars: bool,
     ) -> np.ndarray | None:
@@ -74,12 +87,61 @@ class PreviewService:
 
         if self._parallax_preview_renderer is None:
             return None
-        frame = self._parallax_preview_renderer.render_frame(
+        background = self._parallax_preview_renderer.render_frame(
             time_seconds,
             RenderQuality.PREVIEW,
-            include_stars=include_stars,
+            include_stars=False,
             include_parallax=True,
         )
+        width = preview_settings.resolution.width
+        height = preview_settings.resolution.height
+        if background.shape[:2] != (height, width):
+            background = cv2.resize(background, (width, height), interpolation=cv2.INTER_LINEAR)
+
+        if not include_stars:
+            self._last_preview_frame = background
+            return background
+
+        if self._parallax_star_renderer is None or _needs_starfield_rebuild(
+            self._parallax_star_settings,
+            preview_settings,
+        ):
+            star_settings = preview_settings.clone().stars
+            self._parallax_star_renderer = StarRenderer(star_settings, width, height)
+        else:
+            _copy_star_render_settings(
+                self._parallax_star_renderer.settings,
+                preview_settings.stars,
+            )
+            self._parallax_star_renderer.field.settings = self._parallax_star_renderer.settings
+        self._parallax_star_settings = _cache_settings(preview_settings)
+
+        source_width = self._parallax_preview_renderer.settings.resolution.width
+        source_height = self._parallax_preview_renderer.settings.resolution.height
+        scale_x = width / source_width
+        scale_y = height / source_height
+
+        def view_center_at_progress(progress: float) -> tuple[float, float]:
+            center_x, center_y = self._parallax_preview_renderer.view_center_at_progress(progress)
+            return center_x * scale_x, center_y * scale_y
+
+        duration = preview_settings.duration_seconds
+        background_settings = effective_background_settings(preview_settings.background)
+        motion_progress = camera_motion_progress(
+            time_seconds,
+            duration,
+            background_settings,
+            preview_settings.stars.speed,
+        )
+        star_layer = self._parallax_star_renderer.render_layer(
+            time_seconds,
+            duration,
+            RenderQuality.EXPORT,
+            view_center_at_progress,
+            motion_progress,
+            track_visibility=False,
+        )
+        frame = np.clip(composite_star_layer(background, star_layer), 0, 255).astype(np.uint8)
         self._last_preview_frame = frame
         return frame
 
@@ -161,6 +223,7 @@ class PreviewService:
             time_seconds,
             RenderQuality.PREVIEW,
             include_stars=include_stars,
+            star_quality=RenderQuality.EXPORT,
         )
         self._last_preview_frame = frame
         return True, frame, ""
@@ -187,6 +250,18 @@ def _needs_renderer_rebuild(
     if current.crop != incoming.crop:
         return True
 
+    return _needs_starfield_rebuild(current, incoming)
+
+
+def _needs_starfield_rebuild(
+    current: ProjectSettings | None,
+    incoming: ProjectSettings,
+) -> bool:
+    """Return true when cached star seeds or their projection size are stale."""
+
+    if current is None or current.resolution != incoming.resolution:
+        return True
+
     current_stars = current.stars
     incoming_stars = incoming.stars
     return (
@@ -194,6 +269,7 @@ def _needs_renderer_rebuild(
         or current_stars.density_preset != incoming_stars.density_preset
         or current_stars.seed != incoming_stars.seed
         or current_stars.size_spread != incoming_stars.size_spread
+        or current_stars.magnitude_realism != incoming_stars.magnitude_realism
     )
 
 

@@ -12,13 +12,19 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 import numpy as np
 from PySide6.QtWidgets import QApplication
 
+from starflight.core.renderer import create_renderer
 from starflight.services.parallax_preview_service import (
     ParallaxPreviewWorker,
     PreparedParallaxPreview,
     parallax_preview_size,
 )
 from starflight.services.preview_service import PreviewService
-from starflight.types.settings import ImageMotionMode, ProjectSettings, ResolutionSettings
+from starflight.types.settings import (
+    ImageMotionMode,
+    ProjectSettings,
+    RenderQuality,
+    ResolutionSettings,
+)
 from starflight.views.main_window import MainWindow
 from starflight.views.widgets.settings_panel import SettingsPanel
 from starflight.views.widgets.zoom_toolbar import ZoomToolbar
@@ -94,13 +100,70 @@ class ParallaxPreviewCacheTests(unittest.TestCase):
 
         self.assertFalse(service.has_parallax_preview)
         service.install_parallax_preview(preview)
-        frame = service.render_parallax_frame(1.0, include_stars=False)
+        target_settings = settings.clone()
+        target_settings.resolution = ResolutionSettings(96, 64)
+        frame = service.render_parallax_frame(
+            1.0,
+            target_settings,
+            include_stars=False,
+        )
 
         self.assertTrue(service.has_parallax_preview)
         self.assertIsNotNone(frame)
-        self.assertEqual(frame.shape, source.shape)
+        self.assertEqual(frame.shape, (64, 96, 3))
         service.clear_parallax_preview()
-        self.assertIsNone(service.render_parallax_frame(1.0, include_stars=False))
+        self.assertIsNone(
+            service.render_parallax_frame(
+                1.0,
+                target_settings,
+                include_stars=False,
+            )
+        )
+
+    def test_cached_snapshot_uses_live_full_resolution_star_settings(self) -> None:
+        source = np.zeros((24, 32, 3), dtype=np.uint8)
+        snapshot_settings = ProjectSettings(
+            resolution=ResolutionSettings(32, 24),
+            duration_seconds=1.0,
+        )
+        snapshot_settings.background.motion_mode = ImageMotionMode.PARALLAX
+        preview = PreparedParallaxPreview(
+            source_image_bgr=source,
+            settings=snapshot_settings,
+            disparity=np.ones((24, 32), dtype=np.float32),
+        )
+        target_settings = snapshot_settings.clone()
+        target_settings.resolution = ResolutionSettings(96, 72)
+        target_settings.stars.star_count = 80
+        service = PreviewService()
+        service.install_parallax_preview(preview)
+
+        base = service.render_parallax_frame(0.0, target_settings, include_stars=True)
+        background = service.render_parallax_frame(0.0, target_settings, include_stars=False)
+        self.assertFalse(np.array_equal(base, background))
+        expected = create_renderer(
+            np.zeros((72, 96, 3), dtype=np.uint8),
+            target_settings.clone(),
+        ).render_frame(0.0, RenderQuality.EXPORT)
+        np.testing.assert_array_equal(base, expected)
+
+        variants = {
+            "size": {"min_size": 3.0, "max_size": 9.0},
+            "brightness": {"brightness": 0.15},
+            "glow": {"glow_intensity": 1.0},
+            "color": {"color_intensity": 1.0},
+        }
+        for name, values in variants.items():
+            with self.subTest(name=name):
+                changed_settings = target_settings.clone()
+                for field, value in values.items():
+                    setattr(changed_settings.stars, field, value)
+                changed = service.render_parallax_frame(
+                    0.0,
+                    changed_settings,
+                    include_stars=True,
+                )
+                self.assertFalse(np.array_equal(base, changed))
 
 
 class ParallaxPreviewToggleTests(unittest.TestCase):

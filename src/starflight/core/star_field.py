@@ -567,6 +567,7 @@ class StarField:
         view_center_at_progress: Callable[[float], tuple[float, float]] | None = None,
         quality: RenderQuality = RenderQuality.EXPORT,
         motion_progress: float | None = None,
+        track_visibility: bool | None = None,
     ) -> list[StarProjection]:
         """
         project stars for a specific time.
@@ -581,6 +582,8 @@ class StarField:
             preview or export quality
         motion_progress
             optional eased progress for look-at and star travel
+        track_visibility
+            whether to update sequential export fade state
         """
 
         settings = self.settings
@@ -593,12 +596,13 @@ class StarField:
             travel_time = progress * duration_seconds
         max_travel = self._max_travel(settings, duration_seconds)
         travel = self._travel_at_time(settings, travel_time)
-        use_fade = quality == RenderQuality.EXPORT
+        export_appearance = quality == RenderQuality.EXPORT
+        use_fade = export_appearance and track_visibility is not False
 
         focal = min(self.width, self.height) * self._FOCAL_SCALE
         center_x, center_y = self._resolve_view_center(progress, view_center_at_progress)
         base_margin = settings.max_size * 6.0
-        star_colors = self._star_colors(settings) if use_fade else None
+        star_colors = self._star_colors(settings) if export_appearance else None
 
         projections: list[StarProjection] = []
         rendered_now: set[int] = set()
@@ -637,7 +641,9 @@ class StarField:
                     self._fade_start_by_index.pop(index, None)
                 continue
 
-            visibility = self._visibility_for_star(index, time_seconds, quality)
+            visibility = (
+                self._visibility_for_star(index, time_seconds, quality) if use_fade else 1.0
+            )
             if use_fade and visibility <= 0.0:
                 continue
 
@@ -649,14 +655,12 @@ class StarField:
             if use_fade:
                 brightness *= visibility
             color = (
-                star_colors[index]
-                if star_colors is not None
-                else self._star_color(star, settings)
+                star_colors[index] if star_colors is not None else self._star_color(star, settings)
             )
 
             spike_strength = 0.0
             spike_angle = star.spike_roll
-            if use_fade and depth_gain > 0.82 and brightness > 0.55 and radius >= 2.5:
+            if export_appearance and depth_gain > 0.82 and brightness > 0.55 and radius >= 2.5:
                 spike_strength = float((depth_gain - 0.82) / 0.18) * visibility
 
             projections.append(

@@ -54,6 +54,7 @@ class FrameRenderer:
         quality: RenderQuality,
         include_stars: bool = True,
         include_parallax: bool = False,
+        star_quality: RenderQuality | None = None,
     ) -> np.ndarray:
         """
         render a full rgb frame.
@@ -64,6 +65,8 @@ class FrameRenderer:
             preview or export render quality
         include_stars
             when false, skip the star layer entirely
+        star_quality
+            optional star quality override for export-accurate previews
         """
 
         duration = self.settings.duration_seconds
@@ -75,9 +78,8 @@ class FrameRenderer:
             self.settings.stars.speed,
         )
         parallax_enabled = (
-            (quality == RenderQuality.EXPORT or include_parallax)
-            and self.settings.background.motion_mode == ImageMotionMode.PARALLAX
-        )
+            quality == RenderQuality.EXPORT or include_parallax
+        ) and self.settings.background.motion_mode == ImageMotionMode.PARALLAX
         parallax_travel, parallax_lateral_percent = (
             parallax_motion_for_strength(self.settings.parallax.strength)
             if parallax_enabled
@@ -98,14 +100,15 @@ class FrameRenderer:
         star_layer = self.stars.render_layer(
             time_seconds,
             duration,
-            quality,
-            self._view_center_at_progress,
+            star_quality or quality,
+            self.view_center_at_progress,
             motion_progress,
+            track_visibility=quality == RenderQuality.EXPORT,
         )
-        composite = _composite_additive(background_rgb, star_layer)
+        composite = composite_star_layer(background_rgb, star_layer)
         return np.clip(composite, 0, 255).astype(np.uint8)
 
-    def _view_center_at_progress(self, progress: float) -> tuple[float, float]:
+    def view_center_at_progress(self, progress: float) -> tuple[float, float]:
         """
         return the on-screen focus position used as the star vanishing point.
 
@@ -117,7 +120,7 @@ class FrameRenderer:
         return self.background.focus_screen_position(progress, background_settings)
 
 
-def _composite_additive(background: np.ndarray, stars: np.ndarray) -> np.ndarray:
+def composite_star_layer(background: np.ndarray, stars: np.ndarray) -> np.ndarray:
     """
     blend stars onto the background using screen compositing for visible light points.
 
