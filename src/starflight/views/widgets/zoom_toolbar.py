@@ -19,7 +19,7 @@ from starflight.views.theme import PANEL_BG
 from starflight.views.widgets.timeline_side_panel import ZOOM_PANEL_WIDTH
 from starflight.views.widgets.zoomable_viewport import ZoomablePreviewViewport
 
-_STARS_GAP_BEFORE_ZOOM = 12
+_PREVIEW_GAP_BEFORE_ZOOM = 12
 _ICON_SIZE = 18
 _BUTTON_HEIGHT = 32
 _BUTTON_SIZE = 32
@@ -30,9 +30,10 @@ _CAPTION_HEIGHT = 16
 
 
 class ZoomToolbar(QWidget):
-    """zoom side panel on the timeline footer."""
+    """Timeline preview-mode, star-layer, and zoom controls."""
 
     stars_enabled_changed = Signal(bool)
+    parallax_preview_enabled_changed = Signal(bool)
 
     def __init__(
         self,
@@ -56,11 +57,21 @@ class ZoomToolbar(QWidget):
         outer.setSpacing(0)
 
         grid = QGridLayout()
-        grid.setHorizontalSpacing(_STARS_GAP_BEFORE_ZOOM)
+        grid.setHorizontalSpacing(_PREVIEW_GAP_BEFORE_ZOOM)
         grid.setVerticalSpacing(_ROW_SPACING)
         grid.setContentsMargins(0, 0, 0, 0)
 
-        self.stars_button = self._create_stars_button()
+        self.parallax_button = self._create_labeled_toggle(
+            "section-background.svg",
+            checked=False,
+            object_name="parallax_preview_toggle_button",
+        )
+        self.parallax_button.setEnabled(False)
+        self.stars_button = self._create_labeled_toggle(
+            "section-stars.svg",
+            checked=True,
+            object_name="stars_toggle_button",
+        )
         self.fit_button = self._create_icon_button("zoom-fit.svg", self.tr("Fit to view"))
         self.zoom_out_button = self._create_icon_button("zoom-out.svg", self.tr("Zoom out"))
         self.zoom_in_button = self._create_icon_button("zoom-in.svg", self.tr("Zoom in"))
@@ -82,13 +93,29 @@ class ZoomToolbar(QWidget):
         )
         self.zoom_level_label.setText("100%")
 
-        grid.addWidget(
-            self.stars_button,
-            0,
-            0,
-            Qt.AlignmentFlag.AlignVCenter,
+        preview_row = QWidget(self)
+        preview_row.setObjectName("timeline_side_row")
+        preview_layout = QHBoxLayout(preview_row)
+        preview_layout.setContentsMargins(0, 0, 0, 0)
+        preview_layout.setSpacing(_BUTTON_SPACING)
+        preview_layout.addWidget(self.parallax_button)
+        preview_layout.addWidget(self.stars_button)
+
+        self.preview_status_label = QLabel(self)
+        self.preview_status_label.setObjectName("timeline_preview_status")
+        self.preview_status_label.setFixedHeight(_CAPTION_HEIGHT)
+        self.preview_status_label.setAlignment(
+            Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter,
         )
+
+        grid.addWidget(preview_row, 0, 0, Qt.AlignmentFlag.AlignVCenter)
         grid.addWidget(zoom_row, 0, 1)
+        grid.addWidget(
+            self.preview_status_label,
+            1,
+            0,
+            Qt.AlignmentFlag.AlignHCenter,
+        )
         grid.addWidget(
             self.zoom_level_label,
             1,
@@ -101,22 +128,32 @@ class ZoomToolbar(QWidget):
         outer.addStretch(1)
 
         self.stars_button.toggled.connect(self._on_stars_toggled)
+        self.parallax_button.toggled.connect(self._on_parallax_toggled)
         self.fit_button.clicked.connect(self._viewport.reset_to_fit)
         self.zoom_in_button.clicked.connect(self._viewport.zoom_in)
         self.zoom_out_button.clicked.connect(self._viewport.zoom_out)
         self._viewport.zoom_percent_changed.connect(self._on_zoom_changed)
+        self._parallax_preview_available = False
+        self._parallax_preview_status = "none"
+        self._update_parallax_text()
         self._update_stars_label()
 
-    def _create_stars_button(self) -> QToolButton:
-        """create the labeled stars on/off toggle."""
+    def _create_labeled_toggle(
+        self,
+        icon_file: str,
+        *,
+        checked: bool,
+        object_name: str,
+    ) -> QToolButton:
+        """Create a labeled on/off control for one preview layer."""
 
         button = QToolButton(self)
-        button.setObjectName("stars_toggle_button")
-        button.setIcon(load_icon_asset("section-stars.svg"))
+        button.setObjectName(object_name)
+        button.setIcon(load_icon_asset(icon_file))
         button.setIconSize(QSize(_ICON_SIZE, _ICON_SIZE))
         button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         button.setCheckable(True)
-        button.setChecked(True)
+        button.setChecked(checked)
         button.setFixedHeight(_BUTTON_HEIGHT)
         button.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
         return button
@@ -145,10 +182,34 @@ class ZoomToolbar(QWidget):
 
         return self.stars_button.isChecked()
 
+    @property
+    def parallax_preview_enabled(self) -> bool:
+        """Return whether the generated parallax snapshot is selected."""
+
+        return self.parallax_button.isChecked() and self._parallax_preview_available
+
+    def set_parallax_preview_state(self, *, available: bool, status: str) -> None:
+        """Enable the mode switch and describe whether its snapshot is current."""
+
+        if status not in {"disabled", "none", "ready", "stale", "generating"}:
+            raise ValueError(f"unknown parallax preview status: {status}")
+        self._parallax_preview_available = bool(available)
+        self._parallax_preview_status = status
+        if not available and self.parallax_button.isChecked():
+            self.parallax_button.setChecked(False)
+        self.parallax_button.setEnabled(available)
+        self._update_parallax_text()
+
+    def set_parallax_preview_enabled(self, enabled: bool) -> None:
+        """Select the generated preview when it is available."""
+
+        self.parallax_button.setChecked(bool(enabled) and self._parallax_preview_available)
+
     def retranslate_ui(self) -> None:
         """refresh translatable texts."""
 
         self._update_stars_label()
+        self._update_parallax_text()
         self.fit_button.setToolTip(self.tr("Fit to view"))
         self.zoom_out_button.setToolTip(self.tr("Zoom out"))
         self.zoom_in_button.setToolTip(self.tr("Zoom in"))
@@ -163,6 +224,30 @@ class ZoomToolbar(QWidget):
 
         self._update_stars_label()
         self.stars_enabled_changed.emit(checked)
+
+    def _on_parallax_toggled(self, checked: bool) -> None:
+        """Notify the window that the preview source changed."""
+
+        self.parallax_preview_enabled_changed.emit(checked)
+
+    def _update_parallax_text(self) -> None:
+        """Translate the parallax toggle, status, and tooltip."""
+
+        self.parallax_button.setText(self.tr("Parallax"))
+        self.parallax_button.setToolTip(
+            self.tr("Switch between the normal and generated parallax preview."),
+        )
+        status = self._parallax_preview_status
+        if status == "disabled":
+            self.parallax_button.setToolTip(
+                self.tr("Enable the parallax effect in the sidebar first."),
+            )
+        self.preview_status_label.setText(
+            self.tr("Updating preview…") if status == "generating" else "",
+        )
+        self.preview_status_label.setProperty("previewStatus", status)
+        self.preview_status_label.style().unpolish(self.preview_status_label)
+        self.preview_status_label.style().polish(self.preview_status_label)
 
     def _update_stars_label(self) -> None:
         """set stars button text from the current toggle state."""

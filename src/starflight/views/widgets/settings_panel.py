@@ -49,7 +49,11 @@ from starflight.views.icons import load_icon_asset
 from starflight.views.widgets.collapsible_section import CollapsibleSection
 from starflight.views.widgets.crop_control import CropControl
 from starflight.views.widgets.focus_points_control import FocusPointsControl
-from starflight.views.widgets.no_wheel_widgets import NoWheelComboBox, NoWheelSpinBox
+from starflight.views.widgets.no_wheel_widgets import (
+    NoWheelComboBox,
+    NoWheelSlider,
+    NoWheelSpinBox,
+)
 from starflight.views.widgets.setting_field_row import SettingFieldRow
 from starflight.views.widgets.setting_label import (
     SettingLabel,
@@ -91,6 +95,7 @@ class SettingsPanel(QWidget):
     meta_settings_changed = Signal()
     timeline_settings_changed = Signal()
     load_image_requested = Signal()
+    slider_adjustment_finished = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -107,7 +112,16 @@ class SettingsPanel(QWidget):
         self._last_crop = CropSettings()
         self._setting_field_rows: list[SettingFieldRow] = []
         self._build_ui()
+        self._parallax_refresh_sliders = tuple(self.findChildren(NoWheelSlider))
+        for slider in self._parallax_refresh_sliders:
+            slider.sliderReleased.connect(self.slider_adjustment_finished.emit)
         self.retranslate_ui()
+
+    @property
+    def slider_adjustment_active(self) -> bool:
+        """Return whether a settings slider is currently being dragged."""
+
+        return any(slider.isSliderDown() for slider in self._parallax_refresh_sliders)
 
     def _build_ui(self) -> None:
         scroll = QScrollArea(self)
@@ -469,17 +483,13 @@ class SettingsPanel(QWidget):
 
         self.parallax_checkbox = QCheckBox()
         self.parallax_checkbox.toggled.connect(self._on_parallax_toggled)
-        self.parallax_preview_hint = QLabel()
-        self.parallax_preview_hint.setObjectName("section_hint")
-        self.parallax_preview_hint.setWordWrap(True)
-        enable_column = QWidget()
-        enable_layout = QVBoxLayout(enable_column)
-        enable_layout.setContentsMargins(0, 0, 0, 0)
-        enable_layout.setSpacing(4)
-        enable_layout.addWidget(self.parallax_checkbox)
-        enable_layout.addWidget(self.parallax_preview_hint)
+        parallax_activation_field = QWidget()
+        parallax_activation_layout = QVBoxLayout(parallax_activation_field)
+        parallax_activation_layout.setContentsMargins(0, 0, 0, 6)
+        parallax_activation_layout.setSpacing(0)
+        parallax_activation_layout.addWidget(self.parallax_checkbox)
         self._label_parallax = self._create_setting_label()
-        parallax_form.addRow(self._label_parallax, enable_column)
+        parallax_form.addRow(self._label_parallax, parallax_activation_field)
 
         self.parallax_strength_combo = NoWheelComboBox()
         for strength in ParallaxStrength:
@@ -495,6 +505,7 @@ class SettingsPanel(QWidget):
             self.parallax_strength_combo,
             self._reset_parallax_strength,
         )
+
         layout.addLayout(parallax_form)
 
     def _build_crop_section(self, layout: QVBoxLayout) -> None:
@@ -534,12 +545,11 @@ class SettingsPanel(QWidget):
         self._emit_settings_changed()
 
     def _sync_parallax_controls(self) -> None:
-        """Enable strength controls and show the preview hint while active."""
+        """Enable the strength control while parallax is active."""
 
         enabled = self.parallax_checkbox.isChecked()
         self.parallax_strength_combo.setEnabled(enabled)
         self._label_parallax_strength.setEnabled(enabled)
-        self.parallax_preview_hint.setVisible(enabled)
 
     def _connect_section_state_signals(self) -> None:
         """wire section expand/collapse to ui-state dirty tracking only."""
@@ -873,8 +883,8 @@ class SettingsPanel(QWidget):
         self._label_parallax.set_text(self.tr("Parallax"))
         self._label_parallax.set_hint(
             self.tr(
-                "Structural depth zoom applied during video export only. "
-                "The preview does not show parallax.",
+                "Structural depth zoom for the video export. The low-resolution preview "
+                "updates automatically while Parallax is selected in the timeline.",
             ),
         )
         self.parallax_checkbox.setText(self.tr("Enable parallax effect"))
@@ -882,7 +892,6 @@ class SettingsPanel(QWidget):
         self.parallax_strength_combo.setItemText(1, self.tr("Medium"))
         self.parallax_strength_combo.setItemText(2, self.tr("Strong"))
         self.parallax_strength_combo.setItemText(3, self.tr("Very strong"))
-        self.parallax_preview_hint.setText(self.tr("Not visible in the preview"))
         self._label_parallax_strength.set_text(self.tr("Strength"))
         self.star_appearance_section.set_title(self.tr("Stars — Count & Size"))
         self.star_effects_section.set_title(self.tr("Stars — Appearance"))

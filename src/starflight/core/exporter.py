@@ -25,15 +25,14 @@ from PySide6.QtCore import QThread, Signal
 
 from starflight.app.settings import DEFAULT_RENDER_WORKER_COUNT, max_available_render_workers
 from starflight.core.camera_motion import camera_motion_progress
-from starflight.core.crop import crop_source_image
 from starflight.core.parallax import (
     create_parallax_depth,
     prepare_parallax_depth_v4,
+    prepare_parallax_render_input,
 )
 from starflight.core.project import resolve_source_image_path
 from starflight.core.renderer import FrameRenderer, create_renderer
 from starflight.types.settings import (
-    CropSettings,
     ImageMotionMode,
     Project,
     ProjectSettings,
@@ -118,23 +117,7 @@ def _export_worker_count(configured: int | None = None) -> int:
     return min(max(1, requested), max_available_render_workers())
 
 
-def _prepare_parallax_render_input(
-    source_image: np.ndarray,
-    settings: ProjectSettings,
-) -> tuple[np.ndarray, ProjectSettings]:
-    """Apply the selected crop before parallax analysis and frame rendering."""
-
-    if settings.background.motion_mode != ImageMotionMode.PARALLAX:
-        return source_image, settings
-    cropped_source = crop_source_image(
-        source_image,
-        settings.crop,
-        settings.resolution.width,
-        settings.resolution.height,
-    )
-    render_settings = settings.clone()
-    render_settings.crop = CropSettings()
-    return cropped_source, render_settings
+_prepare_parallax_render_input = prepare_parallax_render_input
 
 
 class _WallClockProgress:

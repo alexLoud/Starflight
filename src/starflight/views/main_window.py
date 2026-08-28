@@ -30,14 +30,20 @@ from starflight.app.context import AppContext
 from starflight.controllers.export_controller import ExportController
 from starflight.controllers.preview_controller import PreviewController
 from starflight.controllers.project_controller import ProjectController
-from starflight.i18n import install_translators, retranslate_ui
+from starflight.i18n import install_translators, retranslate_ui, tr_validation
+from starflight.services.parallax_preview_service import (
+    ParallaxPreviewWorker,
+    PreparedParallaxPreview,
+)
 from starflight.services.preview_service import PreviewService
+from starflight.services.project_service import resolve_source_image_path
 from starflight.services.recent_projects_service import (
     read_recent_project_paths,
     remember_recent_project,
     remove_recent_project,
 )
 from starflight.types.preset import LookPreset, apply_look
+from starflight.types.settings import ImageMotionMode
 from starflight.views.dialogs.about_dialog import AboutDialog
 from starflight.views.dialogs.presets_dialog import PresetsDialog
 from starflight.views.dialogs.settings_dialog import SettingsDialog
@@ -61,11 +67,23 @@ class MainWindow(QMainWindow):
         self._project_controller = ProjectController(context.error_service)
         self._preview_controller = PreviewController(self._preview_service)
         self._export_controller = ExportController(context.error_service, context.settings)
+        self._parallax_preview_worker: ParallaxPreviewWorker | None = None
+        self._parallax_preview_preparing = False
+        self._parallax_preview_revision = 0
+        self._parallax_preview_generation_token = 0
+        self._parallax_preview_stale = False
 
         self._refresh_timer = QTimer(self)
         self._refresh_timer.setSingleShot(True)
         self._refresh_timer.setInterval(120)
         self._refresh_timer.timeout.connect(self.refresh_preview)
+
+        self._parallax_preview_refresh_timer = QTimer(self)
+        self._parallax_preview_refresh_timer.setSingleShot(True)
+        self._parallax_preview_refresh_timer.setInterval(80)
+        self._parallax_preview_refresh_timer.timeout.connect(
+            self._create_or_update_parallax_preview,
+        )
 
         self._menu_by_path: dict[tuple[str, ...], QMenu] = {}
         self._recent_projects_menu: QMenu | None = None
@@ -210,6 +228,7 @@ class MainWindow(QMainWindow):
             self._refresh_recent_projects_menu()
             return
 
+        self._clear_parallax_preview()
         self._active_look_preset_id = None
         self._remember_current_project()
         self._preview_controller.invalidate()
@@ -389,13 +408,19 @@ class MainWindow(QMainWindow):
 
     def _connect_signals(self) -> None:
         self.settings_panel.settings_changed.connect(self._on_settings_changed)
-        self.settings_panel.ui_state_changed.connect(self._on_non_preview_settings_changed)
-        self.settings_panel.meta_settings_changed.connect(self._on_non_preview_settings_changed)
+        self.settings_panel.ui_state_changed.connect(self._on_ui_state_changed)
+        self.settings_panel.meta_settings_changed.connect(self._on_meta_settings_changed)
         self.settings_panel.timeline_settings_changed.connect(self._on_timeline_settings_changed)
         self.settings_panel.load_image_requested.connect(self.load_image)
+        self.settings_panel.slider_adjustment_finished.connect(
+            self._schedule_parallax_preview_refresh,
+        )
         self.preview_workspace.timeline.frame_index_changed.connect(self._on_frame_changed)
         self.preview_workspace.zoom_toolbar.stars_enabled_changed.connect(
             self._on_preview_stars_changed,
+        )
+        self.preview_workspace.zoom_toolbar.parallax_preview_enabled_changed.connect(
+            self._on_preview_mode_changed,
         )
         self.welcome_splash.new_project_requested.connect(self.new_project_action)
         self.welcome_splash.open_project_requested.connect(self.open_project)
@@ -429,6 +454,8 @@ class MainWindow(QMainWindow):
             project.settings.fps,
         )
         self.preview_workspace.timeline.set_frame_index(0, emit_signal=False)
+        self._sync_parallax_preview_ui()
+        self._schedule_parallax_preview_refresh()
         self.preview_workspace.timeline.pause()
         if self._workspace_active:
             self.refresh_preview()
@@ -542,11 +569,20 @@ class MainWindow(QMainWindow):
     def _sync_project_from_ui(self) -> None:
         self.settings_panel.apply_to_project(self._project_controller.project)
 
-    def _on_non_preview_settings_changed(self) -> None:
-        """persist ui/meta settings that do not change the preview image."""
+    def _on_ui_state_changed(self) -> None:
+        """Persist sidebar layout without invalidating generated image data."""
 
         self._sync_project_from_ui()
         self._project_controller.mark_dirty()
+        self._update_window_title()
+        self._update_action_states()
+
+    def _on_meta_settings_changed(self) -> None:
+        """Persist parallax metadata and update an active parallax preview."""
+
+        self._sync_project_from_ui()
+        self._project_controller.mark_dirty()
+        self._mark_parallax_preview_stale()
         self._update_window_title()
         self._update_action_states()
 
@@ -561,6 +597,7 @@ class MainWindow(QMainWindow):
             project.settings.fps,
             preserve_time=True,
         )
+        self._mark_parallax_preview_stale()
         self._update_window_title()
         self._update_action_states()
 
@@ -578,7 +615,9 @@ class MainWindow(QMainWindow):
             preserve_time=True,
         )
         self._update_window_title()
-        self._refresh_timer.start()
+        self._mark_parallax_preview_stale()
+        if not self.preview_workspace.zoom_toolbar.parallax_preview_enabled:
+            self._refresh_timer.start()
         self._update_action_states()
 
     def _on_frame_changed(self, _frame_index: int) -> None:
@@ -587,6 +626,15 @@ class MainWindow(QMainWindow):
     def _on_preview_stars_changed(self, _enabled: bool) -> None:
         """refresh preview when the session stars toggle changes."""
 
+        self.refresh_preview(sync_settings=False)
+
+    def _on_preview_mode_changed(self, enabled: bool) -> None:
+        """Switch immediately between the live and generated preview sources."""
+
+        if enabled:
+            self._schedule_parallax_preview_refresh()
+        else:
+            self._parallax_preview_refresh_timer.stop()
         self.refresh_preview(sync_settings=False)
 
     def refresh_preview(self, *, sync_settings: bool = True) -> None:
@@ -608,9 +656,11 @@ class MainWindow(QMainWindow):
                 self.preview_workspace.preview_panel,
                 self.preview_workspace.timeline.current_time_seconds(),
                 include_stars=self.preview_workspace.zoom_toolbar.stars_enabled,
+                use_parallax_preview=(self.preview_workspace.zoom_toolbar.parallax_preview_enabled),
             )
         except Exception as exc:
             self._preview_controller.invalidate()
+            self._clear_parallax_preview()
             self._refresh_timer.stop()
             self._context.error_service.show_crash_report(
                 "preview rendering failed",
@@ -618,9 +668,208 @@ class MainWindow(QMainWindow):
                 self,
             )
 
+    def _parallax_effect_enabled(self) -> bool:
+        """Return whether the current project exports with parallax."""
+
+        return (
+            self._project_controller.project.settings.background.motion_mode
+            == ImageMotionMode.PARALLAX
+        )
+
+    def _sync_parallax_preview_ui(self) -> None:
+        """Keep the timeline control aligned with the cached snapshot."""
+
+        has_preview = self._preview_service.has_parallax_preview
+        parallax_enabled = self._parallax_effect_enabled()
+        if not parallax_enabled:
+            timeline_status = "disabled"
+        elif self._parallax_preview_preparing:
+            timeline_status = "generating"
+        elif has_preview:
+            timeline_status = "ready"
+        else:
+            timeline_status = "none"
+        self.preview_workspace.zoom_toolbar.set_parallax_preview_state(
+            available=has_preview and parallax_enabled,
+            status=timeline_status,
+        )
+
+    def _mark_parallax_preview_stale(self) -> None:
+        """Record a project revision and refresh an active parallax preview."""
+
+        self._parallax_preview_revision += 1
+        if self._preview_service.has_parallax_preview:
+            self._parallax_preview_stale = True
+        self._sync_parallax_preview_ui()
+        if not self.settings_panel.slider_adjustment_active:
+            self._schedule_parallax_preview_refresh()
+        else:
+            self._parallax_preview_refresh_timer.stop()
+
+    def _schedule_parallax_preview_refresh(self) -> None:
+        """Debounce preparation while preserving the latest project revision."""
+
+        project = self._project_controller.project
+        if not self._parallax_effect_enabled() or not project.source_image:
+            self._parallax_preview_refresh_timer.stop()
+            return
+        if self.settings_panel.slider_adjustment_active:
+            self._parallax_preview_refresh_timer.stop()
+            return
+
+        has_preview = self._preview_service.has_parallax_preview
+        preview_active = self.preview_workspace.zoom_toolbar.parallax_preview_enabled
+        needs_preview = not has_preview or self._parallax_preview_stale
+        if needs_preview and (not has_preview or preview_active):
+            self._parallax_preview_refresh_timer.start()
+        else:
+            self._parallax_preview_refresh_timer.stop()
+
+    def _clear_parallax_preview(self) -> None:
+        """Cancel preparation and remove a snapshot that belongs to another project."""
+
+        self._parallax_preview_refresh_timer.stop()
+        self._parallax_preview_generation_token += 1
+        self._parallax_preview_revision += 1
+        if self._parallax_preview_worker is not None:
+            self._parallax_preview_worker.request_cancel()
+            self._parallax_preview_preparing = True
+        self._preview_service.clear_parallax_preview()
+        self._parallax_preview_stale = False
+        self._sync_parallax_preview_ui()
+
+    def _create_or_update_parallax_preview(self) -> None:
+        """Prepare the latest low-resolution V4 snapshot in the background."""
+
+        if self._parallax_preview_worker is not None:
+            return
+        if self.settings_panel.slider_adjustment_active:
+            return
+        self._sync_project_from_ui()
+        project = self._project_controller.project
+        if project.settings.background.motion_mode != ImageMotionMode.PARALLAX:
+            return
+        if self._preview_service.has_parallax_preview and (
+            not self._parallax_preview_stale
+            or not self.preview_workspace.zoom_toolbar.parallax_preview_enabled
+        ):
+            return
+        validation = self._preview_service.validate(
+            project,
+            self._project_controller.project_path,
+        )
+        if not validation.ok:
+            self._context.error_service.show_user_warning(
+                self.tr("Preview unavailable"),
+                tr_validation(validation.message),
+                self,
+            )
+            return
+        image_path = resolve_source_image_path(
+            self._project_controller.project_path,
+            project.source_image,
+        )
+        if image_path is None:
+            return
+
+        self._parallax_preview_generation_token += 1
+        token = self._parallax_preview_generation_token
+        source_revision = self._parallax_preview_revision
+        worker = ParallaxPreviewWorker(
+            str(image_path),
+            project.settings,
+            self,
+        )
+        self._parallax_preview_worker = worker
+        self._parallax_preview_preparing = True
+        worker.preview_ready.connect(
+            lambda preview, active=worker, current=token, revision=source_revision: (
+                self._on_parallax_preview_ready(active, current, revision, preview)
+            ),
+        )
+        worker.failed.connect(
+            lambda failure, active=worker, current=token: self._on_parallax_preview_failed(
+                active,
+                current,
+                failure,
+            ),
+        )
+        worker.finished.connect(
+            lambda active=worker: self._on_parallax_preview_worker_finished(active),
+        )
+        worker.finished.connect(worker.deleteLater)
+        self._sync_parallax_preview_ui()
+        worker.start()
+
+    def _on_parallax_preview_ready(
+        self,
+        worker: ParallaxPreviewWorker,
+        token: int,
+        source_revision: int,
+        preview: object,
+    ) -> None:
+        if worker is not self._parallax_preview_worker:
+            return
+        if token != self._parallax_preview_generation_token:
+            return
+        if not isinstance(preview, PreparedParallaxPreview):
+            self._on_parallax_preview_failed(
+                worker,
+                token,
+                TypeError("invalid parallax preview result"),
+            )
+            return
+
+        had_preview = self._preview_service.has_parallax_preview
+        was_enabled = self.preview_workspace.zoom_toolbar.parallax_preview_enabled
+        self._preview_service.install_parallax_preview(preview)
+        self._parallax_preview_preparing = False
+        self._parallax_preview_stale = source_revision != self._parallax_preview_revision
+        self._sync_parallax_preview_ui()
+        if self._parallax_effect_enabled():
+            if not had_preview:
+                self.preview_workspace.zoom_toolbar.set_parallax_preview_enabled(True)
+            if was_enabled:
+                self.refresh_preview(sync_settings=False)
+            if (
+                self._parallax_preview_stale
+                and self.preview_workspace.zoom_toolbar.parallax_preview_enabled
+            ):
+                self._schedule_parallax_preview_refresh()
+
+    def _on_parallax_preview_failed(
+        self,
+        worker: ParallaxPreviewWorker,
+        token: int,
+        failure: object,
+    ) -> None:
+        if worker is not self._parallax_preview_worker:
+            return
+        if token != self._parallax_preview_generation_token:
+            return
+        self._parallax_preview_preparing = False
+        self._sync_parallax_preview_ui()
+        if isinstance(failure, BaseException):
+            self._context.error_service.show_crash_report(
+                "parallax preview generation failed",
+                failure,
+                self,
+            )
+
+    def _on_parallax_preview_worker_finished(
+        self,
+        worker: ParallaxPreviewWorker,
+    ) -> None:
+        if worker is not self._parallax_preview_worker:
+            return
+        self._parallax_preview_worker = None
+        self._parallax_preview_preparing = False
+        self._sync_parallax_preview_ui()
+
     def new_project_action(self) -> None:
         if not self._project_controller.confirm_discard_changes(self):
             return
+        self._clear_parallax_preview()
         self._project_controller.new_project()
         self._active_look_preset_id = None
         self._preview_controller.invalidate()
@@ -633,6 +882,7 @@ class MainWindow(QMainWindow):
             return
         if not self._project_controller.open_project(self):
             return
+        self._clear_parallax_preview()
         self._active_look_preset_id = None
         self._remember_current_project()
         self._preview_controller.invalidate()
@@ -662,6 +912,7 @@ class MainWindow(QMainWindow):
 
     def load_image(self) -> None:
         if self._project_controller.load_image(self):
+            self._clear_parallax_preview()
             self._preview_controller.invalidate()
             project = self._project_controller.project
             self.settings_panel.set_project(
@@ -675,6 +926,7 @@ class MainWindow(QMainWindow):
             self._update_window_title()
             self.preview_workspace.timeline.set_frame_index(0, emit_signal=False)
             self.refresh_preview()
+            self._schedule_parallax_preview_refresh()
             self.preview_workspace.preview_panel.viewport.reset_to_fit()
             self._update_action_states()
 
@@ -709,6 +961,7 @@ class MainWindow(QMainWindow):
         """restore default settings while keeping the loaded source image."""
 
         self._project_controller.reset_settings_keep_image()
+        self._clear_parallax_preview()
         self._active_look_preset_id = None
         self._preview_controller.invalidate()
         self._apply_project_to_ui()
@@ -730,6 +983,7 @@ class MainWindow(QMainWindow):
             project_path=self._project_controller.project_path,
         )
         self._project_controller.mark_dirty()
+        self._mark_parallax_preview_stale()
         self._update_window_title()
         self._refresh_timer.start()
         self._update_action_states()
@@ -765,6 +1019,9 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event: QCloseEvent) -> None:
         if self._project_controller.confirm_discard_changes(self):
+            if self._parallax_preview_worker is not None:
+                self._parallax_preview_worker.request_cancel()
+                self._parallax_preview_worker.wait()
             self._save_layout()
             event.accept()
         else:

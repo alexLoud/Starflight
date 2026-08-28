@@ -10,7 +10,7 @@ from starflight.views.icons import load_icon_asset
 from starflight.views.theme import PANEL_BG
 
 SIDE_PANEL_WIDTH = 188
-ZOOM_PANEL_WIDTH = 268
+ZOOM_PANEL_WIDTH = 380
 _SIDE_MARGINS = (10, 0, 10, 0)
 _BUTTON_ROW_HEIGHT = 34
 _BUTTON_SIZE = 32

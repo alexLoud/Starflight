@@ -6,6 +6,7 @@
 - Preset library
 - Easing for camera movement (Linear, Ease-In, Ease-Out, Ease-In/Out)
 - New Parallax effect for starless images
+- Low-resolution Parallax preview with automatic updates and an independent star overlay
 - Several UI improvements
 
 ## [1.0.3] - 2026-08-24
@@ -37,4 +38,3 @@
 ## [1.0.0] - 2026-08-22
 
 - Initial release
-

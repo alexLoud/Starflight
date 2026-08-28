@@ -279,10 +279,17 @@ class ParallaxRenderModeTests(unittest.TestCase):
         ordinary = create_renderer(source, settings)
 
         preview = renderer.render_frame(1.0, RenderQuality.PREVIEW, include_stars=False)
+        parallax_preview = renderer.render_frame(
+            1.0,
+            RenderQuality.PREVIEW,
+            include_stars=False,
+            include_parallax=True,
+        )
         ordinary_preview = ordinary.render_frame(1.0, RenderQuality.PREVIEW, include_stars=False)
         exported = renderer.render_frame(1.0, RenderQuality.EXPORT, include_stars=False)
 
         np.testing.assert_array_equal(preview, ordinary_preview)
+        self.assertFalse(np.array_equal(parallax_preview, ordinary_preview))
         self.assertFalse(np.array_equal(exported, ordinary_preview))
 
         settings.background.motion_mode = ImageMotionMode.MANUAL

@@ -48,6 +48,7 @@ class PreviewController:
         preview_panel: PreviewPanel,
         timeline_time_seconds: float,
         include_stars: bool = True,
+        use_parallax_preview: bool = False,
     ) -> bool:
         """
         render and display current preview frame.
@@ -62,9 +63,20 @@ class PreviewController:
             current timeline time
         include_stars
             when false, skip stars in the preview render
+        use_parallax_preview
+            show the explicitly generated low-resolution parallax snapshot
 
         returns True when frame was rendered
         """
+
+        if use_parallax_preview:
+            frame = self._preview_service.render_parallax_frame(
+                timeline_time_seconds,
+                include_stars=include_stars,
+            )
+            if frame is not None:
+                preview_panel.show_frame(frame)
+                return True
 
         preview_settings = self.build_preview_settings(project, preview_panel)
         ok, frame, message = self._preview_service.render_frame(

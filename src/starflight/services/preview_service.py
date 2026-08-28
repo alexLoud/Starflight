@@ -7,6 +7,10 @@ from pathlib import Path
 import numpy as np
 
 from starflight.core.renderer import FrameRenderer, create_renderer
+from starflight.services.parallax_preview_service import (
+    PARALLAX_PREVIEW_ITERATIONS,
+    PreparedParallaxPreview,
+)
 from starflight.types.settings import Project, ProjectSettings, RenderQuality, StarSettings
 from starflight.utils.image import load_image_bgr
 from starflight.utils.validation import ValidationResult, validate_project_for_render
@@ -21,6 +25,7 @@ class PreviewService:
         self._loaded_image_bgr: np.ndarray | None = None
         self._loaded_image_path: str | None = None
         self._last_preview_frame: np.ndarray | None = None
+        self._parallax_preview_renderer: FrameRenderer | None = None
 
     @property
     def last_preview_frame(self) -> np.ndarray | None:
@@ -36,6 +41,47 @@ class PreviewService:
         self._loaded_image_bgr = None
         self._loaded_image_path = None
         self._last_preview_frame = None
+        self._parallax_preview_renderer = None
+
+    @property
+    def has_parallax_preview(self) -> bool:
+        """Return whether an explicitly prepared parallax preview is cached."""
+
+        return self._parallax_preview_renderer is not None
+
+    def install_parallax_preview(self, preview: PreparedParallaxPreview) -> None:
+        """Replace the cached low-resolution parallax renderer."""
+
+        self._parallax_preview_renderer = create_renderer(
+            preview.source_image_bgr,
+            preview.settings.clone(),
+            parallax_depth=preview.disparity,
+            parallax_iterations=PARALLAX_PREVIEW_ITERATIONS,
+        )
+
+    def clear_parallax_preview(self) -> None:
+        """Discard only the explicitly generated parallax preview."""
+
+        self._parallax_preview_renderer = None
+
+    def render_parallax_frame(
+        self,
+        time_seconds: float,
+        *,
+        include_stars: bool,
+    ) -> np.ndarray | None:
+        """Render one frame from the prepared parallax snapshot."""
+
+        if self._parallax_preview_renderer is None:
+            return None
+        frame = self._parallax_preview_renderer.render_frame(
+            time_seconds,
+            RenderQuality.PREVIEW,
+            include_stars=include_stars,
+            include_parallax=True,
+        )
+        self._last_preview_frame = frame
+        return frame
 
     def validate(self, project: Project, project_path: Path | None) -> ValidationResult:
         """

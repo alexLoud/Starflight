@@ -678,7 +678,8 @@ QToolButton#transport_button:checked {{
     background-color: {ACCENT_PRESSED};
 }}
 
-QToolButton#stars_toggle_button {{
+QToolButton#stars_toggle_button,
+QToolButton#parallax_preview_toggle_button {{
     background-color: {SURFACE_BG};
     border: 1px solid {BORDER};
     border-radius: 5px;
@@ -689,23 +690,42 @@ QToolButton#stars_toggle_button {{
     font-size: 12px;
 }}
 
-QToolButton#stars_toggle_button:hover {{
+QToolButton#stars_toggle_button:hover,
+QToolButton#parallax_preview_toggle_button:hover {{
     border-color: {BORDER_FOCUS};
 }}
 
-QToolButton#stars_toggle_button:pressed {{
+QToolButton#stars_toggle_button:pressed,
+QToolButton#parallax_preview_toggle_button:pressed {{
     background-color: {ACCENT_PRESSED};
 }}
 
-QToolButton#stars_toggle_button:checked {{
+QToolButton#stars_toggle_button:checked,
+QToolButton#parallax_preview_toggle_button:checked {{
     border-color: {BORDER_FOCUS};
     background-color: {ACCENT_PRESSED};
+}}
+
+QToolButton#parallax_preview_toggle_button:disabled {{
+    background-color: {PANEL_BG};
+    border-color: {SURFACE_ALT_BG};
+    color: {TEXT_DISABLED};
 }}
 
 QLabel#timeline_time_label {{
     color: {TEXT_MUTED};
     font-size: 11px;
     padding: 0 4px;
+}}
+
+QLabel#timeline_preview_status {{
+    color: {TEXT_MUTED};
+    font-size: 11px;
+    padding: 0 4px;
+}}
+
+QLabel#timeline_preview_status[previewStatus="generating"] {{
+    color: {ACCENT_HOVER};
 }}
 
 QLabel#image_filename_label {{

@@ -20,6 +20,7 @@ class FrameRenderer:
         source_image_bgr: np.ndarray,
         settings: ProjectSettings,
         parallax_depth: np.ndarray | None = None,
+        parallax_iterations: int = 24,
         crop_target_size: tuple[int, int] | None = None,
     ) -> None:
         """
@@ -41,6 +42,7 @@ class FrameRenderer:
             width,
             height,
             parallax_depth=parallax_depth,
+            parallax_iterations=parallax_iterations,
             crop=settings.crop,
             crop_target_size=crop_target_size or (width, height),
         )
@@ -51,6 +53,7 @@ class FrameRenderer:
         time_seconds: float,
         quality: RenderQuality,
         include_stars: bool = True,
+        include_parallax: bool = False,
     ) -> np.ndarray:
         """
         render a full rgb frame.
@@ -72,7 +75,7 @@ class FrameRenderer:
             self.settings.stars.speed,
         )
         parallax_enabled = (
-            quality == RenderQuality.EXPORT
+            (quality == RenderQuality.EXPORT or include_parallax)
             and self.settings.background.motion_mode == ImageMotionMode.PARALLAX
         )
         parallax_travel, parallax_lateral_percent = (
@@ -132,6 +135,7 @@ def create_renderer(
     source_image_bgr: np.ndarray,
     settings: ProjectSettings,
     parallax_depth: np.ndarray | None = None,
+    parallax_iterations: int = 24,
     crop_target_size: tuple[int, int] | None = None,
 ) -> FrameRenderer:
     """
@@ -149,5 +153,6 @@ def create_renderer(
         source_image_bgr,
         settings,
         parallax_depth=parallax_depth,
+        parallax_iterations=parallax_iterations,
         crop_target_size=crop_target_size,
     )

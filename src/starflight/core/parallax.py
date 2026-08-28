@@ -10,7 +10,14 @@ from concurrent.futures import TimeoutError as FutureTimeoutError
 import cv2
 import numpy as np
 
-from starflight.types.settings import ParallaxStrength, coerce_parallax_strength
+from starflight.core.crop import crop_source_image
+from starflight.types.settings import (
+    CropSettings,
+    ImageMotionMode,
+    ParallaxStrength,
+    ProjectSettings,
+    coerce_parallax_strength,
+)
 
 PARALLAX_LAYER_COUNT = 4
 _ANALYSIS_LONG_EDGE = 1920
@@ -39,6 +46,25 @@ def parallax_motion_for_strength(
     """Return perspective travel and lateral motion for one V4 preset."""
 
     return _V4_MOTION[coerce_parallax_strength(strength)]
+
+
+def prepare_parallax_render_input(
+    source_image: np.ndarray,
+    settings: ProjectSettings,
+) -> tuple[np.ndarray, ProjectSettings]:
+    """Apply the selected crop before parallax analysis and frame rendering."""
+
+    if settings.background.motion_mode != ImageMotionMode.PARALLAX:
+        return source_image, settings
+    cropped_source = crop_source_image(
+        source_image,
+        settings.crop,
+        settings.resolution.width,
+        settings.resolution.height,
+    )
+    render_settings = settings.clone()
+    render_settings.crop = CropSettings()
+    return cropped_source, render_settings
 
 
 def _soft_five_plane_disparity(depth: np.ndarray) -> np.ndarray:
@@ -527,6 +553,8 @@ def parallax_coordinate_maps(
     progress: float,
     travel: float,
     lateral_percent: float,
+    *,
+    iterations: int = _V4_INVERSE_BISECTION_ITERATIONS,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Solve the inverse V4 perspective map with guaranteed bounded convergence."""
 
@@ -548,7 +576,7 @@ def parallax_coordinate_maps(
 
     lower = np.zeros(base_map_x.shape, dtype=np.float32)
     upper = np.ones(base_map_x.shape, dtype=np.float32)
-    for _iteration in range(_V4_INVERSE_BISECTION_ITERATIONS):
+    for _iteration in range(max(1, int(iterations))):
         local_disparity = (lower + upper) * 0.5
         map_x, map_y = maps_for(local_disparity)
         sampled_disparity = _sample_depth(
@@ -571,4 +599,5 @@ __all__ = [
     "parallax_coordinate_maps",
     "parallax_motion_for_strength",
     "prepare_parallax_depth_v4",
+    "prepare_parallax_render_input",
 ]

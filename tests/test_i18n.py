@@ -47,6 +47,21 @@ class GermanTranslationTests(unittest.TestCase):
         )
         self.assertNotEqual(translated, "Width and height must be even numbers.")
 
+    def test_parallax_preview_controls_are_translated(self) -> None:
+        messages = {
+            "MainWindow": ("Preview unavailable",),
+            "ZoomToolbar": (
+                "Switch between the normal and generated parallax preview.",
+                "Enable the parallax effect in the sidebar first.",
+                "Updating preview…",
+            ),
+        }
+        for context, sources in messages.items():
+            for source in sources:
+                translated = QCoreApplication.translate(context, source)
+                self.assertNotEqual(translated, source)
+                self.assertEqual(translated, catalog_translation(context, source))
+
     def test_crash_report_actions_are_translated(self) -> None:
         for source in (
             "Starflight Error",

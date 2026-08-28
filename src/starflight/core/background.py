@@ -102,6 +102,7 @@ class BackgroundRenderer:
         width: int,
         height: int,
         parallax_depth: np.ndarray | None = None,
+        parallax_iterations: int = 24,
         crop: CropSettings | None = None,
         crop_target_size: tuple[int, int] | None = None,
     ) -> None:
@@ -125,6 +126,7 @@ class BackgroundRenderer:
         self.source_image = source_image
         self.source_h, self.source_w = source_image.shape[:2]
         self.parallax_depth = parallax_depth
+        self.parallax_iterations = max(1, int(parallax_iterations))
         self.crop = crop if crop is not None else CropSettings()
         crop_width, crop_height = crop_target_size or (width, height)
         self.crop_target_width = max(1, int(crop_width))
@@ -230,6 +232,7 @@ class BackgroundRenderer:
             progress,
             travel,
             lateral_percent,
+            iterations=self.parallax_iterations,
         )
         return cv2.remap(
             self.source_image,
