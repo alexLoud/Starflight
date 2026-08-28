@@ -14,6 +14,7 @@ from PySide6.QtWidgets import QApplication
 
 from starflight.utils.image import compute_preview_size, read_image_dimensions
 from starflight.views.widgets.preview_panel import PreviewPanel
+from starflight.views.widgets.timeline_widget import TimelineWidget
 
 
 class ImageUtilityTests(unittest.TestCase):
@@ -46,6 +47,38 @@ class ImageUtilityTests(unittest.TestCase):
         panel.set_target_resolution(2161, 3841)
 
         self.assertEqual(panel.preview_render_size(), (2162, 3842))
+
+    def test_playback_preview_uses_a_960_pixel_long_edge(self) -> None:
+        panel = PreviewPanel()
+        panel.set_target_resolution(2160, 3840)
+
+        self.assertEqual(panel.playback_render_size(), (540, 960))
+
+        panel.set_target_resolution(3840, 2160)
+
+        self.assertEqual(panel.playback_render_size(), (960, 540))
+
+    def test_pausing_requests_an_exact_redraw_of_the_current_frame(self) -> None:
+        timeline = TimelineWidget()
+        frames: list[int] = []
+        timeline.frame_index_changed.connect(frames.append)
+
+        timeline.play()
+        self.assertTrue(timeline.is_playing)
+        timeline.pause()
+
+        self.assertFalse(timeline.is_playing)
+        self.assertEqual(frames, [0])
+
+    def test_play_button_requests_cache_preparation_before_timeline_starts(self) -> None:
+        timeline = TimelineWidget()
+        requests: list[bool] = []
+        timeline.play_requested.connect(lambda: requests.append(True))
+
+        timeline.toggle_playback()
+
+        self.assertEqual(requests, [True])
+        self.assertFalse(timeline.is_playing)
 
 
 if __name__ == "__main__":

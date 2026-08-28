@@ -45,6 +45,7 @@ class FocusPointsControl(QWidget):
     """interactive start/end focus point editor over a source image preview."""
 
     focus_changed = Signal()
+    adjustment_finished = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -115,6 +116,11 @@ class FocusPointsControl(QWidget):
         self._image_height = max(1, image_height)
         self._canvas.update()
         self._refresh_summary()
+
+    def is_adjusting(self) -> bool:
+        """Return whether a start or target marker is currently being dragged."""
+
+        return self._drag_target is not None
 
     def clear_image(self) -> None:
         """remove the current preview image."""
@@ -286,9 +292,7 @@ class _FocusPointsCanvas(QWidget):
             painter.fillRect(image_rect, QColor(12, 15, 20, 160))
             return
 
-        start_canvas = (
-            self._point_to_canvas(owner._start_point) if owner._start_enabled else None
-        )
+        start_canvas = self._point_to_canvas(owner._start_point) if owner._start_enabled else None
         end_canvas = self._point_to_canvas(owner._end_point) if owner._end_enabled else None
 
         if start_canvas is not None and end_canvas is not None:
@@ -364,7 +368,7 @@ class _FocusPointsCanvas(QWidget):
         )
         self.update()
         owner._refresh_summary()
-        owner._emit_changed()
+        owner.adjustment_finished.emit()
 
     def _hit_marker(self, point: QPointF) -> str | None:
         owner = self._owner

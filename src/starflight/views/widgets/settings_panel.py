@@ -95,7 +95,7 @@ class SettingsPanel(QWidget):
     meta_settings_changed = Signal()
     timeline_settings_changed = Signal()
     load_image_requested = Signal()
-    slider_adjustment_finished = Signal()
+    preview_adjustment_finished = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -110,18 +110,29 @@ class SettingsPanel(QWidget):
         self._source_height = 1
         self._crop_orientation: int | None = None
         self._last_crop = CropSettings()
+        self._crop_drag_start: CropSettings | None = None
         self._setting_field_rows: list[SettingFieldRow] = []
         self._build_ui()
         self._parallax_refresh_sliders = tuple(self.findChildren(NoWheelSlider))
         for slider in self._parallax_refresh_sliders:
-            slider.sliderReleased.connect(self.slider_adjustment_finished.emit)
+            slider.sliderReleased.connect(self.preview_adjustment_finished.emit)
         self.retranslate_ui()
 
     @property
-    def slider_adjustment_active(self) -> bool:
-        """Return whether a settings slider is currently being dragged."""
+    def preview_adjustment_active(self) -> bool:
+        """Return whether a slider, crop, or focus control is being dragged."""
 
-        return any(slider.isSliderDown() for slider in self._parallax_refresh_sliders)
+        if any(slider.isSliderDown() for slider in self._parallax_refresh_sliders):
+            return True
+        if self.crop_control.is_adjusting():
+            return True
+        return self.focus_points.is_adjusting()
+
+    @property
+    def slider_adjustment_active(self) -> bool:
+        """Backward-compatible alias for preview_adjustment_active."""
+
+        return self.preview_adjustment_active
 
     def _build_ui(self) -> None:
         scroll = QScrollArea(self)
@@ -513,6 +524,7 @@ class SettingsPanel(QWidget):
 
         self.crop_control = CropControl()
         self.crop_control.crop_changed.connect(self._on_crop_changed)
+        self.crop_control.adjustment_finished.connect(self._on_crop_adjustment_finished)
         self._style_field(self.crop_control)
         layout.addWidget(self.crop_control)
 
@@ -526,6 +538,7 @@ class SettingsPanel(QWidget):
 
         self.focus_points = FocusPointsControl()
         self.focus_points.focus_changed.connect(self._emit_settings_changed)
+        self.focus_points.adjustment_finished.connect(self.preview_adjustment_finished.emit)
         self._style_field(self.focus_points)
         layout.addWidget(self.focus_points)
 
@@ -539,10 +552,39 @@ class SettingsPanel(QWidget):
         """Keep camera-path points on the same source pixels after crop edits."""
 
         new_crop = self._current_crop_settings()
-        self._remap_focus_points_for_crop(self._last_crop, new_crop)
+        if self.crop_control.is_adjusting():
+            if self._crop_drag_start is None:
+                self._crop_drag_start = self._last_crop
+            self._emit_settings_changed()
+            return
+        self._apply_crop_change(self._last_crop, new_crop)
+
+    def _on_crop_adjustment_finished(self) -> None:
+        """Finalize crop edits once the user releases the mouse button."""
+
+        if self._crop_drag_start is not None:
+            self._apply_crop_change(
+                self._crop_drag_start,
+                self._current_crop_settings(),
+                emit_settings=False,
+            )
+            self._crop_drag_start = None
+        self.preview_adjustment_finished.emit()
+
+    def _apply_crop_change(
+        self,
+        old_crop: CropSettings,
+        new_crop: CropSettings,
+        *,
+        emit_settings: bool = True,
+    ) -> None:
+        """Remap focus points and refresh the focus preview for one crop revision."""
+
+        self._remap_focus_points_for_crop(old_crop, new_crop)
         self._last_crop = new_crop
         self._sync_focus_crop_image()
-        self._emit_settings_changed()
+        if emit_settings:
+            self._emit_settings_changed()
 
     def _sync_parallax_controls(self) -> None:
         """Enable the strength control while parallax is active."""

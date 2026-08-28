@@ -25,6 +25,8 @@ class PreviewController:
         self,
         project: Project,
         preview_panel: PreviewPanel,
+        *,
+        playback: bool = False,
     ) -> ProjectSettings:
         """
         build scaled settings for preview rendering.
@@ -33,10 +35,27 @@ class PreviewController:
             current project
         preview_panel
             preview ui panel
+        playback
+            use high-quality downscaled settings during timeline playback
         """
 
         preview_settings = project.settings.clone()
-        width, height = preview_panel.preview_render_size()
+        target_width = project.settings.resolution.width
+        target_height = project.settings.resolution.height
+        if playback:
+            width, height = preview_panel.playback_render_size()
+            resolution_scale = min(
+                1.0,
+                width / target_width,
+                height / target_height,
+            )
+            # Direct radius scaling loses most sub-pixel stars after display downsampling.
+            # This compensation preserves their apparent energy without changing the count.
+            star_scale = resolution_scale**0.8
+            preview_settings.stars.min_size *= star_scale
+            preview_settings.stars.max_size *= star_scale
+        else:
+            width, height = preview_panel.preview_render_size()
         preview_settings.resolution.width = width
         preview_settings.resolution.height = height
         return preview_settings
@@ -65,7 +84,6 @@ class PreviewController:
             when false, skip stars in the preview render
         use_parallax_preview
             show the explicitly generated low-resolution parallax snapshot
-
         returns True when frame was rendered
         """
 

@@ -9,6 +9,8 @@ from PySide6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
 from starflight.utils.image import numpy_rgb_to_qimage
 from starflight.views.widgets.zoomable_viewport import ZoomablePreviewViewport
 
+_PLAYBACK_PREVIEW_LONG_EDGE = 960
+
 
 class PreviewPanel(QWidget):
     """left preview area with zoomable viewport."""
@@ -56,6 +58,21 @@ class PreviewPanel(QWidget):
 
         width = self._target_width
         height = self._target_height
+        if width % 2 != 0:
+            width += 1
+        if height % 2 != 0:
+            height += 1
+        return width, height
+
+    def playback_render_size(self) -> tuple[int, int]:
+        """Return a high-quality render size used only during timeline playback."""
+
+        scale = min(
+            1.0,
+            _PLAYBACK_PREVIEW_LONG_EDGE / max(self._target_width, self._target_height),
+        )
+        width = max(2, round(self._target_width * scale))
+        height = max(2, round(self._target_height * scale))
         if width % 2 != 0:
             width += 1
         if height % 2 != 0:

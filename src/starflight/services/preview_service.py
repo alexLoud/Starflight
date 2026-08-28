@@ -29,6 +29,7 @@ class PreviewService:
         self._loaded_image_bgr: np.ndarray | None = None
         self._loaded_image_path: str | None = None
         self._last_preview_frame: np.ndarray | None = None
+        self._parallax_preview: PreparedParallaxPreview | None = None
         self._parallax_preview_renderer: FrameRenderer | None = None
         self._parallax_star_renderer: StarRenderer | None = None
         self._parallax_star_settings: ProjectSettings | None = None
@@ -47,6 +48,7 @@ class PreviewService:
         self._loaded_image_bgr = None
         self._loaded_image_path = None
         self._last_preview_frame = None
+        self._parallax_preview = None
         self._parallax_preview_renderer = None
         self._parallax_star_renderer = None
         self._parallax_star_settings = None
@@ -57,9 +59,16 @@ class PreviewService:
 
         return self._parallax_preview_renderer is not None
 
+    @property
+    def prepared_parallax_preview(self) -> PreparedParallaxPreview | None:
+        """Return the immutable inputs used by the active parallax preview."""
+
+        return self._parallax_preview
+
     def install_parallax_preview(self, preview: PreparedParallaxPreview) -> None:
         """Replace the cached low-resolution parallax renderer."""
 
+        self._parallax_preview = preview
         self._parallax_preview_renderer = create_renderer(
             preview.source_image_bgr,
             preview.settings.clone(),
@@ -72,6 +81,7 @@ class PreviewService:
     def clear_parallax_preview(self) -> None:
         """Discard only the explicitly generated parallax preview."""
 
+        self._parallax_preview = None
         self._parallax_preview_renderer = None
         self._parallax_star_renderer = None
         self._parallax_star_settings = None

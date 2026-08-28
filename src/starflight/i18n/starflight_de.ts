@@ -398,104 +398,111 @@
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../views/main_window.py" line="160"/>
-        <location filename="../views/main_window.py" line="201"/>
+        <location filename="../views/main_window.py" line="183"/>
+        <location filename="../views/main_window.py" line="224"/>
         <source>Open Recent</source>
         <translation>Zuletzt geöffnet</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="205"/>
+        <location filename="../views/main_window.py" line="228"/>
         <source>No Recent Projects</source>
         <translation>Keine zuletzt geöffneten Projekte</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="465"/>
+        <location filename="../views/main_window.py" line="490"/>
+        <location filename="../views/main_window.py" line="962"/>
         <source>Ready</source>
         <translation>Bereit</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="488"/>
+        <location filename="../views/main_window.py" line="513"/>
         <source>New</source>
         <translation>Neues Projekt</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="489"/>
+        <location filename="../views/main_window.py" line="514"/>
         <source>Open…</source>
         <translation>Projekt öffnen…</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="490"/>
+        <location filename="../views/main_window.py" line="515"/>
         <source>Save</source>
         <translation>Speichern</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="491"/>
+        <location filename="../views/main_window.py" line="516"/>
         <source>Save as…</source>
         <translation>Speichern unter…</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="493"/>
+        <location filename="../views/main_window.py" line="518"/>
         <source>Load image…</source>
         <translation>Bild laden…</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="494"/>
+        <location filename="../views/main_window.py" line="519"/>
         <source>Presets</source>
         <translation>Vorlagen</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="495"/>
+        <location filename="../views/main_window.py" line="520"/>
         <source>Reset all settings</source>
         <translation>Zurücksetzen</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="496"/>
+        <location filename="../views/main_window.py" line="521"/>
         <source>Export video…</source>
         <translation>Video exportieren…</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="497"/>
+        <location filename="../views/main_window.py" line="522"/>
         <source>Settings…</source>
         <translation>Einstellungen…</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="498"/>
+        <location filename="../views/main_window.py" line="523"/>
         <source>About Starflight</source>
         <translation>Über Starflight</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="534"/>
+        <location filename="../views/main_window.py" line="559"/>
         <source>Project</source>
         <translation>Projekt</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="535"/>
+        <location filename="../views/main_window.py" line="560"/>
         <source>Settings</source>
         <translation>Einstellungen</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="536"/>
+        <location filename="../views/main_window.py" line="561"/>
         <source>Help</source>
         <translation>Hilfe</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="766"/>
+        <location filename="../views/main_window.py" line="797"/>
+        <location filename="../views/main_window.py" line="897"/>
+        <source>Preparing playback preview… {current} of {total}</source>
+        <translation>Wiedergabevorschau wird vorbereitet… {current} von {total}</translation>
+    </message>
+    <message>
+        <location filename="../views/main_window.py" line="1058"/>
         <source>Preview unavailable</source>
         <translation>Vorschau nicht verfügbar</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="492"/>
+        <location filename="../views/main_window.py" line="517"/>
         <source>Quit</source>
         <translation>Beenden</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="533"/>
+        <location filename="../views/main_window.py" line="558"/>
         <source>File</source>
         <translation>Datei</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="903"/>
-        <location filename="../views/main_window.py" line="913"/>
+        <location filename="../views/main_window.py" line="1196"/>
+        <location filename="../views/main_window.py" line="1206"/>
         <source>Project saved: {path}</source>
         <translation>Projekt gespeichert: {path}</translation>
     </message>
@@ -646,7 +653,7 @@
 <context>
     <name>PreviewPanel</name>
     <message>
-        <location filename="../views/widgets/preview_panel.py" line="91"/>
+        <location filename="../views/widgets/preview_panel.py" line="108"/>
         <source>Load at least one image to see the preview.</source>
         <translation>Lade mindestens ein Bild, um die Vorschau zu sehen.</translation>
     </message>
@@ -1271,22 +1278,22 @@ Vergrößerung vermeiden</translation>
 <context>
     <name>TimelineWidget</name>
     <message>
-        <location filename="../views/widgets/timeline_widget.py" line="194"/>
+        <location filename="../views/widgets/timeline_widget.py" line="203"/>
         <source>Previous frame</source>
         <translation>Vorheriger Frame</translation>
     </message>
     <message>
-        <location filename="../views/widgets/timeline_widget.py" line="195"/>
+        <location filename="../views/widgets/timeline_widget.py" line="204"/>
         <source>Play / Pause</source>
         <translation>Wiedergabe / Pause</translation>
     </message>
     <message>
-        <location filename="../views/widgets/timeline_widget.py" line="196"/>
+        <location filename="../views/widgets/timeline_widget.py" line="205"/>
         <source>Stop</source>
         <translation>Stopp</translation>
     </message>
     <message>
-        <location filename="../views/widgets/timeline_widget.py" line="197"/>
+        <location filename="../views/widgets/timeline_widget.py" line="206"/>
         <source>Next frame</source>
         <translation>Nächster Frame</translation>
     </message>

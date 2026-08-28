@@ -32,6 +32,7 @@ _V4_DISPARITY_GAMMA = 0.66
 _V4_PLANE_BLEND = 0.18
 _V4_MIN_DEPTH_RANGE = 1e-4
 _V4_INVERSE_BISECTION_ITERATIONS = 24
+_V4_BISECTION_CONVERGENCE = 1.0 / 4096.0
 _V4_MOTION: dict[ParallaxStrength, tuple[float, float]] = {
     ParallaxStrength.LIGHT: (0.230769, 0.540865),
     ParallaxStrength.MEDIUM: (0.375, 0.878906),
@@ -567,6 +568,23 @@ def parallax_coordinate_maps(
     vector_x = base_map_x - center_x
     vector_y = base_map_y - center_y
 
+    disparity_min = float(disparity.min())
+    disparity_max = float(disparity.max())
+    if disparity_max - disparity_min <= 1e-6:
+        uniform_disparity = np.full(
+            base_map_x.shape,
+            disparity_min,
+            dtype=np.float32,
+        )
+        source_scale = np.maximum(
+            1.0 - travel * uniform_disparity * amount,
+            0.20,
+        )
+        map_x = center_x + vector_x * source_scale
+        map_y = center_y + vector_y * source_scale
+        map_x += source_width * lateral_percent * 0.01 * uniform_disparity * amount
+        return map_x.astype(np.float32), map_y.astype(np.float32)
+
     def maps_for(local_disparity: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         source_scale = np.maximum(1.0 - travel * local_disparity * amount, 0.20)
         map_x = center_x + vector_x * source_scale
@@ -589,6 +607,8 @@ def parallax_coordinate_maps(
         search_upper = local_disparity >= sampled_disparity
         upper = np.where(search_upper, local_disparity, upper)
         lower = np.where(search_upper, lower, local_disparity)
+        if float(np.max(upper - lower)) <= _V4_BISECTION_CONVERGENCE:
+            break
 
     map_x, map_y = maps_for((lower + upper) * 0.5)
     return map_x.astype(np.float32), map_y.astype(np.float32)

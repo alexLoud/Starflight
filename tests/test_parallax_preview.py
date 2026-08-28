@@ -214,16 +214,18 @@ class ParallaxPreviewRefreshTests(unittest.TestCase):
     def test_settings_slider_requests_refresh_only_when_released(self) -> None:
         panel = SettingsPanel()
         releases: list[bool] = []
-        panel.slider_adjustment_finished.connect(lambda: releases.append(True))
+        panel.preview_adjustment_finished.connect(lambda: releases.append(True))
 
         panel.zoom_row.slider.setSliderDown(True)
         panel.zoom_row.slider.setValue(panel.zoom_row.slider.value() + 1)
 
+        self.assertTrue(panel.preview_adjustment_active)
         self.assertTrue(panel.slider_adjustment_active)
         self.assertEqual(releases, [])
 
         panel.zoom_row.slider.setSliderDown(False)
 
+        self.assertFalse(panel.preview_adjustment_active)
         self.assertFalse(panel.slider_adjustment_active)
         self.assertEqual(releases, [True])
 
@@ -253,14 +255,17 @@ class ParallaxPreviewRefreshTests(unittest.TestCase):
                     _parallax_preview_stale=stale,
                     _parallax_preview_refresh_timer=timer,
                     settings_panel=SimpleNamespace(
+                        preview_adjustment_active=slider_active,
                         slider_adjustment_active=slider_active,
                     ),
                     preview_workspace=SimpleNamespace(
                         zoom_toolbar=SimpleNamespace(
                             parallax_preview_enabled=active,
                         ),
+                        timeline=SimpleNamespace(is_scrubbing=False),
                     ),
                     _parallax_effect_enabled=lambda: True,
+                    _preview_refresh_deferred=lambda active=slider_active: active,
                 )
 
                 MainWindow._schedule_parallax_preview_refresh(window)
@@ -271,6 +276,70 @@ class ParallaxPreviewRefreshTests(unittest.TestCase):
                 else:
                     timer.stop.assert_called_once_with()
                     timer.start.assert_not_called()
+
+
+class SettingsPreviewRefreshTests(unittest.TestCase):
+    def test_settings_changed_defers_preview_refresh_while_slider_is_dragged(self) -> None:
+        refresh_timer = Mock()
+        playback_timer = Mock()
+        worker = Mock()
+        window = SimpleNamespace(
+            preview_workspace=SimpleNamespace(
+                timeline=SimpleNamespace(
+                    is_playing=False,
+                    is_scrubbing=False,
+                    pause=Mock(),
+                    configure=Mock(),
+                ),
+                preview_panel=SimpleNamespace(set_target_resolution=Mock()),
+            ),
+            _sync_project_from_ui=Mock(),
+            _project_controller=SimpleNamespace(
+                mark_dirty=Mock(),
+                project=SimpleNamespace(
+                    settings=SimpleNamespace(
+                        resolution=SimpleNamespace(width=1920, height=1080),
+                        duration_seconds=10.0,
+                        fps=30,
+                    ),
+                ),
+            ),
+            _update_window_title=Mock(),
+            _mark_parallax_preview_stale=Mock(),
+            _update_action_states=Mock(),
+            settings_panel=SimpleNamespace(preview_adjustment_active=True),
+            _preview_refresh_deferred=lambda: True,
+            _refresh_timer=refresh_timer,
+            _playback_preview_refresh_timer=playback_timer,
+            _playback_preview_worker=worker,
+            _invalidate_playback_preview=Mock(),
+        )
+
+        MainWindow._on_settings_changed(window)
+
+        window._invalidate_playback_preview.assert_not_called()
+        refresh_timer.start.assert_not_called()
+        refresh_timer.stop.assert_called_once_with()
+        playback_timer.stop.assert_called_once_with()
+        worker.request_cancel.assert_called_once_with()
+
+    def test_preview_adjustment_finished_triggers_deferred_preview_refresh(self) -> None:
+        refresh_timer = Mock()
+        window = SimpleNamespace(
+            _sync_project_from_ui=Mock(),
+            _project_controller=SimpleNamespace(mark_dirty=Mock()),
+            _invalidate_playback_preview=Mock(),
+            _refresh_timer=refresh_timer,
+            _schedule_parallax_preview_refresh=Mock(),
+        )
+
+        MainWindow._on_preview_adjustment_finished(window)
+
+        window._sync_project_from_ui.assert_called_once_with()
+        window._project_controller.mark_dirty.assert_called_once_with()
+        window._invalidate_playback_preview.assert_called_once_with()
+        refresh_timer.start.assert_called_once_with()
+        window._schedule_parallax_preview_refresh.assert_called_once_with()
 
 
 if __name__ == "__main__":

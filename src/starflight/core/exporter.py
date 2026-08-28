@@ -164,7 +164,7 @@ class _WallClockProgress:
 
         elapsed = self.elapsed()
         total = max(elapsed + max(remaining_s, 0.0), 1e-6)
-        raw = int(round(self.scale * elapsed / total))
+        raw = round(self.scale * elapsed / total)
         # never jump backwards; leave the last unit for completion
         value = max(self._value, min(self.scale - 1, raw))
         if value == self._value:
@@ -222,7 +222,7 @@ def _advance_star_fade_state(renderer: FrameRenderer, time_seconds: float) -> No
     renderer.stars.field.project_at_time(
         time_seconds,
         renderer.settings.duration_seconds,
-        renderer._view_center_at_progress,
+        renderer.view_center_at_progress,
         RenderQuality.EXPORT,
         camera_motion_progress(
             time_seconds,
@@ -523,11 +523,11 @@ class ExportWorker(QThread):
         if progress is not None:
             load_t0 = time.perf_counter()
             probe_image = load_image_bgr(str(image_path))
-            load_s = max(time.perf_counter() - load_t0, 1e-6)
+            probe_load_s = max(time.perf_counter() - load_t0, 1e-6)
 
             setup_t0 = time.perf_counter()
             probe = create_renderer(probe_image, settings, parallax_depth=parallax_depth)
-            setup_s = max(time.perf_counter() - setup_t0, 1e-6)
+            probe_setup_s = max(time.perf_counter() - setup_t0, 1e-6)
 
             frame_samples: list[float] = []
             for sample_index in range(3):
@@ -544,7 +544,8 @@ class ExportWorker(QThread):
             # probe is single-process; real export contends across workers + ffmpeg
             effective_parallelism = max(1.0, float(worker_count) * 0.25)
             progress.set_render_estimate(
-                (load_s + setup_s) + (total_frames * avg_frame_s / effective_parallelism)
+                (probe_load_s + probe_setup_s)
+                + (total_frames * avg_frame_s / effective_parallelism)
             )
 
         fade_t0 = time.perf_counter()
@@ -578,6 +579,7 @@ class ExportWorker(QThread):
                 publish_prep_progress(done)
 
         publish_prep_progress(total_frames)
+
         return snapshots
 
     def _export(self) -> None:

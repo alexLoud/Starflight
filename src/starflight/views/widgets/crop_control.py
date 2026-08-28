@@ -21,6 +21,7 @@ class CropControl(QWidget):
     """Interactive crop editor constrained to the target frame aspect ratio."""
 
     crop_changed = Signal()
+    adjustment_finished = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -110,6 +111,11 @@ class CropControl(QWidget):
             self._settings.center_y,
             self._settings.scale,
         )
+
+    def is_adjusting(self) -> bool:
+        """Return whether the user is currently dragging the crop rectangle."""
+
+        return self._canvas.is_adjusting()
 
     def reset_crop(self, *, emit_change: bool = True) -> None:
         """Restore the largest centered crop for the current target aspect ratio."""
@@ -309,7 +315,13 @@ class _CropCanvas(QWidget):
             return
         self._drag_mode = None
         self.setCursor(Qt.CursorShape.ArrowCursor)
+        self._owner.adjustment_finished.emit()
         event.accept()
+
+    def is_adjusting(self) -> bool:
+        """Return whether a crop drag or resize is in progress."""
+
+        return self._drag_mode is not None
 
     def _image_rect(self) -> QRectF:
         owner = self._owner

@@ -35,6 +35,8 @@ class TimelineWidget(QWidget):
 
     frame_index_changed = Signal(int)
     play_state_changed = Signal(bool)
+    play_requested = Signal()
+    scrub_finished = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -137,10 +139,22 @@ class TimelineWidget(QWidget):
         if emit_signal:
             self.frame_index_changed.emit(frame_index)
 
+    @property
+    def is_scrubbing(self) -> bool:
+        """Return whether the user is dragging the playhead."""
+
+        return self._dragging
+
     def current_time_seconds(self) -> float:
         """return current time in seconds."""
 
         return self._current_frame / self._fps
+
+    @property
+    def is_playing(self) -> bool:
+        """Return whether timeline playback is active."""
+
+        return self._is_playing
 
     def toggle_playback(self) -> None:
         """toggle play/pause."""
@@ -148,7 +162,7 @@ class TimelineWidget(QWidget):
         if self._is_playing:
             self.pause()
         else:
-            self.play()
+            self.play_requested.emit()
 
     def play(self) -> None:
         """start playback."""
@@ -160,32 +174,34 @@ class TimelineWidget(QWidget):
         self._timer.start()
         self.play_state_changed.emit(True)
 
-    def pause(self) -> None:
-        """pause playback."""
+    def pause(self, *, emit_frame: bool = True) -> None:
+        """Pause playback and optionally request an exact redraw."""
 
-        self._is_playing = False
-        self.play_button.setIcon(load_icon_asset("play.svg"))
-        self._timer.stop()
-        self.play_state_changed.emit(False)
+        self._set_paused(emit_frame=emit_frame)
+
+    def set_playback_preparing(self, preparing: bool) -> None:
+        """Disable the play button while its frame cache is being prepared."""
+
+        self.play_button.setEnabled(not preparing)
 
     def stop(self) -> None:
         """stop playback and return to start."""
 
-        self.pause()
+        self._set_paused(emit_frame=False)
         self.set_frame_index(0, emit_signal=True)
 
     def step_backward(self) -> None:
         """move one frame backward."""
 
         if self._is_playing:
-            self.pause()
+            self._set_paused(emit_frame=False)
         self.set_frame_index(self._current_frame - 1, emit_signal=True)
 
     def step_forward(self) -> None:
         """move one frame forward."""
 
         if self._is_playing:
-            self.pause()
+            self._set_paused(emit_frame=False)
         self.set_frame_index(self._current_frame + 1, emit_signal=True)
 
     def retranslate_ui(self) -> None:
@@ -243,7 +259,7 @@ class TimelineWidget(QWidget):
             return
         self._dragging = True
         if self._is_playing:
-            self.pause()
+            self._set_paused(emit_frame=False)
         self._set_frame_from_x(event.position().x(), emit_signal=True)
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
@@ -253,7 +269,10 @@ class TimelineWidget(QWidget):
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         del event
+        was_scrubbing = self._dragging
         self._dragging = False
+        if was_scrubbing:
+            self.scrub_finished.emit()
 
     def _track_rect(self) -> QRectF:
         track_left = _SIDE_PANEL_WIDTH
@@ -344,8 +363,8 @@ class TimelineWidget(QWidget):
         elapsed_seconds = max(0.0, time.perf_counter() - self._play_anchor_seconds)
         target_frame = self._play_anchor_frame + int(elapsed_seconds * self._fps)
         if target_frame > self._total_frames:
+            self._set_paused(emit_frame=False)
             self.set_frame_index(0, emit_signal=True)
-            self.pause()
             return
         if target_frame != self._current_frame:
             self.set_frame_index(target_frame, emit_signal=True)
@@ -353,6 +372,18 @@ class TimelineWidget(QWidget):
     def _update_timer_interval(self) -> None:
         # poll faster than fps so catch-up stays smooth after slow renders
         self._timer.setInterval(max(1, min(16, int(1000 / self._fps))))
+
+    def _set_paused(self, *, emit_frame: bool) -> None:
+        """Stop playback and optionally request an exact redraw of the current frame."""
+
+        if not self._is_playing:
+            return
+        self._is_playing = False
+        self.play_button.setIcon(load_icon_asset("play.svg"))
+        self._timer.stop()
+        self.play_state_changed.emit(False)
+        if emit_frame:
+            self.frame_index_changed.emit(self._current_frame)
 
     def _update_time_label(self) -> None:
         current = self._format_time(self.current_time_seconds())

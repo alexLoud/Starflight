@@ -22,6 +22,16 @@ from starflight.utils.star_colors import (
 _STAR_SIZE_MAX = 2.6
 
 
+def _clamp(value: float, minimum: float, maximum: float) -> float:
+    """Clamp one scalar without NumPy's array-dispatch overhead."""
+
+    if value < minimum:
+        return minimum
+    if value > maximum:
+        return maximum
+    return value
+
+
 @dataclass
 class StarProjection:
     """projected star data for rendering."""
@@ -167,20 +177,19 @@ class StarField:
         rng = np.random.default_rng(settings.seed)
         temperatures = sample_star_temperatures(rng, settings.star_count)
         max_offset_x, max_offset_y = self._offset_limits()
+        spread = _clamp(settings.size_spread, 0.0, 1.0)
+        size_mean = -0.20 + 0.25 * spread
+        size_sigma = 0.42 - 0.04 * spread
         stars: list[_StarSeed] = []
         for index in range(settings.star_count):
             brightness = sample_star_brightness(rng, settings.magnitude_realism)
             offset_x = float(rng.uniform(-max_offset_x, max_offset_x))
             offset_y = float(rng.uniform(-max_offset_y, max_offset_y))
             z = float(rng.uniform(self._MIN_Z + 0.02, self._MAX_Z))
-            size_mean = -0.20 + 0.25 * float(np.clip(settings.size_spread, 0.0, 1.0))
-            size_sigma = 0.42 - 0.04 * float(np.clip(settings.size_spread, 0.0, 1.0))
-            size = float(
-                np.clip(
-                    rng.lognormal(mean=size_mean, sigma=size_sigma),
-                    0.35,
-                    _STAR_SIZE_MAX,
-                )
+            size = _clamp(
+                float(rng.lognormal(mean=size_mean, sigma=size_sigma)),
+                0.35,
+                _STAR_SIZE_MAX,
             )
             temperature = bias_temperature_for_star_strength(
                 float(temperatures[index]),
@@ -212,7 +221,7 @@ class StarField:
             normalized input 0..1
         """
 
-        clamped = float(np.clip(value, 0.0, 1.0))
+        clamped = _clamp(value, 0.0, 1.0)
         return clamped * clamped * (3.0 - 2.0 * clamped)
 
     def _frame_travel(self, max_travel: float, duration_seconds: float) -> float:
@@ -318,7 +327,7 @@ class StarField:
             depth value
         """
 
-        return float(np.clip((1.38 - z) / 1.16, 0.12, 1.0))
+        return _clamp((1.38 - z) / 1.16, 0.12, 1.0)
 
     def _estimate_radius(self, star: _StarSeed, depth_gain: float, settings: StarSettings) -> float:
         """
@@ -332,12 +341,12 @@ class StarField:
             star settings
         """
 
-        size_norm = float(np.clip(star.size / _STAR_SIZE_MAX, 0.0, 1.0))
-        spread = float(np.clip(settings.size_spread, 0.0, 1.0))
+        size_norm = _clamp(star.size / _STAR_SIZE_MAX, 0.0, 1.0)
+        spread = _clamp(settings.size_spread, 0.0, 1.0)
         # 0% keeps the original compact field; 100% lifts mid sizes and softens depth falloff.
         size_norm = size_norm ** (1.0 - 0.25 * spread)
         depth_factor = (0.20 + 0.10 * spread) + depth_gain * (0.80 - 0.10 * spread)
-        blend = float(np.clip(size_norm * depth_factor, 0.0, 1.0))
+        blend = _clamp(size_norm * depth_factor, 0.0, 1.0)
         return settings.min_size + (settings.max_size - settings.min_size) * blend
 
     def _star_color(self, star: _StarSeed, settings: StarSettings) -> tuple[float, float, float]:
@@ -589,10 +598,10 @@ class StarField:
         settings = self.settings
         if motion_progress is None:
             progress = 0.0 if duration_seconds <= 0 else time_seconds / duration_seconds
-            progress = float(np.clip(progress, 0.0, 1.0))
+            progress = _clamp(progress, 0.0, 1.0)
             travel_time = time_seconds
         else:
-            progress = float(np.clip(motion_progress, 0.0, 1.0))
+            progress = _clamp(motion_progress, 0.0, 1.0)
             travel_time = progress * duration_seconds
         max_travel = self._max_travel(settings, duration_seconds)
         travel = self._travel_at_time(settings, travel_time)
