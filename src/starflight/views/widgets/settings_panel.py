@@ -97,6 +97,7 @@ class SettingsPanel(QWidget):
         self.setObjectName("settings_panel")
         self.setMinimumWidth(420)
         self.setMaximumWidth(520)
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Ignored)
         self._update_block_depth = 0
         self._project_path: Path | None = None
         self._source_qimage: QImage | None = None
@@ -113,6 +114,8 @@ class SettingsPanel(QWidget):
         scroll.setObjectName("settings_scroll")
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        scroll.setMinimumHeight(0)
 
         content = QWidget()
         layout = QVBoxLayout(content)
@@ -182,6 +185,16 @@ class SettingsPanel(QWidget):
         root_layout = QVBoxLayout(self)
         root_layout.setContentsMargins(0, 0, 0, 0)
         root_layout.addWidget(scroll)
+
+    def minimumSizeHint(self) -> QSize:
+        """keep the sidebar scrollable instead of growing the window."""
+
+        return QSize(self.minimumWidth(), 0)
+
+    def sizeHint(self) -> QSize:
+        """prefer the sidebar width without the full settings content height."""
+
+        return QSize(self.minimumWidth(), 200)
 
     @staticmethod
     def _configure_form(form: QFormLayout) -> None:

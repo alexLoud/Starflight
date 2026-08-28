@@ -8,9 +8,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import QTimer
-from PySide6.QtGui import QAction, QCloseEvent
+from PySide6.QtCore import QEvent, QRect, QSize, QTimer
+from PySide6.QtGui import QAction, QCloseEvent, QScreen
 from PySide6.QtWidgets import (
+    QApplication,
     QMainWindow,
     QMenu,
     QMessageBox,
@@ -45,6 +46,8 @@ from starflight.views.widgets.preview_workspace import PreviewWorkspace
 from starflight.views.widgets.settings_panel import SettingsPanel
 from starflight.views.widgets.welcome_splash import WelcomeSplash
 
+_MIN_WINDOW_SIZE = QSize(800, 520)
+
 
 class MainWindow(QMainWindow):
     """starflight main window."""
@@ -69,6 +72,7 @@ class MainWindow(QMainWindow):
 
         self._workspace_active = False
         self._active_look_preset_id: str | None = None
+        self._constraining_window = False
 
         self._build_ui()
         self._connect_signals()
@@ -85,8 +89,8 @@ class MainWindow(QMainWindow):
         wrapper_layout = QVBoxLayout(wrapper)
         wrapper_layout.setContentsMargins(0, 0, 0, 0)
         wrapper_layout.setSpacing(0)
-        wrapper_layout.addWidget(self._toolbar)
-        wrapper_layout.addWidget(central)
+        wrapper_layout.addWidget(self._toolbar, stretch=0)
+        wrapper_layout.addWidget(central, stretch=1)
         self.setCentralWidget(wrapper)
         wrapper_layout.activate()
         self._build_menu_from_registry()
@@ -95,6 +99,7 @@ class MainWindow(QMainWindow):
         self.refresh_actions_from_registry()
         self._apply_chrome_visibility()
         self.showMaximized()
+        self._apply_window_minimum()
 
     def build_menu_shell(self) -> None:
         """Build the window shell through the legacy public entry point."""
@@ -237,6 +242,7 @@ class MainWindow(QMainWindow):
         self._workspace_active = True
         self._root_stack.setCurrentWidget(self._workspace_page)
         self._apply_chrome_visibility()
+        self._constrain_window_to_screen()
         self._update_window_title()
 
     def _apply_chrome_visibility(self) -> None:
@@ -247,6 +253,101 @@ class MainWindow(QMainWindow):
         if hasattr(self, "_toolbar"):
             self._toolbar.setVisible(visible)
         self.statusBar().setVisible(visible)
+
+    def _current_screen(self) -> QScreen | None:
+        """return the screen that currently owns this window."""
+
+        screen = self.screen()
+        if screen is not None:
+            return screen
+        app = QApplication.instance()
+        if app is None:
+            return None
+        return app.primaryScreen()
+
+    def _apply_window_minimum(self) -> None:
+        """keep a shrinkable floor that still fits small displays."""
+
+        screen = self._current_screen()
+        if screen is None:
+            self.setMinimumSize(_MIN_WINDOW_SIZE)
+            return
+        available = screen.availableGeometry()
+        frame = self.frameGeometry()
+        client = self.geometry()
+        chrome_width = max(frame.width() - client.width(), 0)
+        chrome_height = max(frame.height() - client.height(), 0)
+        self.setMinimumSize(
+            min(_MIN_WINDOW_SIZE.width(), max(available.width() - chrome_width, 0)),
+            min(_MIN_WINDOW_SIZE.height(), max(available.height() - chrome_height, 0)),
+        )
+
+    def _constrain_window_to_screen(self) -> None:
+        """fit a maximized editor window back into the dock-safe area."""
+
+        if self._constraining_window or not self.isVisible():
+            return
+        screen = self._current_screen()
+        if screen is None:
+            return
+        available = screen.availableGeometry()
+        self._constraining_window = True
+        try:
+            self._apply_window_minimum()
+
+            was_maximized = self.isMaximized()
+            if was_maximized:
+                self.showMaximized()
+
+            frame = self.frameGeometry()
+            if frame.width() <= available.width() and frame.height() <= available.height():
+                return
+
+            if was_maximized:
+                self.showNormal()
+            frame = self.frameGeometry()
+            client = self.geometry()
+            target = self._client_rect_for_frame(available, frame, client)
+            min_size = self.minimumSize()
+            self.setGeometry(
+                target.x(),
+                target.y(),
+                max(target.width(), min_size.width()),
+                max(target.height(), min_size.height()),
+            )
+        finally:
+            self._constraining_window = False
+
+    @staticmethod
+    def _client_rect_for_frame(available: QRect, frame: QRect, client: QRect) -> QRect:
+        """
+        map a dock-safe frame onto the window's client geometry.
+
+        available
+            usable screen area excluding menu bar and dock
+        frame
+            current outer window frame
+        client
+            current inner client rectangle
+        """
+
+        left = client.x() - frame.x()
+        top = client.y() - frame.y()
+        right = frame.right() - client.right()
+        bottom = frame.bottom() - client.bottom()
+        return QRect(
+            available.x() + left,
+            available.y() + top,
+            max(available.width() - left - right, 0),
+            max(available.height() - top - bottom, 0),
+        )
+
+    def changeEvent(self, event: QEvent) -> None:
+        super().changeEvent(event)
+        if event.type() != QEvent.Type.WindowStateChange:
+            return
+        if self._workspace_active and self.isMaximized():
+            self._constrain_window_to_screen()
 
     def _build_ui(self) -> None:
         self.menuBar().setVisible(False)

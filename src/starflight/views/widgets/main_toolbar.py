@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import QRectF, QSize, Qt
 from PySide6.QtGui import QAction, QColor, QIcon, QPainter, QPixmap
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QToolButton, QWidget
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QSizePolicy, QToolButton, QWidget
 
 from starflight.commands.registry import CommandRegistry
 from starflight.views.icons import (
@@ -51,6 +51,7 @@ class MainToolbar(QFrame):
     def __init__(self, command_registry: CommandRegistry, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("toolbar_main")
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
 
         validate_toolbar_icon_mapping(TOOLBAR_ICON_FILES)
         self._command_registry = command_registry
@@ -121,6 +122,11 @@ class MainToolbar(QFrame):
         export_button.setIconSize(QSize(_EXPORT_ICON_SIZE, _EXPORT_ICON_SIZE))
         export_button.setDefaultAction(export_action)
         layout.addWidget(export_button)
+
+    def minimumSizeHint(self) -> QSize:
+        """allow the window to shrink below the full button-row width."""
+
+        return QSize(0, super().minimumSizeHint().height())
 
     def refresh_action_texts(self) -> None:
         """update action labels from command registry."""
