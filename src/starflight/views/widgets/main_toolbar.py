@@ -55,6 +55,7 @@ class MainToolbar(QFrame):
 
         validate_toolbar_icon_mapping(TOOLBAR_ICON_FILES)
         self._command_registry = command_registry
+        self._buttons: dict[str, QToolButton] = {}
         self._build_actions()
 
     def _make_action(self, command_id: str) -> QAction:
@@ -86,6 +87,28 @@ class MainToolbar(QFrame):
         button.setDefaultAction(self._make_action(command_id))
         return button
 
+    def _add_command_button(self, command_id: str) -> QToolButton:
+        """
+        create and remember one toolbar button.
+
+        command_id
+            command identifier shown in the top bar
+        """
+
+        button = self._make_button(command_id)
+        self._buttons[command_id] = button
+        return button
+
+    def button_for_command(self, command_id: str) -> QToolButton | None:
+        """
+        return the toolbar button bound to a command.
+
+        command_id
+            command identifier shown in the top bar
+        """
+
+        return self._buttons.get(command_id)
+
     def _build_actions(self) -> None:
         file_commands = (
             "app.file.new",
@@ -103,12 +126,12 @@ class MainToolbar(QFrame):
         layout.setSpacing(4)
 
         for command_id in file_commands:
-            layout.addWidget(self._make_button(command_id))
+            layout.addWidget(self._add_command_button(command_id))
 
-        layout.addSpacing(14)
+        layout.addStretch(1)
 
         for command_id in look_commands:
-            layout.addWidget(self._make_button(command_id))
+            layout.addWidget(self._add_command_button(command_id))
 
         layout.addStretch(1)
 

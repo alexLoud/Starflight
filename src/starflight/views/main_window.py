@@ -14,7 +14,6 @@ from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
     QMenu,
-    QMessageBox,
     QSplitter,
     QStackedWidget,
     QVBoxLayout,
@@ -49,6 +48,7 @@ from starflight.views.dialogs.presets_dialog import PresetsDialog
 from starflight.views.dialogs.settings_dialog import SettingsDialog
 from starflight.views.widgets.main_toolbar import MainToolbar
 from starflight.views.widgets.preview_workspace import PreviewWorkspace
+from starflight.views.widgets.reset_confirm_popover import ResetConfirmPopover
 from starflight.views.widgets.settings_panel import SettingsPanel
 from starflight.views.widgets.welcome_splash import WelcomeSplash
 
@@ -91,6 +91,7 @@ class MainWindow(QMainWindow):
         self._workspace_active = False
         self._active_look_preset_id: str | None = None
         self._constraining_window = False
+        self._reset_popover: ResetConfirmPopover | None = None
 
         self._build_ui()
         self._connect_signals()
@@ -476,6 +477,8 @@ class MainWindow(QMainWindow):
         self.welcome_splash.retranslate_ui()
         self.settings_panel.retranslate_ui()
         self.preview_workspace.retranslate_ui()
+        if self._reset_popover is not None:
+            self._reset_popover.retranslate_ui()
         self._update_window_title()
         if self._workspace_active and not self._project_controller.project.source_image:
             self.preview_workspace.preview_panel.show_empty_preview_message()
@@ -946,16 +949,25 @@ class MainWindow(QMainWindow):
     def reset_settings_keep_image(self) -> None:
         """ask, then restore default settings while keeping the loaded image."""
 
-        answer = QMessageBox.question(
-            self,
-            self.tr("Reset settings"),
-            self.tr("Reset all settings? The loaded image will be kept."),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
-        if answer != QMessageBox.StandardButton.Yes:
+        if not hasattr(self, "_toolbar"):
             return
-        self._apply_settings_reset()
+        anchor = self._toolbar.button_for_command("app.project.reset_settings")
+        if anchor is None:
+            return
+        if self._reset_popover is not None and self._reset_popover.isVisible():
+            self._reset_popover.close()
+            return
+
+        popover = ResetConfirmPopover(self)
+        popover.confirmed.connect(self._apply_settings_reset)
+        popover.destroyed.connect(self._clear_reset_popover)
+        self._reset_popover = popover
+        popover.show_below(anchor)
+
+    def _clear_reset_popover(self, *_args: object) -> None:
+        """drop the closed reset confirmation popup."""
+
+        self._reset_popover = None
 
     def _apply_settings_reset(self) -> None:
         """restore default settings while keeping the loaded source image."""

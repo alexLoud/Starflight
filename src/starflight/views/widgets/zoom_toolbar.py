@@ -101,6 +101,13 @@ class ZoomToolbar(QWidget):
         preview_layout.addWidget(self.parallax_button)
         preview_layout.addWidget(self.stars_button)
 
+        self.preview_heading_label = QLabel(self)
+        self.preview_heading_label.setObjectName("timeline_preview_heading")
+        self.preview_heading_label.setFixedHeight(_CAPTION_HEIGHT)
+        self.preview_heading_label.setAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+        )
+
         self.preview_status_label = QLabel(self)
         self.preview_status_label.setObjectName("timeline_preview_status")
         self.preview_status_label.setFixedHeight(_CAPTION_HEIGHT)
@@ -108,17 +115,23 @@ class ZoomToolbar(QWidget):
             Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter,
         )
 
-        grid.addWidget(preview_row, 0, 0, Qt.AlignmentFlag.AlignVCenter)
-        grid.addWidget(zoom_row, 0, 1)
+        grid.addWidget(
+            self.preview_heading_label,
+            0,
+            0,
+            Qt.AlignmentFlag.AlignLeft,
+        )
+        grid.addWidget(preview_row, 1, 0, Qt.AlignmentFlag.AlignVCenter)
+        grid.addWidget(zoom_row, 1, 1)
         grid.addWidget(
             self.preview_status_label,
-            1,
+            2,
             0,
             Qt.AlignmentFlag.AlignHCenter,
         )
         grid.addWidget(
             self.zoom_level_label,
-            1,
+            2,
             1,
             Qt.AlignmentFlag.AlignHCenter,
         )
@@ -135,6 +148,7 @@ class ZoomToolbar(QWidget):
         self._viewport.zoom_percent_changed.connect(self._on_zoom_changed)
         self._parallax_preview_available = False
         self._parallax_preview_status = "none"
+        self._update_preview_heading()
         self._update_parallax_text()
         self._update_stars_label()
 
@@ -210,9 +224,15 @@ class ZoomToolbar(QWidget):
 
         self._update_stars_label()
         self._update_parallax_text()
+        self._update_preview_heading()
         self.fit_button.setToolTip(self.tr("Fit to view"))
         self.zoom_out_button.setToolTip(self.tr("Zoom out"))
         self.zoom_in_button.setToolTip(self.tr("Zoom in"))
+
+    def _update_preview_heading(self) -> None:
+        """set the small heading above the preview toggles."""
+
+        self.preview_heading_label.setText(self.tr("Preview options:"))
 
     def _on_stars_toggled(self, checked: bool) -> None:
         """
@@ -228,12 +248,16 @@ class ZoomToolbar(QWidget):
     def _on_parallax_toggled(self, checked: bool) -> None:
         """Notify the window that the preview source changed."""
 
+        self._update_parallax_text()
         self.parallax_preview_enabled_changed.emit(checked)
 
     def _update_parallax_text(self) -> None:
         """Translate the parallax toggle, status, and tooltip."""
 
-        self.parallax_button.setText(self.tr("Parallax"))
+        if self.parallax_button.isChecked():
+            self.parallax_button.setText(self.tr("Parallax on"))
+        else:
+            self.parallax_button.setText(self.tr("Parallax off"))
         self.parallax_button.setToolTip(
             self.tr("Switch between the normal and generated parallax preview."),
         )

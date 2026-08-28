@@ -546,15 +546,10 @@ class PresetsDialog(QDialog):
             self._apply_card_texts(card)
 
     def _builtin_texts(self, preset: LookPreset) -> tuple[str, str]:
-        if preset.id == "soft-drift":
+        if preset.id == "normaler-flug":
             return (
-                self.tr("Soft Drift"),
-                self.tr("Sparse, slow stars with a gentle zoom"),
-            )
-        if preset.id == "deep-glow":
-            return (
-                self.tr("Deep Glow"),
-                self.tr("Dense glowing stars with a cinematic sweep"),
+                self.tr("Normal Flight"),
+                self.tr("A normal flight toward the object with many softly glowing stars"),
             )
         return preset.name, preset.description
 

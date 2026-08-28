@@ -150,16 +150,14 @@ class LookPresetPersistenceTests(unittest.TestCase):
             library = load_library(user_directory=Path(directory))
         builtin_ids = {preset.id for preset in library if preset.builtin}
 
-        self.assertIn("soft-drift", builtin_ids)
-        self.assertIn("deep-glow", builtin_ids)
+        self.assertEqual(builtin_ids, {"normaler-flug"})
 
-        soft = next(preset for preset in library if preset.id == "soft-drift")
-        deep = next(preset for preset in library if preset.id == "deep-glow")
-        self.assertEqual(soft.settings.stars.density_preset, DensityPreset.LOW)
-        self.assertEqual(soft.settings.background.zoom_percent, 6.0)
-        self.assertEqual(deep.settings.stars.density_preset, DensityPreset.HIGH)
-        self.assertEqual(deep.settings.background.motion_mode, ImageMotionMode.PARALLAX)
-        self.assertEqual(deep.settings.parallax.strength, ParallaxStrength.STRONG)
+        preset = next(item for item in library if item.id == "normaler-flug")
+        self.assertEqual(preset.settings.stars.density_preset, DensityPreset.HIGH)
+        self.assertEqual(preset.settings.stars.star_count, 2500)
+        self.assertEqual(preset.settings.background.zoom_percent, 15.0)
+        self.assertEqual(preset.settings.background.motion_mode, ImageMotionMode.MANUAL)
+        self.assertEqual(preset.settings.parallax.strength, ParallaxStrength.MEDIUM)
 
     def test_user_preset_round_trip_and_delete(self) -> None:
         settings = ProjectSettings()

@@ -1,0 +1,32 @@
+{
+  "format_version": 1,
+  "id": "normaler-flug",
+  "name": "Normal Flight",
+  "description": "A normal flight toward the object with many softly glowing stars",
+  "settings": {
+    "stars": {
+      "density_preset": "high",
+      "star_count": 2500,
+      "min_size": 1.0,
+      "max_size": 10.0,
+      "brightness": 0.8,
+      "glow_intensity": 0.3,
+      "glow_depth_boost": 0.3,
+      "color_intensity": 0.5,
+      "speed": 1.0,
+      "magnitude_realism": 0.5,
+      "size_spread": 0.25,
+      "seed": 42
+    },
+    "background": {
+      "motion_mode": "manual",
+      "zoom_percent": 15.0,
+      "rotation_degrees": 0.0,
+      "easing": "linear",
+      "fill_frame": false
+    },
+    "parallax": {
+      "strength": "medium"
+    }
+  }
+}

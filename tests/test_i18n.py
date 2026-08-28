@@ -62,6 +62,17 @@ class GermanTranslationTests(unittest.TestCase):
                 self.assertNotEqual(translated, source)
                 self.assertEqual(translated, catalog_translation(context, source))
 
+    def test_reset_confirm_popover_is_translated(self) -> None:
+        for source in (
+            "Reset all settings?",
+            "The loaded image will be kept.",
+            "Cancel",
+            "Reset",
+        ):
+            translated = QCoreApplication.translate("ResetConfirmPopover", source)
+            self.assertNotEqual(translated, source)
+            self.assertEqual(translated, catalog_translation("ResetConfirmPopover", source))
+
     def test_crash_report_actions_are_translated(self) -> None:
         for source in (
             "Starflight Error",

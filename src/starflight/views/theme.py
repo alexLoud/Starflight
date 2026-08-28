@@ -654,6 +654,32 @@ QPushButton#primary_button:disabled {{
     color: {TEXT_DISABLED};
 }}
 
+QFrame#reset_confirm_popover {{
+    background-color: {SURFACE_BG};
+    color: {TEXT_PRIMARY};
+    border: 1px solid {BORDER_FOCUS};
+    border-radius: 12px;
+}}
+
+QLabel#reset_confirm_title {{
+    color: {TEXT_PRIMARY};
+    background-color: transparent;
+    font-size: 13px;
+    font-weight: 600;
+}}
+
+QLabel#reset_confirm_message {{
+    color: {TEXT_MUTED};
+    background-color: transparent;
+    font-size: 12px;
+}}
+
+QFrame#reset_confirm_popover QPushButton {{
+    min-height: 26px;
+    padding: 5px 12px;
+    border-radius: 7px;
+}}
+
 QToolButton#transport_button {{
     background-color: {SURFACE_BG};
     border: 1px solid {BORDER};
@@ -712,7 +738,8 @@ QToolButton#parallax_preview_toggle_button:disabled {{
     color: {TEXT_DISABLED};
 }}
 
-QLabel#timeline_time_label {{
+QLabel#timeline_time_label,
+QLabel#timeline_preview_heading {{
     color: {TEXT_MUTED};
     font-size: 11px;
     padding: 0 4px;
@@ -977,30 +1004,42 @@ QWidget#presets_content {{
     background-color: {APP_BG};
 }}
 
-QFrame#presets_header {{
+QFrame#presets_header,
+QFrame#export_header {{
     background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
         stop:0 #1B2635, stop:0.5 #131B27, stop:1 {APP_BG});
     border-bottom: 1px solid {BORDER};
 }}
 
-QLabel#presets_header_icon {{
+QLabel#presets_header_icon,
+QLabel#export_header_icon {{
     background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
         stop:0 rgba(74, 130, 190, 95), stop:1 rgba(58, 110, 165, 55));
     border: 1px solid rgba(122, 186, 232, 85);
     border-radius: 11px;
 }}
 
-QLabel#presets_title {{
+QLabel#presets_title,
+QLabel#export_title {{
     color: {TEXT_PRIMARY};
     background-color: transparent;
     font-size: 17px;
     font-weight: 600;
 }}
 
-QLabel#presets_subtitle {{
+QLabel#presets_subtitle,
+QLabel#export_subtitle {{
     color: {TEXT_MUTED};
     background-color: transparent;
     font-size: 12px;
+}}
+
+QLabel#export_percent_label {{
+    color: {TEXT_PRIMARY};
+    background-color: transparent;
+    font-size: 12px;
+    font-weight: 600;
+    min-width: 34px;
 }}
 
 QLabel#preset_section_title {{
