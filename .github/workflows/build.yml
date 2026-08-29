@@ -1,5 +1,6 @@
 # Build desktop packages on pull requests and main pushes.
 # Uploads preview artifacts only; does not create GitHub Releases.
+# Skips preview builds on main when the Release workflow will publish instead.
 # Windows/Linux previews upload the application folder directly so downloads
 # need one extract, matching GitHub Release assets instead of zip-in-zip.
 
@@ -19,8 +20,78 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  prepare:
+    name: Check if preview build is needed
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.check.outputs.should_build }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Check whether CI should skip for an upcoming release
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+
+          if [[ "${EVENT_NAME}" == "pull_request" || "${EVENT_NAME}" == "workflow_dispatch" ]]; then
+            echo "Non-push event; running preview build."
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          read_version() {
+            python3 -c "import tomllib,sys; print(tomllib.load(sys.stdin.buffer)['project']['version'])"
+          }
+
+          version="$(read_version < pyproject.toml)"
+          tag="v${version}"
+
+          previous=""
+          if [[ -n "${BEFORE_SHA}" && "${BEFORE_SHA}" != "0000000000000000000000000000000000000000" ]] \
+            && git cat-file -e "${BEFORE_SHA}:pyproject.toml" 2>/dev/null; then
+            previous="$(git show "${BEFORE_SHA}:pyproject.toml" | read_version)"
+          elif git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+            previous="$(git show HEAD^:pyproject.toml | read_version)"
+          fi
+
+          if [[ -n "${previous}" && "${previous}" == "${version}" ]]; then
+            echo "Version ${version} unchanged; running preview build."
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Version changed in push: ${previous:-unknown} -> ${version}"
+
+          if gh release view "${tag}" >/dev/null 2>&1; then
+            echo "Release ${tag} already exists; running preview build."
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if ! awk -v ver="${version}" '
+            $0 ~ "^## \\[" ver "(\\]| -)" { found=1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md | grep -q '[^[:space:]]'; then
+            echo "No CHANGELOG section for ${version}; Release will fail, running preview build."
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Release ${tag} will run; skipping preview build."
+          echo "should_build=false" >> "$GITHUB_OUTPUT"
+
   build:
     name: Preview build ${{ matrix.target }}
+    needs: prepare
+    if: needs.prepare.outputs.should_build == 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     strategy:
