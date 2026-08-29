@@ -2,13 +2,15 @@
 
 ## [Unreleased]
 
-- New App start screen
-- Preset library and user presets
-- New Parallax effect for starless images
-- Easing for camera movement
-- Enhanced Preview performance
-- Guided introduction to the App for new users
-- Several UI improvements and redesigns
+## [1.1.0] - 2026-08-29
+
+- New App start screen with a redesigned welcome splash and project actions
+- Preset library with built-in looks and user-saved custom presets
+- New Parallax effect that adds depth motion to starless images
+- Easing for camera movement with linear, ease-in, ease-out, and ease-in/out
+- Enhanced Preview performance with pre-rendering and cached timeline playback
+- Guided introduction that walks new users through the app
+- Several UI improvements and redesigns across settings, export, and the project window
 
 ## [1.0.3] - 2026-08-24
 
