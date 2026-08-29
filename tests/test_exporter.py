@@ -17,10 +17,10 @@ from starflight.core.exporter import (
     _PIPE_WRITE_CHUNK_SIZE,
     ExportWorker,
     _export_worker_count,
+    _ExportProgressTracker,
     _ffmpeg_output_arg,
     _ffmpeg_popen_kwargs,
     _is_closed_pipe_error,
-    _LinearProgressPhase,
     _prepare_parallax_render_input,
     _stream_file_to_pipe,
 )
@@ -179,19 +179,28 @@ class ExportPipeTests(unittest.TestCase):
 
 
 class ExportProgressTests(unittest.TestCase):
-    def test_linear_phase_progress_stays_in_its_global_range(self) -> None:
+    def test_unified_progress_advances_monotonically(self) -> None:
         updates: list[tuple[int, int]] = []
-        progress = _LinearProgressPhase(
+        progress = _ExportProgressTracker(
             100,
-            1,
-            40,
             lambda current, total: updates.append((current, total)),
+            total_frames=10,
+            has_parallax=True,
+            star_units=2.0,
+            encode_units=10.0,
         )
+        progress.report_parallax(0.0)
+        progress.report_parallax(0.5)
+        progress.report_star_frames(3)
+        progress.report_star_frames(6)
+        progress.report_render_frames(4)
+        progress.report_render_frames(8)
+        progress.report_encode(0.5)
+        progress.complete()
 
-        for fraction in (0.0, 0.5, 0.25, 1.0):
-            progress.update(fraction)
-
-        self.assertEqual(updates, [(1, 100), (20, 100), (40, 100)])
+        values = [current for current, _total in updates]
+        self.assertEqual(values, sorted(values))
+        self.assertEqual(updates[-1], (100, 100))
 
     def test_parallax_depth_creation_updates_export_progress(self) -> None:
         worker = ExportWorker(Project(), Path("out.mp4"))
@@ -222,22 +231,24 @@ class ExportProgressTests(unittest.TestCase):
                 side_effect=fake_prepare_parallax_depth,
             ),
         ):
-            progress = _LinearProgressPhase(
+            progress = _ExportProgressTracker(
                 100,
-                1,
-                40,
                 lambda current, total: updates.append((current, total)),
+                total_frames=10,
+                has_parallax=True,
+                star_units=2.0,
+                encode_units=10.0,
             )
             worker._create_parallax_depth_with_progress(
                 source_image,
                 (0.5, 0.5),
                 progress=progress,
+                avg_render_s=0.1,
             )
 
-        self.assertEqual(
-            updates,
-            [(1, 100), (16, 100), (30, 100), (35, 100), (40, 100)],
-        )
+        self.assertGreaterEqual(len(updates), 2)
+        values = [current for current, _total in updates]
+        self.assertEqual(values, sorted(values))
 
     def test_ffmpeg_output_arg_uses_file_url_on_windows(self) -> None:
         windows_path = MagicMock()

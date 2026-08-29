@@ -411,7 +411,7 @@ class ExportDialog(QDialog):
         if self._export_phase == "parallax":
             self.progress_status_label.setText(self.tr("Preparing parallax…"))
         else:
-            self.progress_status_label.setText(self.tr("Preparing stars…"))
+            self.progress_status_label.setText(self.tr("Preparing export…"))
         self.progress_cancel_button.setEnabled(True)
         self._progress_cancel_row.setVisible(True)
         self._progress_complete_row.setVisible(False)
@@ -433,12 +433,12 @@ class ExportDialog(QDialog):
         self._worker.start()
 
     def _on_progress(self, current: int, total: int) -> None:
-        percent = int((current / max(1, total)) * 100)
+        percent = round((current / max(1, total)) * 100)
         self.progress_bar.setRange(0, 100)
         self.progress_bar.setValue(percent)
         self._percent_label.setText(f"{percent}%")
         if self._export_phase == "preparing":
-            self.progress_status_label.setText(self.tr("Preparing stars…"))
+            self.progress_status_label.setText(self.tr("Preparing export…"))
 
     def _on_frame_progress(self, current: int, total: int) -> None:
         """
@@ -450,6 +450,8 @@ class ExportDialog(QDialog):
             total export frames
         """
 
+        if current <= 0:
+            return
         self._export_phase = "rendering"
         self.progress_status_label.setText(
             self.tr("Rendering frames… {current} of {total}").format(
@@ -472,11 +474,17 @@ class ExportDialog(QDialog):
             self.progress_status_label.setText(self.tr("Preparing parallax…"))
             return
         if phase == "preparing":
-            self.progress_bar.setRange(0, 100)
-            self.progress_status_label.setText(self.tr("Preparing stars…"))
+            if self._export_phase == "parallax":
+                self.progress_status_label.setText(self.tr("Preparing export…"))
+            self._export_phase = "preparing"
             return
         if phase == "rendering":
-            self.progress_status_label.setText(self.tr("Rendering frames…"))
+            return
+        if phase == "rendering_workers":
+            self.progress_status_label.setText(self.tr("Starting render workers…"))
+            return
+        if phase == "encoding":
+            self.progress_status_label.setText(self.tr("Encoding video…"))
 
     def _release_worker(self) -> None:
         """wait for the export worker thread to finish and drop the reference."""

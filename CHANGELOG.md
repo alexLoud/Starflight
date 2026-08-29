@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-08-29
+
+- Video export progress uses a fixed preparation band (0–10%) and frame rendering (10–100%); star preparation is no longer shown as a separate step
+- Closing the export dialog no longer regenerates an already valid parallax preview
+
 ## [1.1.0] - 2026-08-29
 
 - New App start screen with a redesigned welcome splash and project actions

@@ -1586,8 +1586,17 @@ class MainWindow(QMainWindow):
             self,
         )
         if self._workspace_active:
-            self._mark_parallax_preview_stale()
             self._invalidate_playback_preview()
+            self._resume_parallax_preview_after_export()
+
+    def _resume_parallax_preview_after_export(self) -> None:
+        """resume parallax preview work only when export left it incomplete."""
+
+        if not self._parallax_effect_enabled():
+            return
+        if self._preview_service.has_parallax_preview and not self._parallax_preview_stale:
+            return
+        self._schedule_parallax_preview_refresh()
 
     def _pause_background_renderers_for_export(self) -> None:
         """Backward-compatible alias for export entry points."""
@@ -1599,8 +1608,8 @@ class MainWindow(QMainWindow):
 
         if not self._workspace_active:
             return
-        self._mark_parallax_preview_stale()
         self._invalidate_playback_preview()
+        self._resume_parallax_preview_after_export()
 
     def open_settings(self) -> None:
         previous_preview_fps = playback_preview_fps_from_settings(self._context.settings)
