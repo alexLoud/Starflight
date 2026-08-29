@@ -384,10 +384,64 @@ QWidget#preview_workspace {{
     background-color: {SURFACE_ALT_BG};
 }}
 
+QWidget#preview_footer {{
+    background-color: {PANEL_BG};
+    border-top: 1px solid {BORDER};
+}}
+
 QWidget#preview_container {{
     background-color: {SURFACE_ALT_BG};
     border: 1px solid {BORDER};
     border-radius: 6px;
+}}
+
+QWidget#preview_empty_state {{
+    background-color: {SURFACE_ALT_BG};
+    border: 1px dashed {BORDER_FOCUS};
+    border-radius: 5px;
+}}
+
+QWidget#preview_empty_state[dragActive="true"] {{
+    background-color: {ACCENT_SELECTION};
+    border: 1px solid {ACCENT_HOVER};
+}}
+
+QLabel#preview_empty_title {{
+    color: {TEXT_PRIMARY};
+    font-size: 16px;
+    font-weight: 600;
+}}
+
+QLabel#preview_empty_message {{
+    color: {TEXT_MUTED};
+    max-width: 360px;
+}}
+
+QLabel#preview_empty_hint {{
+    color: {TEXT_MUTED};
+}}
+
+QPushButton#preview_empty_load_button {{
+    background-color: {ACCENT};
+    border: 1px solid {ACCENT_HOVER};
+    border-radius: 6px;
+    color: #FFFFFF;
+    font-weight: 600;
+    padding: 8px 14px;
+}}
+
+QPushButton#preview_empty_load_button:hover {{
+    background-color: {ACCENT_HOVER};
+}}
+
+QLabel#preview_empty_edge_warning {{
+    background-color: {PANEL_BG};
+    border: 1px solid #70572F;
+    border-radius: 4px;
+    color: #E5B56A;
+    font-size: 11px;
+    margin: 10px;
+    padding: 4px 7px;
 }}
 
 QWidget#zoom_toolbar_row {{

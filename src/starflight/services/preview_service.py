@@ -27,6 +27,7 @@ class PreviewService:
         self._loaded_image_bgr: np.ndarray | None = None
         self._loaded_image_path: str | None = None
         self._last_preview_frame: np.ndarray | None = None
+        self._preview_has_empty_edges = False
         self._parallax_preview: PreparedParallaxPreview | None = None
         self._parallax_preview_renderer: FrameRenderer | None = None
         self._parallax_star_renderer: StarRenderer | None = None
@@ -46,6 +47,7 @@ class PreviewService:
         self._loaded_image_bgr = None
         self._loaded_image_path = None
         self._last_preview_frame = None
+        self._preview_has_empty_edges = False
         self._parallax_preview = None
         self._parallax_preview_renderer = None
         self._parallax_star_renderer = None
@@ -56,6 +58,12 @@ class PreviewService:
         """Return whether an explicitly prepared parallax preview is cached."""
 
         return self._parallax_preview_renderer is not None
+
+    @property
+    def preview_has_empty_edges(self) -> bool:
+        """Return whether the current export animation definitely contains empty edges."""
+
+        return self._preview_has_empty_edges
 
     @property
     def prepared_parallax_preview(self) -> PreparedParallaxPreview | None:
@@ -118,6 +126,7 @@ class PreviewService:
             star_renderer=self._parallax_star_renderer,
         )
         self._last_preview_frame = frame
+        self._preview_has_empty_edges = False
         return frame
 
     def validate(self, project: Project, project_path: Path | None) -> ValidationResult:
@@ -200,6 +209,7 @@ class PreviewService:
             include_stars=include_stars,
             star_quality=RenderQuality.EXPORT,
         )
+        self._preview_has_empty_edges = self._preview_renderer.has_empty_edges()
         self._last_preview_frame = frame
         return True, frame, ""
 

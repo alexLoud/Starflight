@@ -169,6 +169,52 @@ class BackgroundRenderer:
             )
         return self._remap(matrix)
 
+    def has_empty_edges(
+        self,
+        duration_seconds: float,
+        fps: int,
+        settings: BackgroundSettings,
+        flight_speed: float,
+    ) -> bool:
+        """Return whether any exported frame samples outside the source image."""
+
+        frame_count = max(1, round(duration_seconds * fps))
+        for frame_index in range(frame_count):
+            progress = camera_motion_progress(
+                frame_index / fps,
+                duration_seconds,
+                settings,
+                flight_speed,
+            )
+            matrix = self._build_transform_matrix(progress, settings)
+            if self._matrix_samples_outside_source(matrix):
+                return True
+        return False
+
+    def _matrix_samples_outside_source(self, matrix: np.ndarray) -> bool:
+        """Return whether any output corner maps outside the source image."""
+
+        corners = np.array(
+            [
+                [0.0, 0.0],
+                [self.width - 1.0, 0.0],
+                [0.0, self.height - 1.0],
+                [self.width - 1.0, self.height - 1.0],
+            ],
+            dtype=np.float32,
+        )
+        source_x = matrix[0, 0] * corners[:, 0] + matrix[0, 1] * corners[:, 1] + matrix[0, 2]
+        source_y = matrix[1, 0] * corners[:, 0] + matrix[1, 1] * corners[:, 1] + matrix[1, 2]
+        # Matrix inversion introduces sub-pixel floating-point noise at exact
+        # image boundaries. Do not report that noise as an empty export edge.
+        tolerance = 1e-4
+        return bool(
+            np.any(source_x < -tolerance)
+            or np.any(source_x > self.source_w - 1.0 + tolerance)
+            or np.any(source_y < -tolerance)
+            or np.any(source_y > self.source_h - 1.0 + tolerance)
+        )
+
     def _coordinate_maps(self, matrix: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Build source-space coordinate maps from one inverse affine matrix."""
 

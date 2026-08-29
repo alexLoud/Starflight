@@ -321,6 +321,7 @@ class SettingsPreviewRefreshTests(unittest.TestCase):
             ),
             _update_window_title=Mock(),
             _update_action_states=Mock(),
+            _sync_preview_edge_warning=Mock(),
             settings_panel=SimpleNamespace(preview_adjustment_active=True),
             _preview_refresh_deferred=lambda: True,
             _refresh_timer=refresh_timer,

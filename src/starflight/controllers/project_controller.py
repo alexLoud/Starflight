@@ -278,7 +278,21 @@ class ProjectController:
         if path is None:
             return False
 
-        image_path = path
+        return self.load_image_path(path, parent)
+
+    def load_image_path(self, image_path: Path, parent: QWidget) -> bool:
+        """
+        load a source image from a known path.
+
+        image_path
+            selected or dropped source image path
+        parent
+            parent widget for warnings
+
+        returns True when the image could be applied to the project
+        """
+
+        image_path = image_path.expanduser()
         try:
             image_width, image_height = read_image_dimensions(str(image_path))
         except (OSError, ValueError) as exc:

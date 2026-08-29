@@ -96,6 +96,18 @@ class BackgroundScaleTests(unittest.TestCase):
             actual = math.radians(settings.rotation_degrees * progress)
             self.assertAlmostEqual(actual, expected, places=9)
 
+    def test_empty_edge_detection_checks_every_exported_frame(self) -> None:
+        renderer = _make_renderer()
+        settings = BackgroundSettings(rotation_degrees=15.0, fill_frame=False)
+
+        self.assertTrue(renderer.has_empty_edges(10.0, 30, settings, 1.0))
+
+    def test_empty_edge_detection_stays_hidden_when_fill_frame_covers_rotation(self) -> None:
+        renderer = _make_renderer()
+        settings = BackgroundSettings(rotation_degrees=15.0, fill_frame=True)
+
+        self.assertFalse(renderer.has_empty_edges(10.0, 30, settings, 1.0))
+
 
 if __name__ == "__main__":
     unittest.main()

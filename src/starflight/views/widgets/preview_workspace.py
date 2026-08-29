@@ -28,7 +28,7 @@ class PreviewWorkspace(QWidget):
         self.footer.setObjectName("preview_footer")
         self.footer.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         footer_layout = QVBoxLayout(self.footer)
-        footer_layout.setContentsMargins(0, 0, 0, 0)
+        footer_layout.setContentsMargins(0, 1, 0, 0)
         footer_layout.setSpacing(0)
         footer_layout.addWidget(self.timeline)
 

@@ -7,11 +7,14 @@ import struct
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import Mock
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtWidgets import QApplication
+from PySide6.QtGui import QColor, QPixmap
+from PySide6.QtWidgets import QApplication, QWidget
 
+from starflight.controllers.project_controller import ProjectController
 from starflight.utils.image import fit_size_within, read_image_dimensions
 from starflight.views.widgets.preview_panel import PreviewPanel
 from starflight.views.widgets.timeline_widget import TimelineWidget
@@ -57,6 +60,48 @@ class ImageUtilityTests(unittest.TestCase):
         panel.set_target_resolution(3840, 2160)
 
         self.assertEqual(panel.playback_render_size(), (960, 540))
+
+    def test_empty_preview_offers_image_import(self) -> None:
+        panel = PreviewPanel()
+        load_requests: list[bool] = []
+        panel.load_image_requested.connect(lambda: load_requests.append(True))
+
+        panel.empty_state.load_button.click()
+
+        self.assertEqual(load_requests, [True])
+
+    def test_empty_preview_has_a_wide_compact_import_layout(self) -> None:
+        panel = PreviewPanel()
+
+        self.assertGreaterEqual(panel.empty_state.content.minimumWidth(), 320)
+        self.assertIn("JPG, PNG, TIFF", panel.empty_state.hint_label.text())
+
+    def test_dropped_image_path_updates_the_project_without_open_dialog(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "portrait.png"
+            path.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8 + struct.pack(">II", 640, 960))
+            controller = ProjectController(Mock())
+
+            loaded = controller.load_image_path(path, QWidget())
+
+        self.assertTrue(loaded)
+        self.assertEqual(controller.project.source_image, str(path))
+        resolution = controller.project.settings.resolution
+        self.assertEqual((resolution.width, resolution.height), (1080, 1920))
+
+    def test_manual_zoom_stays_visually_stable_during_lower_resolution_playback(self) -> None:
+        panel = PreviewPanel()
+        viewport = panel.viewport
+        source = QPixmap(1080, 1920)
+        source.fill(QColor("#FFFFFF"))
+        playback = QPixmap(540, 960)
+        playback.fill(QColor("#FFFFFF"))
+
+        viewport.set_frame_pixmap(source)
+        viewport.set_zoom_percent(50)
+        viewport.set_frame_pixmap(playback)
+
+        self.assertEqual(viewport.current_zoom_percent(), 100)
 
     def test_pausing_requests_an_exact_redraw_of_the_current_frame(self) -> None:
         timeline = TimelineWidget()

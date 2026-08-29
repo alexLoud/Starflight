@@ -96,6 +96,7 @@ class PreviewController:
             )
             if frame is not None:
                 preview_panel.show_frame(frame)
+                preview_panel.set_empty_edge_warning(False)
                 return True
 
         ok, frame, message = self._preview_service.render_frame(
@@ -113,6 +114,7 @@ class PreviewController:
             return False
 
         preview_panel.show_frame(frame)
+        preview_panel.set_empty_edge_warning(self._preview_service.preview_has_empty_edges)
         return True
 
 

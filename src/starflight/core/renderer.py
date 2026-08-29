@@ -119,6 +119,18 @@ class FrameRenderer:
         background_settings = self.settings.background
         return self.background.focus_screen_position(progress, background_settings)
 
+    def has_empty_edges(self) -> bool:
+        """Return whether any exported frame contains areas outside the source image."""
+
+        if self.settings.background.motion_mode == ImageMotionMode.PARALLAX:
+            return False
+        return self.background.has_empty_edges(
+            self.settings.duration_seconds,
+            self.settings.fps,
+            self.settings.background,
+            self.settings.stars.speed,
+        )
+
 
 def composite_star_layer(background: np.ndarray, stars: np.ndarray) -> np.ndarray:
     """

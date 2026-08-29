@@ -55,6 +55,7 @@ from starflight.services.recent_projects_service import (
 from starflight.types.preset import LookPreset, apply_look
 from starflight.types.preview import PreparedParallaxPreview
 from starflight.types.settings import ImageMotionMode
+from starflight.utils.image import read_image_dimensions
 from starflight.views.dialogs.about_dialog import AboutDialog
 from starflight.views.dialogs.presets_dialog import PresetsDialog
 from starflight.views.dialogs.settings_dialog import SettingsDialog
@@ -450,6 +451,8 @@ class MainWindow(QMainWindow):
             self._on_background_adjustment_finished,
         )
         self.settings_panel.image_load_failed.connect(self._on_settings_image_load_failed)
+        self.preview_workspace.preview_panel.load_image_requested.connect(self.load_image)
+        self.preview_workspace.preview_panel.image_dropped.connect(self.load_image_path)
         self.preview_workspace.timeline.frame_index_changed.connect(self._on_frame_changed)
         self.preview_workspace.timeline.play_state_changed.connect(self._on_playback_state_changed)
         self.preview_workspace.timeline.scrub_finished.connect(self._on_timeline_scrub_finished)
@@ -498,6 +501,7 @@ class MainWindow(QMainWindow):
         self.preview_workspace.timeline.pause(emit_frame=False)
         if self._workspace_active:
             self.refresh_preview()
+            self.preview_workspace.preview_panel.viewport.reset_to_fit()
         self._update_window_title()
         if self._workspace_active:
             self._set_status(self.tr("Ready"))
@@ -1384,24 +1388,59 @@ class MainWindow(QMainWindow):
 
     def load_image(self) -> None:
         if self._project_controller.load_image(self):
-            self._clear_parallax_preview()
-            self._preview_controller.invalidate()
-            project = self._project_controller.project
-            self.settings_panel.set_project(
-                project,
-                project_path=self._project_controller.project_path,
-            )
-            self.preview_workspace.preview_panel.set_target_resolution(
-                project.settings.resolution.width,
-                project.settings.resolution.height,
-            )
-            self._update_window_title()
-            self.preview_workspace.timeline.set_frame_index(0, emit_signal=False)
-            self.refresh_preview()
-            self._invalidate_playback_preview()
-            self._schedule_parallax_preview_refresh()
-            self.preview_workspace.preview_panel.viewport.reset_to_fit()
-            self._update_action_states()
+            self._apply_loaded_image()
+
+    def load_image_path(self, path: str) -> None:
+        """Load an image dropped onto the empty preview area."""
+
+        if self._project_controller.load_image_path(Path(path), self):
+            self._apply_loaded_image()
+
+    def _apply_loaded_image(self) -> None:
+        """Refresh all image-dependent UI after a successful image import."""
+
+        self._clear_parallax_preview()
+        self._preview_controller.invalidate()
+        project = self._project_controller.project
+        self.settings_panel.set_project(
+            project,
+            project_path=self._project_controller.project_path,
+        )
+        self.preview_workspace.preview_panel.set_target_resolution(
+            project.settings.resolution.width,
+            project.settings.resolution.height,
+        )
+        self._update_window_title()
+        self.preview_workspace.timeline.set_frame_index(0, emit_signal=False)
+        self.refresh_preview()
+        self._invalidate_playback_preview()
+        self._schedule_parallax_preview_refresh()
+        self.preview_workspace.preview_panel.viewport.reset_to_fit()
+        self._update_action_states()
+        self._set_loaded_image_status()
+
+    def _set_loaded_image_status(self) -> None:
+        """Confirm the imported source image and its dimensions in the status bar."""
+
+        project = self._project_controller.project
+        image_path = resolve_source_image_path(
+            self._project_controller.project_path,
+            project.source_image,
+        )
+        if image_path is None:
+            return
+        try:
+            width, height = read_image_dimensions(str(image_path))
+        except (OSError, ValueError):
+            self._set_status(self.tr("Image loaded: {name}").format(name=image_path.name))
+            return
+        self._set_status(
+            self.tr("Image loaded: {name} ({width} \u00d7 {height})").format(
+                name=image_path.name,
+                width=width,
+                height=height,
+            ),
+        )
 
     def open_presets(self) -> None:
         """open the look preset library and apply a selected look."""

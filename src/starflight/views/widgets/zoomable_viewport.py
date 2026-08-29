@@ -3,17 +3,23 @@
 from __future__ import annotations
 
 from PySide6.QtCore import QRectF, Qt, Signal
-from PySide6.QtGui import QBrush, QColor, QPainter, QPixmap, QResizeEvent, QWheelEvent
-from PySide6.QtWidgets import QFrame, QGraphicsPixmapItem, QGraphicsScene, QGraphicsView, QWidget
+from PySide6.QtGui import QBrush, QColor, QPainter, QPen, QPixmap, QResizeEvent, QWheelEvent
+from PySide6.QtWidgets import (
+    QFrame,
+    QGraphicsPixmapItem,
+    QGraphicsRectItem,
+    QGraphicsScene,
+    QGraphicsView,
+    QWidget,
+)
 
-from starflight.views.theme import CHECKER_A, CHECKER_B
+from starflight.views.theme import APP_BG, BORDER_FOCUS
 
 _ZOOM_STEP = 1.15
 _MIN_ZOOM_PERCENT = 50
 _MIN_SCALE = _MIN_ZOOM_PERCENT / 100.0
 _MAX_SCALE = 32.0
 _SCALE_EPSILON = 1e-6
-_CHECKER_TILE = 12
 
 
 class ZoomablePreviewViewport(QGraphicsView):
@@ -29,7 +35,12 @@ class ZoomablePreviewViewport(QGraphicsView):
         self._scene = QGraphicsScene(self)
         self._pixmap_item = QGraphicsPixmapItem()
         self._scene.addItem(self._pixmap_item)
-        self._checker_brush = self._build_checker_brush()
+        self._export_frame_item = QGraphicsRectItem()
+        self._export_frame_item.setPen(QPen(QColor(BORDER_FOCUS), 0))
+        self._export_frame_item.setZValue(1)
+        self._export_frame_item.setVisible(False)
+        self._scene.addItem(self._export_frame_item)
+        self._background_brush = QBrush(QColor(APP_BG))
 
         self._fit_mode = True
         self._applying_fit = False
@@ -56,6 +67,7 @@ class ZoomablePreviewViewport(QGraphicsView):
 
         self._message = message
         self._pixmap_item.setPixmap(QPixmap())
+        self._export_frame_item.setVisible(False)
         self.resetTransform()
         self._scene.setSceneRect(
             QRectF(
@@ -75,11 +87,30 @@ class ZoomablePreviewViewport(QGraphicsView):
             frame to display
         """
 
+        previous_pixmap = self._pixmap_item.pixmap()
+        preserve_manual_view = (
+            not self._fit_mode
+            and not previous_pixmap.isNull()
+            and previous_pixmap.width() * pixmap.height()
+            == previous_pixmap.height() * pixmap.width()
+        )
+        previous_view_center = self.mapToScene(self.viewport().rect().center())
+        previous_scale = self.transform().m11()
+
         self._message = ""
         self._pixmap_item.setPixmap(pixmap)
+        self._export_frame_item.setRect(QRectF(pixmap.rect()))
+        self._export_frame_item.setVisible(True)
         self._scene.setSceneRect(QRectF(0, 0, pixmap.width(), pixmap.height()))
         if self._fit_mode:
             self.reset_to_fit()
+        elif preserve_manual_view:
+            self._restore_manual_view(
+                previous_pixmap,
+                pixmap,
+                previous_view_center,
+                previous_scale,
+            )
         else:
             self._emit_zoom_percent()
 
@@ -190,7 +221,7 @@ class ZoomablePreviewViewport(QGraphicsView):
             self._apply_absolute_scale(minimum_scale)
 
     def drawBackground(self, painter: QPainter, rect: QRectF) -> None:
-        painter.fillRect(rect, self._checker_brush)
+        painter.fillRect(rect, self._background_brush)
 
         if self._message and self._pixmap_item.pixmap().isNull():
             painter.save()
@@ -261,6 +292,28 @@ class ZoomablePreviewViewport(QGraphicsView):
             return
         self.scale(factor, factor)
 
+    def _restore_manual_view(
+        self,
+        previous_pixmap: QPixmap,
+        pixmap: QPixmap,
+        previous_view_center,
+        previous_scale: float,
+    ) -> None:
+        """Keep the visible size and center when preview frames change resolution."""
+
+        if previous_scale <= 0:
+            self._emit_zoom_percent()
+            return
+
+        center_x = previous_view_center.x() / previous_pixmap.width()
+        center_y = previous_view_center.y() / previous_pixmap.height()
+        resolution_scale = previous_pixmap.width() / pixmap.width()
+
+        self.resetTransform()
+        self.scale(previous_scale * resolution_scale, previous_scale * resolution_scale)
+        self.centerOn(center_x * pixmap.width(), center_y * pixmap.height())
+        self._emit_zoom_percent()
+
     def _set_fit_mode(self, enabled: bool) -> None:
         if self._fit_mode == enabled:
             return
@@ -270,17 +323,6 @@ class ZoomablePreviewViewport(QGraphicsView):
 
     def _emit_zoom_percent(self) -> None:
         self.zoom_percent_changed.emit(self.current_zoom_percent())
-
-    @staticmethod
-    def _build_checker_brush() -> QBrush:
-        tile = _CHECKER_TILE
-        pattern = QPixmap(tile * 2, tile * 2)
-        pattern.fill(QColor(CHECKER_B))
-        painter = QPainter(pattern)
-        painter.fillRect(0, 0, tile, tile, QColor(CHECKER_A))
-        painter.fillRect(tile, tile, tile, tile, QColor(CHECKER_A))
-        painter.end()
-        return QBrush(pattern)
 
 
 __all__ = ["ZoomablePreviewViewport"]
