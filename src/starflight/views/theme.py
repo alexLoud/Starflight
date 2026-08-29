@@ -1118,6 +1118,25 @@ QLabel#export_percent_label {{
     min-width: 34px;
 }}
 
+QFrame#export_summary_card {{
+    background-color: {SURFACE_ALT_BG};
+    border: 1px solid {BORDER};
+    border-radius: 8px;
+}}
+
+QLabel#export_summary_primary {{
+    color: {TEXT_PRIMARY};
+    background-color: transparent;
+    font-size: 13px;
+    font-weight: 600;
+}}
+
+QLabel#export_summary_secondary {{
+    color: {TEXT_MUTED};
+    background-color: transparent;
+    font-size: 12px;
+}}
+
 QLabel#preset_section_title {{
     color: {TEXT_MUTED};
     background-color: transparent;

@@ -127,152 +127,172 @@
 <context>
     <name>ExportDialog</name>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="215"/>
-        <location filename="../views/dialogs/export_dialog.py" line="224"/>
-        <location filename="../views/dialogs/export_dialog.py" line="408"/>
+        <location filename="../views/dialogs/export_dialog.py" line="252"/>
+        <location filename="../views/dialogs/export_dialog.py" line="260"/>
+        <location filename="../views/dialogs/export_dialog.py" line="505"/>
+        <location filename="../views/dialogs/export_dialog.py" line="546"/>
         <source>Export video</source>
         <translation>Video exportieren</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="216"/>
+        <location filename="../views/dialogs/export_dialog.py" line="253"/>
         <source>Output file</source>
         <translation>Ausgabedatei</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="217"/>
+        <location filename="../views/dialogs/export_dialog.py" line="254"/>
         <source>Quality</source>
         <translation>Qualität</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="218"/>
+        <location filename="../views/dialogs/export_dialog.py" line="255"/>
         <source>Browse…</source>
         <translation>Durchsuchen…</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="219"/>
-        <location filename="../views/dialogs/export_dialog.py" line="226"/>
+        <location filename="../views/dialogs/export_dialog.py" line="256"/>
+        <location filename="../views/dialogs/export_dialog.py" line="264"/>
         <source>Cancel</source>
         <translation>Abbrechen</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="220"/>
+        <location filename="../views/dialogs/export_dialog.py" line="257"/>
         <source>Export</source>
         <translation>Exportieren</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="221"/>
-        <source>Ready to export.</source>
-        <translation>Bereit zum Export.</translation>
-    </message>
-    <message>
-        <location filename="../views/dialogs/export_dialog.py" line="222"/>
+        <location filename="../views/dialogs/export_dialog.py" line="258"/>
         <source>High</source>
         <translation>Hoch</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="223"/>
+        <location filename="../views/dialogs/export_dialog.py" line="259"/>
         <source>Standard</source>
         <translation>Standard</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="283"/>
+        <location filename="../views/dialogs/export_dialog.py" line="405"/>
         <source>Exporting…</source>
         <translation>Export läuft…</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="225"/>
-        <location filename="../views/dialogs/export_dialog.py" line="409"/>
-        <source>Choose the output file and quality.</source>
-        <translation>Zieldatei und Qualität wählen.</translation>
-    </message>
-    <message>
-        <location filename="../views/dialogs/export_dialog.py" line="240"/>
-        <location filename="../views/dialogs/export_dialog.py" line="249"/>
-        <location filename="../views/dialogs/export_dialog.py" line="258"/>
-        <location filename="../views/dialogs/export_dialog.py" line="266"/>
+        <location filename="../views/dialogs/export_dialog.py" line="371"/>
+        <location filename="../views/dialogs/export_dialog.py" line="380"/>
+        <location filename="../views/dialogs/export_dialog.py" line="387"/>
         <source>Export unavailable</source>
         <translation>Export nicht möglich</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="259"/>
+        <location filename="../views/dialogs/export_dialog.py" line="309"/>
         <source>Please choose an output file.</source>
         <translation>Bitte wähle eine Ausgabedatei.</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="267"/>
+        <location filename="../views/dialogs/export_dialog.py" line="312"/>
         <source>The output folder does not exist:
 {path}</source>
         <translation>Der Ausgabeordner existiert nicht:
 {path}</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="284"/>
+        <location filename="../views/dialogs/export_dialog.py" line="406"/>
+        <location filename="../views/dialogs/export_dialog.py" line="506"/>
         <source>File: {name}</source>
         <translation>Datei: {name}</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="289"/>
-        <location filename="../views/dialogs/export_dialog.py" line="347"/>
+        <location filename="../views/dialogs/export_dialog.py" line="411"/>
+        <location filename="../views/dialogs/export_dialog.py" line="471"/>
         <source>Preparing parallax…</source>
         <translation>Parallax wird vorbereitet…</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="291"/>
-        <location filename="../views/dialogs/export_dialog.py" line="316"/>
-        <location filename="../views/dialogs/export_dialog.py" line="351"/>
+        <location filename="../views/dialogs/export_dialog.py" line="413"/>
+        <location filename="../views/dialogs/export_dialog.py" line="440"/>
+        <location filename="../views/dialogs/export_dialog.py" line="475"/>
         <source>Preparing stars…</source>
         <translation>Sterne werden vorbereitet…</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="241"/>
+        <location filename="../views/dialogs/export_dialog.py" line="372"/>
         <source>An export is already running.</source>
         <translation>Es läuft bereits ein Export.</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="330"/>
+        <location filename="../views/dialogs/export_dialog.py" line="262"/>
+        <location filename="../views/dialogs/export_dialog.py" line="548"/>
+        <source>Review the summary and choose where to save the video.</source>
+        <translation>Zusammenfassung prüfen und Speicherort wählen.</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/export_dialog.py" line="265"/>
+        <source>Show in folder</source>
+        <translation>Im Ordner anzeigen</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/export_dialog.py" line="266"/>
+        <source>Done</source>
+        <translation>Fertig</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/export_dialog.py" line="284"/>
+        <location filename="../views/dialogs/export_dialog.py" line="285"/>
+        <source>{seconds} s</source>
+        <translation>{seconds} s</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/export_dialog.py" line="293"/>
+        <source>{width} × {height}</source>
+        <translation>{width} × {height}</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/export_dialog.py" line="298"/>
+        <source>{fps} fps</source>
+        <translation>{fps} Bilder/s</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/export_dialog.py" line="358"/>
+        <source>Overwrite file?</source>
+        <translation>Datei überschreiben?</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/export_dialog.py" line="360"/>
+        <source>A file named &quot;{name}&quot; already exists in this folder. Overwrite it?</source>
+        <translation>Im Zielordner existiert bereits eine Datei mit dem Namen „{name}“. Überschreiben?</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/export_dialog.py" line="454"/>
         <source>Rendering frames… {current} of {total}</source>
         <translation>Frames werden gerendert… {current} von {total}</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="354"/>
+        <location filename="../views/dialogs/export_dialog.py" line="478"/>
         <source>Rendering frames…</source>
         <translation>Frames werden gerendert…</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="370"/>
+        <location filename="../views/dialogs/export_dialog.py" line="504"/>
         <source>Export completed.</source>
         <translation>Export abgeschlossen.</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="373"/>
-        <source>Export successful</source>
-        <translation>Export erfolgreich</translation>
-    </message>
-    <message>
-        <location filename="../views/dialogs/export_dialog.py" line="374"/>
-        <source>Video saved to:
-{path}</source>
-        <translation>Video gespeichert unter:
-{path}</translation>
-    </message>
-    <message>
-        <location filename="../views/dialogs/export_dialog.py" line="383"/>
+        <location filename="../views/dialogs/export_dialog.py" line="516"/>
         <source>Export cancelled.</source>
         <translation>Export abgebrochen.</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="391"/>
+        <location filename="../views/dialogs/export_dialog.py" line="526"/>
         <source>Export failed due to an internal error.</source>
         <translation>Der Export ist aufgrund eines internen Fehlers fehlgeschlagen.</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="388"/>
-        <location filename="../views/dialogs/export_dialog.py" line="401"/>
+        <location filename="../views/dialogs/export_dialog.py" line="523"/>
+        <location filename="../views/dialogs/export_dialog.py" line="538"/>
         <source>Export failed</source>
         <translation>Export fehlgeschlagen</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="417"/>
+        <location filename="../views/dialogs/export_dialog.py" line="558"/>
         <source>Cancelling export…</source>
         <translation>Export wird abgebrochen…</translation>
     </message>

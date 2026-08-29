@@ -3,11 +3,11 @@
 ## [Unreleased]
 
 - New App start screen
-- Preset library
+- Preset library and user presets
 - New Parallax effect for starless images
-- Easing for camera movement (Linear, Ease-In, Ease-Out, Ease-In/Out)
-- Preview pre-rendering for timeline playback (configurable in Settings)
-- Added a guided introduction to Starflight for new users.
+- Easing for camera movement
+- Enhanced Preview performance
+- Guided introduction to the App for new users
 - Several UI improvements and redesigns
 
 ## [1.0.3] - 2026-08-24
