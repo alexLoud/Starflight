@@ -1005,14 +1005,16 @@ QWidget#presets_content {{
 }}
 
 QFrame#presets_header,
-QFrame#export_header {{
+QFrame#export_header,
+QFrame#settings_header {{
     background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
         stop:0 #1B2635, stop:0.5 #131B27, stop:1 {APP_BG});
     border-bottom: 1px solid {BORDER};
 }}
 
 QLabel#presets_header_icon,
-QLabel#export_header_icon {{
+QLabel#export_header_icon,
+QLabel#settings_header_icon {{
     background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
         stop:0 rgba(74, 130, 190, 95), stop:1 rgba(58, 110, 165, 55));
     border: 1px solid rgba(122, 186, 232, 85);
@@ -1020,7 +1022,8 @@ QLabel#export_header_icon {{
 }}
 
 QLabel#presets_title,
-QLabel#export_title {{
+QLabel#export_title,
+QLabel#settings_title {{
     color: {TEXT_PRIMARY};
     background-color: transparent;
     font-size: 17px;
@@ -1118,6 +1121,49 @@ QToolButton#preset_card_delete:pressed {{
 }}
 
 QFrame#presets_footer {{
+    background-color: {PANEL_BG};
+    border-top: 1px solid {BORDER};
+}}
+
+QWidget#settings_content {{
+    background-color: {APP_BG};
+}}
+
+QTabWidget#settings_tabs::pane {{
+    background-color: {PANEL_BG};
+    border: 1px solid {BORDER};
+    border-radius: 8px;
+    top: -1px;
+}}
+
+QTabWidget#settings_tabs QTabBar::tab {{
+    color: {TEXT_MUTED};
+    background-color: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 9px 18px;
+    margin-right: 2px;
+}}
+
+QTabWidget#settings_tabs QTabBar::tab:hover {{
+    color: {TEXT_PRIMARY};
+    background-color: rgba(61, 81, 104, 45);
+}}
+
+QTabWidget#settings_tabs QTabBar::tab:selected {{
+    color: {TEXT_PRIMARY};
+    background-color: {PANEL_BG};
+    border-bottom-color: {ACCENT_HOVER};
+}}
+
+QLabel#settings_section_title {{
+    color: #A9BCD2;
+    background-color: transparent;
+    font-size: 15px;
+    font-weight: 600;
+}}
+
+QFrame#settings_footer {{
     background-color: {PANEL_BG};
     border-top: 1px solid {BORDER};
 }}

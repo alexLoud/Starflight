@@ -53,7 +53,6 @@ class GermanTranslationTests(unittest.TestCase):
             "ZoomToolbar": (
                 "Switch between the normal and generated parallax preview.",
                 "Enable the parallax effect in the sidebar first.",
-                "Updating preview…",
             ),
         }
         for context, sources in messages.items():

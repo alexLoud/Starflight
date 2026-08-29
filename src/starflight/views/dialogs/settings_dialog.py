@@ -4,13 +4,16 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from PySide6.QtCore import QSettings
+from PySide6.QtCore import QSettings, Qt
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
     QFormLayout,
+    QFrame,
+    QHBoxLayout,
     QLabel,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -30,6 +33,7 @@ from starflight.app.settings import (
     render_worker_count_from_settings,
 )
 from starflight.i18n import available_languages, normalize_language_code
+from starflight.views.icons import load_icon_asset
 
 
 class SettingsDialog(QDialog):
@@ -53,59 +57,145 @@ class SettingsDialog(QDialog):
         self._initial_background_update = background_preview_update_from_settings(settings)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 16)
-        layout.setSpacing(14)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-        form = QFormLayout()
+        self._header_frame = QFrame(self)
+        self._header_frame.setObjectName("settings_header")
+        header = QHBoxLayout(self._header_frame)
+        header.setContentsMargins(22, 16, 16, 16)
+        header.setSpacing(14)
+
+        header_icon = QLabel(self._header_frame)
+        header_icon.setObjectName("settings_header_icon")
+        header_icon.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        header_icon.setFixedSize(44, 44)
+        header_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        header_icon.setPixmap(load_icon_asset("settings.svg").pixmap(24, 24))
+        header.addWidget(header_icon, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        self._title_label = QLabel()
+        self._title_label.setObjectName("settings_title")
+        header.addWidget(self._title_label, 1, Qt.AlignmentFlag.AlignVCenter)
+        layout.addWidget(self._header_frame)
+
+        content = QWidget(self)
+        content.setObjectName("settings_content")
+        content_layout = QVBoxLayout(content)
+        content_layout.setContentsMargins(22, 16, 22, 16)
+        content_layout.setSpacing(0)
+
+        self.tabs = QTabWidget(content)
+        self.tabs.setObjectName("settings_tabs")
+
+        self._general_tab = QWidget()
+        general_layout = QVBoxLayout(self._general_tab)
+        general_layout.setContentsMargins(18, 18, 18, 18)
+        general_layout.setSpacing(20)
+
+        self._general_title = QLabel()
+        self._general_title.setObjectName("settings_section_title")
+        general_layout.addWidget(self._general_title)
+
+        general_form = QFormLayout()
+        general_form.setHorizontalSpacing(24)
+        general_form.setVerticalSpacing(12)
+        general_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
         self._language_label = QLabel()
+        self._language_label.setObjectName("form_label")
         self.language_combo = QComboBox()
+        self.language_combo.setMinimumWidth(220)
         for code, name in available_languages().items():
             self.language_combo.addItem(name, code)
         index = self.language_combo.findData(self._initial_language)
         if index >= 0:
             self.language_combo.setCurrentIndex(index)
-        form.addRow(self._language_label, self.language_combo)
+        general_form.addRow(self._language_label, self.language_combo)
+        general_layout.addLayout(general_form)
+        general_layout.addStretch(1)
+
+        self._performance_tab = QWidget()
+        performance_layout = QVBoxLayout(self._performance_tab)
+        performance_layout.setContentsMargins(18, 18, 18, 18)
+        performance_layout.setSpacing(20)
+
+        self._performance_title = QLabel()
+        self._performance_title.setObjectName("settings_section_title")
+        performance_layout.addWidget(self._performance_title)
+
+        performance_form = QFormLayout()
+        performance_form.setHorizontalSpacing(24)
+        performance_form.setVerticalSpacing(12)
+        performance_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
 
         self._render_workers_label = QLabel()
+        self._render_workers_label.setObjectName("form_label")
         self.render_workers_combo = QComboBox()
+        self.render_workers_combo.setMinimumWidth(220)
         for worker_count in available_render_worker_counts():
             self.render_workers_combo.addItem("", worker_count)
         render_index = self.render_workers_combo.findData(self._initial_render_workers)
         if render_index >= 0:
             self.render_workers_combo.setCurrentIndex(render_index)
-        form.addRow(self._render_workers_label, self.render_workers_combo)
+        performance_form.addRow(self._render_workers_label, self.render_workers_combo)
 
         self._preview_fps_label = QLabel()
+        self._preview_fps_label.setObjectName("form_label")
         self.preview_fps_combo = QComboBox()
+        self.preview_fps_combo.setMinimumWidth(220)
         for preview_fps in PLAYBACK_PREVIEW_FPS_OPTIONS:
             self.preview_fps_combo.addItem("", preview_fps)
         preview_fps_index = self.preview_fps_combo.findData(self._initial_preview_fps)
         if preview_fps_index >= 0:
             self.preview_fps_combo.setCurrentIndex(preview_fps_index)
-        form.addRow(self._preview_fps_label, self.preview_fps_combo)
+        performance_form.addRow(self._preview_fps_label, self.preview_fps_combo)
 
         self._background_update_label = QLabel()
+        self._background_update_label.setObjectName("form_label")
         self.background_update_combo = QComboBox()
+        self.background_update_combo.setMinimumWidth(220)
         for update_mode in BACKGROUND_PREVIEW_UPDATE_OPTIONS:
             self.background_update_combo.addItem("", update_mode)
         background_index = self.background_update_combo.findData(self._initial_background_update)
         if background_index >= 0:
             self.background_update_combo.setCurrentIndex(background_index)
-        form.addRow(self._background_update_label, self.background_update_combo)
-        layout.addLayout(form)
+        performance_form.addRow(self._background_update_label, self.background_update_combo)
+        performance_layout.addLayout(performance_form)
+        performance_layout.addStretch(1)
 
+        self.tabs.addTab(self._general_tab, "")
+        self.tabs.addTab(self._performance_tab, "")
+        content_layout.addWidget(self.tabs)
+        layout.addWidget(content, 1)
+
+        footer = QFrame(self)
+        footer.setObjectName("settings_footer")
+        footer_layout = QHBoxLayout(footer)
+        footer_layout.setContentsMargins(22, 12, 22, 14)
         self.button_box = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
         )
         self.button_box.accepted.connect(self._on_accept)
         self.button_box.rejected.connect(self.reject)
-        layout.addWidget(self.button_box)
+        self.apply_button = self.button_box.button(QDialogButtonBox.StandardButton.Ok)
+        self.apply_button.setObjectName("primary_button")
+        self.apply_button.setDefault(True)
+        footer_layout.addStretch(1)
+        footer_layout.addWidget(self.button_box)
+        layout.addWidget(footer)
 
-        self.resize(460, 300)
+        self.setMinimumSize(580, 430)
+        self.resize(580, 430)
         self.retranslate_ui()
 
     def retranslate_ui(self) -> None:
         self.setWindowTitle(self.tr("Settings"))
+        self._title_label.setText(self.tr("Settings"))
+        self.tabs.setTabText(0, self.tr("General"))
+        self.tabs.setTabText(1, self.tr("Performance"))
+        self._general_title.setText(self.tr("Language and region"))
+        self._performance_title.setText(self.tr("Preview and rendering"))
+        self.apply_button.setText(self.tr("Apply"))
         self._language_label.setText(self.tr("Language"))
         self._render_workers_label.setText(self.tr("CPU cores for rendering"))
         self._preview_fps_label.setText(self.tr("Preview frame rate"))
