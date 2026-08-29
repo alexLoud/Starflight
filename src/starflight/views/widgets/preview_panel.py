@@ -105,7 +105,7 @@ class PreviewPanel(QWidget):
     def show_empty_preview_message(self) -> None:
         """show placeholder when no source image is loaded."""
 
-        self.show_message(self.tr("Load at least one image to see the preview."))
+        self.show_message(self.tr("Load a starless image to see the preview."))
 
     def retranslate_ui(self) -> None:
         """Refresh translatable texts."""

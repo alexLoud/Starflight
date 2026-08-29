@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
 from starflight.app.constants import (
     APP_DISPLAY_NAME,
     SETTINGS_KEY_SPLITTER_STATE,
+    SETTINGS_KEY_WELCOME_TOUR_SUPPRESSED,
     SETTINGS_KEY_WINDOW_GEOMETRY,
 )
 from starflight.app.context import AppContext
@@ -57,6 +58,7 @@ from starflight.types.settings import ImageMotionMode
 from starflight.views.dialogs.about_dialog import AboutDialog
 from starflight.views.dialogs.presets_dialog import PresetsDialog
 from starflight.views.dialogs.settings_dialog import SettingsDialog
+from starflight.views.dialogs.welcome_dialog import WelcomeDialog
 from starflight.views.widgets.main_toolbar import MainToolbar
 from starflight.views.widgets.preview_workspace import PreviewWorkspace
 from starflight.views.widgets.reset_confirm_popover import ResetConfirmPopover
@@ -288,6 +290,7 @@ class MainWindow(QMainWindow):
         self._apply_chrome_visibility()
         self._constrain_window_to_screen()
         self._update_window_title()
+        QTimer.singleShot(0, self.maybe_show_welcome_tour)
 
     def _apply_chrome_visibility(self) -> None:
         """show or hide toolbar, menu, and status bar."""
@@ -530,6 +533,7 @@ class MainWindow(QMainWindow):
             "app.project.reset_settings": self.tr("Reset all settings"),
             "app.project.export": self.tr("Export video…"),
             "app.settings.open": self.tr("Settings…"),
+            "app.help.welcome": self.tr("Welcome tour…"),
             "app.help.about": self.tr("About Starflight"),
         }
         registry = self._context.command_registry
@@ -1583,6 +1587,14 @@ class MainWindow(QMainWindow):
 
     def open_about(self) -> None:
         dialog = AboutDialog(self)
+        dialog.exec()
+
+    def maybe_show_welcome_tour(self) -> None:
+        if not self._context.settings.value(SETTINGS_KEY_WELCOME_TOUR_SUPPRESSED, False, type=bool):
+            self.open_welcome_tour()
+
+    def open_welcome_tour(self) -> None:
+        dialog = WelcomeDialog(self._context.settings, self)
         dialog.exec()
 
     def _change_language(self, language_code: str) -> None:

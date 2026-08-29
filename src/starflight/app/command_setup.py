@@ -28,6 +28,7 @@ def register_core_commands(registry: CommandRegistry, window: MainWindow) -> Non
         Command("app.project.reset_settings", "Reset all settings", ("Project",), None, True),
         Command("app.project.export", "Export", ("Project",), None, True),
         Command("app.settings.open", "Settings", ("Settings",), None, False),
+        Command("app.help.welcome", "Welcome tour", ("Help",), None, False),
         Command("app.help.about", "About Starflight", ("Help",), None, False),
     ]
 
@@ -42,6 +43,7 @@ def register_core_commands(registry: CommandRegistry, window: MainWindow) -> Non
         "app.project.reset_settings": window.reset_settings_keep_image,
         "app.project.export": window.export_video,
         "app.settings.open": window.open_settings,
+        "app.help.welcome": window.open_welcome_tour,
         "app.help.about": window.open_about,
     }
 

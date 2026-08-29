@@ -959,7 +959,7 @@ class SettingsPanel(QWidget):
         self.star_effects_section.set_title(self.tr("Stars — Appearance"))
         self.star_animation_section.set_title(self.tr("Stars — Animation"))
 
-        self.load_image_button.setText(self.tr("Load image…"))
+        self.load_image_button.setText(self.tr("Load starless image…"))
         self._label_source_image.set_text(self.tr("Image"))
         self._label_source_image.set_hint(
             self.tr(

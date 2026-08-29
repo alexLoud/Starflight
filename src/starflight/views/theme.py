@@ -1012,7 +1012,8 @@ QWidget#presets_content {{
 
 QFrame#presets_header,
 QFrame#export_header,
-QFrame#settings_header {{
+QFrame#settings_header,
+QFrame#welcome_header {{
     background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
         stop:0 #1B2635, stop:0.5 #131B27, stop:1 {APP_BG});
     border-bottom: 1px solid {BORDER};
@@ -1020,7 +1021,8 @@ QFrame#settings_header {{
 
 QLabel#presets_header_icon,
 QLabel#export_header_icon,
-QLabel#settings_header_icon {{
+QLabel#settings_header_icon,
+QLabel#welcome_header_icon {{
     background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
         stop:0 rgba(74, 130, 190, 95), stop:1 rgba(58, 110, 165, 55));
     border: 1px solid rgba(122, 186, 232, 85);
@@ -1029,7 +1031,8 @@ QLabel#settings_header_icon {{
 
 QLabel#presets_title,
 QLabel#export_title,
-QLabel#settings_title {{
+QLabel#settings_title,
+QLabel#welcome_title {{
     color: {TEXT_PRIMARY};
     background-color: transparent;
     font-size: 17px;
@@ -1037,7 +1040,8 @@ QLabel#settings_title {{
 }}
 
 QLabel#presets_subtitle,
-QLabel#export_subtitle {{
+QLabel#export_subtitle,
+QLabel#welcome_subtitle {{
     color: {TEXT_MUTED};
     background-color: transparent;
     font-size: 12px;
@@ -1169,9 +1173,52 @@ QLabel#settings_section_title {{
     font-weight: 600;
 }}
 
-QFrame#settings_footer {{
+QFrame#settings_footer,
+QFrame#welcome_footer {{
     background-color: {PANEL_BG};
     border-top: 1px solid {BORDER};
+}}
+
+QFrame#welcome_content {{
+    background-color: {APP_BG};
+}}
+
+QFrame#welcome_icon_card {{
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+        stop:0 #1C2736, stop:1 #121923);
+    border: 1px solid {BORDER};
+    border-radius: 24px;
+}}
+
+QLabel#welcome_step_number {{
+    color: {ACCENT_HOVER};
+    background-color: transparent;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+}}
+
+QLabel#welcome_step_title {{
+    color: {TEXT_PRIMARY};
+    background-color: transparent;
+    font-size: 24px;
+    font-weight: 600;
+}}
+
+QLabel#welcome_step_body {{
+    color: #A9B6C7;
+    background-color: transparent;
+    font-size: 14px;
+}}
+
+QFrame#welcome_progress_dot {{
+    background-color: #4B5666;
+    border: none;
+    border-radius: 3px;
+}}
+
+QFrame#welcome_progress_dot[active="true"] {{
+    background-color: {ACCENT_HOVER};
 }}
 
 QFrame#preset_create_action {{
