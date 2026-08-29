@@ -532,7 +532,7 @@ class MainWindow(QMainWindow):
             "app.file.save": self.tr("Save"),
             "app.file.save_as": self.tr("Save as…"),
             "app.file.quit": self.tr("Quit"),
-            "app.project.load_image": self.tr("Load image…"),
+            "app.project.load_image": self.tr("Import image…"),
             "app.project.presets": self.tr("Presets"),
             "app.project.reset_settings": self.tr("Reset all settings"),
             "app.project.export": self.tr("Export video…"),

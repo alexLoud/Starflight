@@ -108,6 +108,12 @@ class BackgroundScaleTests(unittest.TestCase):
 
         self.assertFalse(renderer.has_empty_edges(10.0, 30, settings, 1.0))
 
+    def test_empty_edge_detection_ignores_landscape_crop_floating_point_bounds(self) -> None:
+        renderer = _make_renderer(source_w=1800, source_h=1200, frame_w=1920, frame_h=1080)
+        settings = BackgroundSettings()
+
+        self.assertFalse(renderer.has_empty_edges(10.0, 30, settings, 1.0))
+
 
 if __name__ == "__main__":
     unittest.main()

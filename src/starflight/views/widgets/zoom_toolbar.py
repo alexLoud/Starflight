@@ -232,7 +232,7 @@ class ZoomToolbar(QWidget):
     def _update_preview_heading(self) -> None:
         """set the small heading above the preview toggles."""
 
-        self.preview_heading_label.setText(self.tr("Preview options:"))
+        self.preview_heading_label.setText(self.tr("Preview options"))
 
     def _on_stars_toggled(self, checked: bool) -> None:
         """

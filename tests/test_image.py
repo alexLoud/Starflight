@@ -11,6 +11,7 @@ from unittest.mock import Mock
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+from PySide6.QtCore import QLocale
 from PySide6.QtGui import QColor, QPixmap
 from PySide6.QtWidgets import QApplication, QWidget
 
@@ -114,6 +115,15 @@ class ImageUtilityTests(unittest.TestCase):
 
         self.assertFalse(timeline.is_playing)
         self.assertEqual(frames, [0])
+
+    def test_ruler_labels_keep_fractional_seconds_in_the_active_locale(self) -> None:
+        previous_locale = QLocale()
+        self.addCleanup(QLocale.setDefault, previous_locale)
+        QLocale.setDefault(QLocale(QLocale.Language.German, QLocale.Country.Germany))
+
+        self.assertEqual(TimelineWidget._format_ruler_time(2.5), "2,5s")
+        self.assertEqual(TimelineWidget._format_ruler_time(2.0), "2s")
+        self.assertEqual(TimelineWidget._format_ruler_time(65.0), "1:05")
 
     def test_play_button_requests_cache_preparation_before_timeline_starts(self) -> None:
         timeline = TimelineWidget()

@@ -6,7 +6,6 @@
 - Preset library
 - New Parallax effect for starless images
 - Easing for camera movement (Linear, Ease-In, Ease-Out, Ease-In/Out)
-- Stars in the Preview now matches the configured size, brightness, glow, and color
 - Preview pre-rendering for timeline playback (configurable in Settings)
 - Added a guided introduction to Starflight for new users.
 - Several UI improvements and redesigns

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 
-from PySide6.QtCore import QPointF, QRectF, Qt, QTimer, Signal
+from PySide6.QtCore import QLocale, QPointF, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QFont, QMouseEvent, QPainter, QPaintEvent, QPen, QPolygonF
 from PySide6.QtWidgets import QSizePolicy, QWidget
 
@@ -404,8 +404,10 @@ class TimelineWidget(QWidget):
         if minutes > 0:
             return f"{minutes}:{total_seconds % 60:02d}"
         if seconds < 1:
-            return f"{seconds:.1f}s"
-        return f"{total_seconds}s"
+            return f"{QLocale().toString(seconds, 'f', 1)}s"
+        if seconds.is_integer():
+            return f"{total_seconds}s"
+        return f"{QLocale().toString(seconds, 'f', 1)}s"
 
     @staticmethod
     def _choose_tick_interval(duration: float, width: float) -> float:

@@ -414,129 +414,129 @@
         <translation>Keine zuletzt geöffneten Projekte</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="506"/>
-        <location filename="../views/main_window.py" line="1098"/>
-        <location filename="../views/main_window.py" line="1126"/>
-        <location filename="../views/main_window.py" line="1531"/>
+        <location filename="../views/main_window.py" line="507"/>
+        <location filename="../views/main_window.py" line="1099"/>
+        <location filename="../views/main_window.py" line="1127"/>
+        <location filename="../views/main_window.py" line="1532"/>
         <source>Ready</source>
         <translation>Bereit</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="529"/>
+        <location filename="../views/main_window.py" line="530"/>
         <source>New</source>
         <translation>Neues Projekt</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="530"/>
+        <location filename="../views/main_window.py" line="531"/>
         <source>Open…</source>
         <translation>Projekt öffnen…</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="531"/>
+        <location filename="../views/main_window.py" line="532"/>
         <source>Save</source>
         <translation>Speichern</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="532"/>
+        <location filename="../views/main_window.py" line="533"/>
         <source>Save as…</source>
         <translation>Speichern unter…</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="534"/>
-        <source>Load image…</source>
-        <translation>Bild laden…</translation>
-    </message>
-    <message>
-        <location filename="../views/main_window.py" line="535"/>
+        <location filename="../views/main_window.py" line="536"/>
         <source>Presets</source>
         <translation>Vorlagen</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="536"/>
+        <location filename="../views/main_window.py" line="537"/>
         <source>Reset all settings</source>
         <translation>Zurücksetzen</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="537"/>
+        <location filename="../views/main_window.py" line="538"/>
         <source>Export video…</source>
         <translation>Video exportieren…</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="538"/>
+        <location filename="../views/main_window.py" line="539"/>
         <source>Settings…</source>
         <translation>Einstellungen…</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="539"/>
+        <location filename="../views/main_window.py" line="540"/>
         <source>Welcome tour…</source>
         <translation>Einführung…</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="540"/>
+        <location filename="../views/main_window.py" line="541"/>
         <source>About Starflight</source>
         <translation>Über Starflight</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="576"/>
+        <location filename="../views/main_window.py" line="577"/>
         <source>Project</source>
         <translation>Projekt</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="577"/>
+        <location filename="../views/main_window.py" line="578"/>
         <source>Settings</source>
         <translation>Einstellungen</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="578"/>
+        <location filename="../views/main_window.py" line="579"/>
         <source>Help</source>
         <translation>Hilfe</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="849"/>
+        <location filename="../views/main_window.py" line="850"/>
         <source>Could not load image</source>
         <translation>Bild konnte nicht geladen werden</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="1434"/>
+        <location filename="../views/main_window.py" line="1435"/>
         <source>Image loaded: {name}</source>
         <translation>Bild geladen: {name}</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="1437"/>
+        <location filename="../views/main_window.py" line="1438"/>
         <source>Image loaded: {name} ({width} × {height})</source>
         <translation>Bild geladen: {name} ({width} × {height})</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="1521"/>
+        <location filename="../views/main_window.py" line="1522"/>
         <source>Preparing parallax… {progress}%</source>
         <translation>Parallax-Vorschau wird vorbereitet… {progress} %</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="840"/>
-        <location filename="../views/main_window.py" line="1086"/>
-        <location filename="../views/main_window.py" line="1223"/>
-        <location filename="../views/main_window.py" line="1326"/>
+        <location filename="../views/main_window.py" line="841"/>
+        <location filename="../views/main_window.py" line="1087"/>
+        <location filename="../views/main_window.py" line="1224"/>
+        <location filename="../views/main_window.py" line="1327"/>
         <source>Preview unavailable</source>
         <translation>Vorschau nicht verfügbar</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="533"/>
+        <location filename="../views/main_window.py" line="534"/>
         <source>Quit</source>
         <translation>Beenden</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="575"/>
+        <location filename="../views/main_window.py" line="535"/>
+        <source>Import image…</source>
+        <translation>Bild laden…</translation>
+    </message>
+    <message>
+        <location filename="../views/main_window.py" line="576"/>
         <source>File</source>
         <translation>Datei</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="1056"/>
+        <location filename="../views/main_window.py" line="1057"/>
         <source>Preparing preview… {progress}%</source>
         <translation>Vorschau wird vorbereitet… {progress}&#x202f;%</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="1375"/>
-        <location filename="../views/main_window.py" line="1385"/>
+        <location filename="../views/main_window.py" line="1376"/>
+        <location filename="../views/main_window.py" line="1386"/>
         <source>Project saved: {path}</source>
         <translation>Projekt gespeichert: {path}</translation>
     </message>
@@ -687,10 +687,10 @@
 <context>
     <name>PreviewPanel</name>
     <message>
-        <location filename="../views/widgets/preview_panel.py" line="147"/>
-        <location filename="../views/widgets/preview_panel.py" line="257"/>
-        <source>Empty edges will appear in the export — enable “Avoid empty areas”.</source>
-        <translation>Im Export entstehen leere Ränder – „Leere Bereiche vermeiden“ aktivieren.</translation>
+        <location filename="../views/widgets/preview_panel.py" line="148"/>
+        <location filename="../views/widgets/preview_panel.py" line="260"/>
+        <source>Empty areas! Adjust this manually or use the automatic avoidance feature.</source>
+        <translation>Leere Bereiche! Passe dies manuell an oder nutze die Funktion zur automatischen Vermeidung.</translation>
     </message>
 </context>
 <context>
@@ -1010,11 +1010,6 @@
         <translation>Sterne — Animation</translation>
     </message>
     <message>
-        <location filename="../views/widgets/settings_panel.py" line="962"/>
-        <source>Load starless image…</source>
-        <translation>Sternloses Bild laden…</translation>
-    </message>
-    <message>
         <location filename="../views/widgets/settings_panel.py" line="963"/>
         <source>Image</source>
         <translation>Bild</translation>
@@ -1145,6 +1140,11 @@ Vergrößerung vermeiden</translation>
         <location filename="../views/widgets/settings_panel.py" line="952"/>
         <source>Enable parallax effect</source>
         <translation>Parallax-Effekt aktivieren</translation>
+    </message>
+    <message>
+        <location filename="../views/widgets/settings_panel.py" line="962"/>
+        <source>Load starless image</source>
+        <translation>Sternenloses Bild laden</translation>
     </message>
     <message>
         <location filename="../views/widgets/settings_panel.py" line="1003"/>
@@ -1593,8 +1593,8 @@ Vergrößerung vermeiden</translation>
     </message>
     <message>
         <location filename="../views/widgets/welcome_splash.py" line="349"/>
-        <source>Load Project</source>
-        <translation>Projekt laden</translation>
+        <source>Open Project</source>
+        <translation>Projekt öffnen</translation>
     </message>
     <message>
         <location filename="../views/widgets/welcome_splash.py" line="350"/>
@@ -1644,8 +1644,8 @@ Vergrößerung vermeiden</translation>
     </message>
     <message>
         <location filename="../views/widgets/zoom_toolbar.py" line="235"/>
-        <source>Preview options:</source>
-        <translation>Vorschau Optionen:</translation>
+        <source>Preview options</source>
+        <translation>Vorschauoptionen</translation>
     </message>
     <message>
         <location filename="../views/widgets/zoom_toolbar.py" line="258"/>
@@ -1692,7 +1692,7 @@ Vergrößerung vermeiden</translation>
         <location filename="../views/widgets/preview_panel.py" line="47"/>
         <location filename="../views/widgets/preview_panel.py" line="85"/>
         <source>Import an image without stars</source>
-        <translation>Sternenloses Bild importieren</translation>
+        <translation>Sternenloses Bild laden</translation>
     </message>
     <message>
         <location filename="../views/widgets/preview_panel.py" line="59"/>

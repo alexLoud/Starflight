@@ -346,7 +346,7 @@ class WelcomeSplash(QWidget):
             self.tr("Start a new fly-through"),
         )
         self._open_button.set_texts(
-            self.tr("Load Project"),
+            self.tr("Open Project"),
             self.tr("Open a saved project"),
         )
         self._recent_heading.setText(self.tr("Recent Projects"))

@@ -18,7 +18,7 @@ TEXT_FORM_LABEL = "#F5F8FC"
 TEXT_FORM_LABEL_DISABLED = "#A3B0C0"
 TEXT_GROUP_TITLE = "#FFFFFF"
 TEXT_MUTED = "#8A97A8"
-TEXT_DISABLED = "#5C6775"
+TEXT_DISABLED = "#718095"
 ACCENT = "#3A6EA5"
 ACCENT_HOVER = "#4A82BE"
 ACCENT_PRESSED = "#2F5A8C"
@@ -215,7 +215,7 @@ QWidget#preview_footer {{
 
 QLabel#zoom_level_label {{
     color: {TEXT_MUTED};
-    font-size: 11px;
+    font-size: 12px;
     padding: 0 4px;
     min-width: 44px;
     max-width: 44px;
@@ -755,6 +755,10 @@ QToolButton#transport_button:hover {{
     border-color: {BORDER_FOCUS};
 }}
 
+QToolButton#transport_button:focus {{
+    border-color: {BORDER_FOCUS};
+}}
+
 QToolButton#transport_button:pressed {{
     background-color: {ACCENT_PRESSED};
 }}
@@ -781,6 +785,11 @@ QToolButton#parallax_preview_toggle_button:hover {{
     border-color: {BORDER_FOCUS};
 }}
 
+QToolButton#stars_toggle_button:focus,
+QToolButton#parallax_preview_toggle_button:focus {{
+    border-color: {BORDER_FOCUS};
+}}
+
 QToolButton#stars_toggle_button:pressed,
 QToolButton#parallax_preview_toggle_button:pressed {{
     background-color: {ACCENT_PRESSED};
@@ -800,14 +809,14 @@ QToolButton#parallax_preview_toggle_button:disabled {{
 
 QLabel#timeline_time_label,
 QLabel#timeline_preview_heading {{
-    color: {TEXT_MUTED};
-    font-size: 11px;
+    color: #AAB7C8;
+    font-size: 12px;
     padding: 0 4px;
 }}
 
 QLabel#timeline_preview_status {{
-    color: {TEXT_MUTED};
-    font-size: 11px;
+    color: #AAB7C8;
+    font-size: 12px;
     padding: 0 4px;
 }}
 

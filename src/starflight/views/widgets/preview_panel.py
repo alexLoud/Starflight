@@ -144,7 +144,9 @@ class PreviewPanel(QWidget):
         self.empty_edge_warning = QLabel(self)
         self.empty_edge_warning.setObjectName("preview_empty_edge_warning")
         self.empty_edge_warning.setText(
-            self.tr("Empty edges will appear in the export — enable “Avoid empty areas”."),
+            self.tr(
+                "Empty areas! Adjust this manually or use the automatic avoidance feature.",
+            ),
         )
 
         container = QWidget(self)
@@ -254,7 +256,9 @@ class PreviewPanel(QWidget):
 
         self.empty_state.retranslate_ui()
         self.empty_edge_warning.setText(
-            self.tr("Empty edges will appear in the export — enable “Avoid empty areas”."),
+            self.tr(
+                "Empty areas! Adjust this manually or use the automatic avoidance feature.",
+            ),
         )
 
     def resizeEvent(self, event) -> None:

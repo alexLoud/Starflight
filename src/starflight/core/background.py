@@ -205,14 +205,13 @@ class BackgroundRenderer:
         )
         source_x = matrix[0, 0] * corners[:, 0] + matrix[0, 1] * corners[:, 1] + matrix[0, 2]
         source_y = matrix[1, 0] * corners[:, 0] + matrix[1, 1] * corners[:, 1] + matrix[1, 2]
-        # Matrix inversion introduces sub-pixel floating-point noise at exact
-        # image boundaries. Do not report that noise as an empty export edge.
+        # Match cv2.remap: valid source coordinates are in [0, width) and [0, height).
         tolerance = 1e-4
         return bool(
             np.any(source_x < -tolerance)
-            or np.any(source_x > self.source_w - 1.0 + tolerance)
+            or np.any(source_x >= self.source_w)
             or np.any(source_y < -tolerance)
-            or np.any(source_y > self.source_h - 1.0 + tolerance)
+            or np.any(source_y >= self.source_h)
         )
 
     def _coordinate_maps(self, matrix: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
