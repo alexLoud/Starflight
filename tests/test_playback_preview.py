@@ -14,7 +14,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 import cv2
 import numpy as np
 
-from starflight.services.parallax_preview_service import PreparedParallaxPreview
+from starflight.controllers.playback_preview_controller import PlaybackPreviewController
 from starflight.services.playback_preview_service import (
     PlaybackFrameCache,
     PlaybackPreviewWorker,
@@ -24,6 +24,7 @@ from starflight.services.playback_preview_service import (
     playback_sample_count,
     playback_sample_index,
 )
+from starflight.types.preview import PreparedParallaxPreview
 from starflight.types.settings import ImageMotionMode, ProjectSettings, ResolutionSettings
 from starflight.views.main_window import MainWindow
 
@@ -51,12 +52,12 @@ class PlaybackFrameCacheTests(unittest.TestCase):
         self.assertEqual(cache.missing([0, 1, 2]), [1, 2])
 
     def test_playing_timeline_displays_cached_frame_without_live_rendering(self) -> None:
-        cache = PlaybackFrameCache(1.0)
         _ok, encoded = cv2.imencode(
             ".jpg",
             np.full((4, 6, 3), 64, dtype=np.uint8),
         )
-        cache.store(0, encoded.tobytes())
+        controller = PlaybackPreviewController(Mock(), Mock(), duration_seconds=1.0)
+        controller.store_frame(0, encoded.tobytes())
         timeline = SimpleNamespace(
             is_playing=True,
             current_time_seconds=lambda: 0.0,
@@ -65,8 +66,7 @@ class PlaybackFrameCacheTests(unittest.TestCase):
         panel = SimpleNamespace(show_frame=Mock())
         window = SimpleNamespace(
             preview_workspace=SimpleNamespace(timeline=timeline, preview_panel=panel),
-            _playback_frame_cache=cache,
-            _last_playback_sample=None,
+            _playback_controller=controller,
             refresh_preview=Mock(),
         )
 
@@ -166,12 +166,11 @@ class PlaybackPlayRequestTests(unittest.TestCase):
             current_time_seconds=lambda: 0.0,
             set_playback_preparing=Mock(),
         )
-        cache = PlaybackFrameCache(10.0)
+        controller = PlaybackPreviewController(Mock(), Mock(), duration_seconds=10.0)
         window = SimpleNamespace(
-            _playback_worker_starts_playback=False,
+            _playback_controller=controller,
             _refresh_timer=refresh_timer,
             _playback_preview_refresh_timer=Mock(),
-            _playback_frame_cache=cache,
             preview_workspace=SimpleNamespace(timeline=timeline),
             _set_status=Mock(),
             tr=Mock(side_effect=lambda text: text),
@@ -181,21 +180,25 @@ class PlaybackPlayRequestTests(unittest.TestCase):
         MainWindow._on_play_requested(window)
 
         refresh_timer.stop.assert_called_once_with()
-        self.assertTrue(window._playback_worker_starts_playback)
-        self.assertEqual(len(window._playback_worker_required), cache.frame_count)
+        self.assertTrue(controller.starts_playback)
+        self.assertEqual(
+            len(controller.required_indices),
+            controller.frame_cache.frame_count,
+        )
         window._start_playback_preview_worker.assert_called_once()
         timeline.set_playback_preparing.assert_called_once_with(True)
 
-        window._playback_worker_starts_playback = True
+        controller.starts_playback = True
         window._workspace_active = True
         MainWindow.refresh_preview(window)
 
         refresh_timer.stop.assert_called()
 
     def test_play_completion_waits_for_all_required_frames_not_only_missing(self) -> None:
-        cache = PlaybackFrameCache(1.0)
+        controller = PlaybackPreviewController(Mock(), Mock(), duration_seconds=1.0)
         _ok, encoded = cv2.imencode(".jpg", np.zeros((2, 2, 3), dtype=np.uint8))
-        cache.store(0, encoded.tobytes())
+        controller.store_frame(0, encoded.tobytes())
+        controller.arm_playback_prepare(list(range(controller.frame_cache.frame_count)))
         timeline = SimpleNamespace(
             current_time_seconds=lambda: 0.0,
             set_playback_preparing=Mock(),
@@ -203,32 +206,59 @@ class PlaybackPlayRequestTests(unittest.TestCase):
         )
         panel = SimpleNamespace(show_frame=Mock())
         worker = Mock()
+        controller.worker = worker
         window = SimpleNamespace(
-            _playback_worker_starts_playback=True,
-            _playback_worker_required=list(range(cache.frame_count)),
-            _playback_frame_cache=cache,
-            _playback_preview_worker=worker,
-            _playback_preview_generation=0,
-            _last_playback_sample=None,
+            _playback_controller=controller,
             preview_workspace=SimpleNamespace(timeline=timeline, preview_panel=panel),
             _set_status=Mock(),
             tr=Mock(side_effect=lambda text: text),
             _begin_cached_playback=Mock(),
+            _reset_playback_preparation_state=Mock(),
+            _notify_background_renderer_idle=Mock(),
         )
 
         MainWindow._on_playback_preview_completed(window, worker, token=0)
 
         window._begin_cached_playback.assert_not_called()
 
-        cache.store(1, encoded.tobytes())
-        cache.store(2, encoded.tobytes())
-        cache.store(3, encoded.tobytes())
-        cache.store(4, encoded.tobytes())
-        cache.store(5, encoded.tobytes())
+        for index in range(1, controller.frame_cache.frame_count):
+            controller.store_frame(index, encoded.tobytes())
 
         MainWindow._on_playback_preview_completed(window, worker, token=0)
 
         window._begin_cached_playback.assert_called_once_with()
+
+
+class PlaybackStandstillRefreshTests(unittest.TestCase):
+    def test_pause_requests_live_full_resolution_refresh(self) -> None:
+        refresh_timer = Mock()
+        toolbar = SimpleNamespace(
+            parallax_preview_enabled=True,
+            set_parallax_preview_enabled=Mock(),
+        )
+        controller = PlaybackPreviewController(Mock(), Mock(), duration_seconds=1.0)
+        timeline = SimpleNamespace(is_playing=False, is_scrubbing=False)
+        window = SimpleNamespace(
+            _playback_controller=controller,
+            _playback_preview_refresh_timer=refresh_timer,
+            _parallax_preview_auto_enabled=True,
+            preview_workspace=SimpleNamespace(
+                timeline=timeline,
+                zoom_toolbar=toolbar,
+            ),
+            _workspace_active=True,
+            refresh_preview=Mock(),
+        )
+
+        MainWindow._on_playback_state_changed(window, False)
+
+        refresh_timer.stop.assert_called_once_with()
+        toolbar.set_parallax_preview_enabled.assert_called_once_with(False)
+        self.assertFalse(window._parallax_preview_auto_enabled)
+        window.refresh_preview.assert_called_once_with(
+            sync_settings=False,
+            force_live_preview=True,
+        )
 
 
 if __name__ == "__main__":

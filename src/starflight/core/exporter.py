@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import errno
 import math
+import os
 import shutil
 import subprocess
 import sys
@@ -17,7 +18,7 @@ from collections.abc import Callable
 from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
 from contextlib import suppress
 from io import BufferedIOBase
-from multiprocessing import Manager, get_context
+from multiprocessing import get_context
 from pathlib import Path
 
 import numpy as np
@@ -233,36 +234,44 @@ def _advance_star_fade_state(renderer: FrameRenderer, time_seconds: float) -> No
     )
 
 
-def _render_export_chunk(
+_export_process_renderer: FrameRenderer | None = None
+
+
+def _initialize_export_process(
     image_path: str,
     settings: ProjectSettings,
+    parallax_depth: np.ndarray | None,
+) -> None:
+    """Create one reusable renderer inside each export worker process."""
+
+    global _export_process_renderer
+
+    source_image = load_image_bgr(image_path)
+    source_image, render_settings = _prepare_parallax_render_input(source_image, settings)
+    _export_process_renderer = create_renderer(
+        source_image,
+        render_settings,
+        parallax_depth=parallax_depth,
+    )
+
+
+def _render_export_chunk(
     start_frame: int,
     end_frame: int,
     fps: float,
-    progress_counter,
-    progress_lock,
     chunk_path: str,
     fade_continuous: set[int],
     fade_starts: dict[int, float],
-    parallax_depth: np.ndarray | None,
-) -> tuple[int, int, str]:
+) -> tuple[int, int, str, int]:
     """
     render a contiguous export range into a raw rgb file on disk.
 
-    image_path
-        absolute path to the source image
-    settings
-        project settings for rendering
     start_frame
         inclusive start frame index
     end_frame
         exclusive end frame index
     fps
         frames per second
-    progress_counter
-        shared manager counter for completed rendered frames
-    progress_lock
-        shared lock guarding the progress counter
     chunk_path
         destination raw rgb24 file for this chunk
     fade_continuous
@@ -271,24 +280,35 @@ def _render_export_chunk(
         fade-in start times snapshot for start_frame
     """
 
-    source_image = load_image_bgr(image_path)
-    source_image, render_settings = _prepare_parallax_render_input(source_image, settings)
-    renderer = create_renderer(
-        source_image,
-        render_settings,
-        parallax_depth=parallax_depth,
-    )
+    if _export_process_renderer is None:
+        raise RuntimeError("export renderer was not initialized")
+
+    renderer = _export_process_renderer
     renderer.stars.field.import_fade_state(fade_continuous, fade_starts)
 
+    frame_count = end_frame - start_frame
     with open(chunk_path, "wb") as handle:
         for frame_index in range(start_frame, end_frame):
             frame = renderer.render_frame(frame_index / fps, RenderQuality.EXPORT)
             payload = np.ascontiguousarray(frame, dtype=np.uint8).tobytes()
             handle.write(payload)
-            with progress_lock:
-                progress_counter.value += 1
 
-    return start_frame, end_frame, chunk_path
+    return start_frame, end_frame, chunk_path, frame_count
+
+
+def _create_export_staging_path(output_path: Path) -> Path:
+    """Return a temporary export file in the destination folder."""
+
+    output_path = output_path.expanduser()
+    parent = output_path.parent
+    parent.mkdir(parents=True, exist_ok=True)
+    fd, raw_path = tempfile.mkstemp(
+        suffix=output_path.suffix,
+        prefix=f".{output_path.stem}_",
+        dir=parent,
+    )
+    os.close(fd)
+    return Path(raw_path)
 
 
 class ExportWorker(QThread):
@@ -335,6 +355,7 @@ class ExportWorker(QThread):
         self._cancel_requested = False
         self._process: subprocess.Popen[bytes] | None = None
         self._pool: ProcessPoolExecutor | None = None
+        self._staging_path: Path | None = None
 
     def cancel(self) -> None:
         """request export cancellation and stop worker processes."""
@@ -342,12 +363,6 @@ class ExportWorker(QThread):
         self._cancel_requested = True
         pool = self._pool
         if pool is not None:
-            # terminate active workers; shutdown alone can leave them running
-            processes = getattr(pool, "_processes", None)
-            if isinstance(processes, dict):
-                for process in list(processes.values()):
-                    with suppress(OSError, AssertionError):
-                        process.terminate()
             pool.shutdown(wait=False, cancel_futures=True)
         if self._process is not None and self._process.poll() is None:
             self._process.terminate()
@@ -359,20 +374,22 @@ class ExportWorker(QThread):
             self._export()
         except Exception as exc:
             if self._cancel_requested:
-                self._cleanup_partial_output()
+                self._cleanup_staging_output()
                 self.finished_error.emit(EXPORT_CANCELLED)
                 return
-            self._cleanup_partial_output()
+            self._cleanup_staging_output()
             self.finished_error.emit(exc)
 
-    def _cleanup_partial_output(self) -> None:
-        """remove partial output file if export failed."""
+    def _cleanup_staging_output(self) -> None:
+        """remove the temporary export file when rendering fails or is cancelled."""
 
-        if self.output_path.exists():
-            try:
-                self.output_path.unlink()
-            except OSError:
-                pass
+        staging_path = self._staging_path
+        if staging_path is None:
+            return
+        if staging_path.exists():
+            with suppress(OSError):
+                staging_path.unlink()
+        self._staging_path = None
 
     def _write_chunk_file(
         self,
@@ -613,6 +630,9 @@ class ExportWorker(QThread):
                 )
             )
 
+        staging_path = _create_export_staging_path(self.output_path)
+        self._staging_path = staging_path
+
         command = [
             ffmpeg_path,
             "-hide_banner",
@@ -638,7 +658,7 @@ class ExportWorker(QThread):
             str(crf),
             "-preset",
             "medium",
-            _ffmpeg_output_arg(self.output_path),
+            _ffmpeg_output_arg(staging_path),
         ]
 
         chunk_count = min(worker_count, total_frames)
@@ -733,6 +753,7 @@ class ExportWorker(QThread):
                     raise RuntimeError(self.tr("FFmpeg could not be started."))
 
                 last_frame_emitted = -1
+                rendered_frames = 0
                 render_t0 = time.perf_counter()
 
                 def emit_render_progress(rendered: int) -> None:
@@ -759,79 +780,76 @@ class ExportWorker(QThread):
                         last_frame_emitted = rendered
                         self.frame_progress.emit(rendered, total_frames)
 
-                with Manager() as manager:
-                    progress_counter = manager.Value("i", 0)
-                    progress_lock = manager.Lock()
-                    chunk_results: dict[int, tuple[int, str]] = {}
+                chunk_results: dict[int, tuple[int, str]] = {}
 
-                    try:
-                        with ProcessPoolExecutor(
-                            max_workers=chunk_count,
-                            mp_context=get_context("spawn"),
-                        ) as pool:
-                            self._pool = pool
-                            futures = {
-                                pool.submit(
-                                    _render_export_chunk,
-                                    str(image_path),
-                                    settings,
-                                    start,
-                                    end,
-                                    float(fps),
-                                    progress_counter,
-                                    progress_lock,
-                                    str(Path(temp_dir) / f"chunk_{start:06d}.rgb"),
-                                    fade_snapshots[start][0],
-                                    fade_snapshots[start][1],
-                                    parallax_depth,
-                                ): start
-                                for start, end in ranges
-                            }
-                            pending = set(futures.keys())
-                            next_write_start_index = 0
+                try:
+                    with ProcessPoolExecutor(
+                        max_workers=chunk_count,
+                        mp_context=get_context("spawn"),
+                        initializer=_initialize_export_process,
+                        initargs=(str(image_path), settings, parallax_depth),
+                    ) as pool:
+                        self._pool = pool
+                        futures = {
+                            pool.submit(
+                                _render_export_chunk,
+                                start,
+                                end,
+                                float(fps),
+                                str(Path(temp_dir) / f"chunk_{start:06d}.rgb"),
+                                fade_snapshots[start][0],
+                                fade_snapshots[start][1],
+                            ): start
+                            for start, end in ranges
+                        }
+                        pending = set(futures.keys())
+                        next_write_start_index = 0
 
-                            while pending or next_write_start_index < len(ranges):
-                                if self._cancel_requested:
-                                    process.terminate()
-                                    self._cleanup_partial_output()
-                                    self.finished_error.emit(EXPORT_CANCELLED)
-                                    return
+                        while pending or next_write_start_index < len(ranges):
+                            if self._cancel_requested:
+                                process.terminate()
+                                self._cleanup_staging_output()
+                                self.finished_error.emit(EXPORT_CANCELLED)
+                                return
 
-                                emit_render_progress(progress_counter.value)
+                            emit_render_progress(rendered_frames)
 
-                                if pending:
-                                    done, pending = wait(
-                                        pending,
-                                        timeout=0.1,
-                                        return_when=FIRST_COMPLETED,
+                            if pending:
+                                done, pending = wait(
+                                    pending,
+                                    timeout=0.1,
+                                    return_when=FIRST_COMPLETED,
+                                )
+                                for future in done:
+                                    start_frame, end_frame, chunk_path, frame_count = (
+                                        future.result()
                                     )
-                                    for future in done:
-                                        start_frame, end_frame, chunk_path = future.result()
-                                        chunk_results[start_frame] = (end_frame, chunk_path)
-                                else:
-                                    time.sleep(0.05)
+                                    chunk_results[start_frame] = (end_frame, chunk_path)
+                                    rendered_frames += frame_count
+                            else:
+                                time.sleep(0.05)
 
-                                while next_write_start_index < len(ranges):
-                                    start, _end = ranges[next_write_start_index]
-                                    if start not in chunk_results:
-                                        break
-                                    end_frame, chunk_path = chunk_results.pop(start)
-                                    frame_count = end_frame - start
-                                    self._write_chunk_file(
-                                        process,
-                                        chunk_path,
-                                        frame_count,
-                                        frame_nbytes,
-                                        stderr_log,
-                                    )
-                                    try:
-                                        Path(chunk_path).unlink(missing_ok=True)
-                                    except OSError:
-                                        pass
-                                    next_write_start_index += 1
-                                    emit_render_progress(progress_counter.value)
-                    finally:
-                        self._pool = None
+                            while next_write_start_index < len(ranges):
+                                start, _end = ranges[next_write_start_index]
+                                if start not in chunk_results:
+                                    break
+                                end_frame, chunk_path = chunk_results.pop(start)
+                                frame_count = end_frame - start
+                                self._write_chunk_file(
+                                    process,
+                                    chunk_path,
+                                    frame_count,
+                                    frame_nbytes,
+                                    stderr_log,
+                                )
+                                try:
+                                    Path(chunk_path).unlink(missing_ok=True)
+                                except OSError:
+                                    pass
+                                next_write_start_index += 1
+                                emit_render_progress(rendered_frames)
+                finally:
+                    self._pool = None
 
                 emit_render_progress(total_frames)
 
@@ -842,17 +860,26 @@ class ExportWorker(QThread):
             shutil.rmtree(temp_dir, ignore_errors=True)
 
         if self._cancel_requested:
-            self._cleanup_partial_output()
+            self._cleanup_staging_output()
             self.finished_error.emit(EXPORT_CANCELLED)
             return
 
         if return_code != 0:
-            self._cleanup_partial_output()
+            self._cleanup_staging_output()
             raise RuntimeError(
                 self.tr("FFmpeg error: {error}").format(
                     error=stderr or self.tr("Unknown error"),
                 )
             )
+
+        try:
+            staging_path.replace(self.output_path)
+        except OSError as exc:
+            self._cleanup_staging_output()
+            raise RuntimeError(
+                self.tr("The export file could not be saved: {error}").format(error=exc)
+            ) from exc
+        self._staging_path = None
 
         if progress is not None:
             progress.complete()

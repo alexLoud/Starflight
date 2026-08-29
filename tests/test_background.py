@@ -7,8 +7,8 @@ import unittest
 
 import numpy as np
 
-from starflight.core.background import BackgroundRenderer, effective_background_settings
-from starflight.types.settings import BackgroundSettings, ImageMotionMode
+from starflight.core.background import BackgroundRenderer
+from starflight.types.settings import BackgroundSettings
 
 
 def _make_renderer(
@@ -22,34 +22,6 @@ def _make_renderer(
 
 
 class BackgroundScaleTests(unittest.TestCase):
-    def test_image_motion_modes_keep_only_their_active_camera_fields(self) -> None:
-        settings = BackgroundSettings(
-            motion_mode=ImageMotionMode.PARALLAX,
-            scale_percent=125.0,
-            zoom_percent=20.0,
-            rotation_degrees=15.0,
-            start_focus_enabled=True,
-            end_focus_enabled=True,
-            fill_frame=True,
-        )
-
-        # temporary test: parallax keeps zoom/rotation/focus/fill-frame
-        parallax = effective_background_settings(settings)
-        self.assertEqual(parallax.scale_percent, 125.0)
-        self.assertTrue(parallax.fill_frame)
-        self.assertEqual(parallax.zoom_percent, 20.0)
-        self.assertEqual(parallax.rotation_degrees, 15.0)
-        self.assertTrue(parallax.start_focus_enabled)
-        self.assertTrue(parallax.end_focus_enabled)
-
-        settings.motion_mode = ImageMotionMode.MANUAL
-        settings.fill_frame = False
-        manual = effective_background_settings(settings)
-        self.assertEqual(manual.scale_percent, 125.0)
-        self.assertFalse(manual.fill_frame)
-        self.assertEqual(manual.zoom_percent, 20.0)
-        self.assertEqual(manual.rotation_degrees, 15.0)
-
     def test_linear_scale_has_constant_rate(self) -> None:
         renderer = _make_renderer()
         settings = BackgroundSettings(

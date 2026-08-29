@@ -15,10 +15,10 @@ from PySide6.QtWidgets import QApplication
 from starflight.core.renderer import create_renderer
 from starflight.services.parallax_preview_service import (
     ParallaxPreviewWorker,
-    PreparedParallaxPreview,
     parallax_preview_size,
 )
 from starflight.services.preview_service import PreviewService
+from starflight.types.preview import PreparedParallaxPreview
 from starflight.types.settings import (
     ImageMotionMode,
     ProjectSettings,
@@ -283,6 +283,8 @@ class SettingsPreviewRefreshTests(unittest.TestCase):
         refresh_timer = Mock()
         playback_timer = Mock()
         worker = Mock()
+        playback_controller = Mock()
+        playback_controller.worker = worker
         window = SimpleNamespace(
             preview_workspace=SimpleNamespace(
                 timeline=SimpleNamespace(
@@ -311,7 +313,7 @@ class SettingsPreviewRefreshTests(unittest.TestCase):
             _preview_refresh_deferred=lambda: True,
             _refresh_timer=refresh_timer,
             _playback_preview_refresh_timer=playback_timer,
-            _playback_preview_worker=worker,
+            _playback_controller=playback_controller,
             _invalidate_playback_preview=Mock(),
         )
 
@@ -321,7 +323,7 @@ class SettingsPreviewRefreshTests(unittest.TestCase):
         refresh_timer.start.assert_not_called()
         refresh_timer.stop.assert_called_once_with()
         playback_timer.stop.assert_called_once_with()
-        worker.request_cancel.assert_called_once_with()
+        playback_controller.cancel_active_worker.assert_called_once_with()
 
     def test_preview_adjustment_finished_triggers_deferred_preview_refresh(self) -> None:
         refresh_timer = Mock()

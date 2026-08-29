@@ -36,12 +36,14 @@ class AboutDialog(QDialog):
         self._icon_label.setObjectName("about_dialog_icon")
         icon_pixmap = QPixmap(app_icon_path())
         if not icon_pixmap.isNull():
-            self._icon_label.setPixmap(icon_pixmap.scaled(
-                64,
-                64,
-                Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.SmoothTransformation,
-            ))
+            self._icon_label.setPixmap(
+                icon_pixmap.scaled(
+                    64,
+                    64,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+            )
         self._icon_label.setFixedSize(64, 64)
         header.addWidget(self._icon_label, 0, Qt.AlignmentFlag.AlignTop)
 

@@ -220,9 +220,13 @@ class ProjectController:
         return self._save_to_path(parent, normalize_project_path(selection))
 
     def _save_to_path(self, parent: QWidget, path: Path) -> bool:
+        target = normalize_project_path(path)
+        previous_source_image = self.project.source_image
         try:
-            save_project(self.project, path)
+            self.project.source_image = self._source_image_for_save_target(target)
+            save_project(self.project, target)
         except ProjectError as exc:
+            self.project.source_image = previous_source_image
             self._error_service.show_user_warning(
                 self.tr("Save failed"),
                 str(exc),
@@ -230,6 +234,7 @@ class ProjectController:
             )
             return False
         except Exception as exc:
+            self.project.source_image = previous_source_image
             self._error_service.show_crash_report(
                 "unexpected save failure",
                 exc,
@@ -237,9 +242,27 @@ class ProjectController:
             )
             return False
 
-        self.project_path = path
+        self.project_path = target
         self._dirty = False
         return True
+
+    def _source_image_for_save_target(self, target_path: Path) -> str | None:
+        """Rewrite the stored image path so it stays valid for the destination project."""
+
+        source_image = self.project.source_image
+        if not source_image:
+            return None
+
+        if self.project_path is not None:
+            image_path = resolve_source_image_path(self.project_path, source_image)
+            if image_path is None:
+                return source_image
+            return make_relative_image_path(target_path, image_path)
+
+        image_path = Path(source_image).expanduser()
+        if not image_path.is_absolute():
+            image_path = image_path.resolve()
+        return make_relative_image_path(target_path, image_path)
 
     def load_image(self, parent: QWidget) -> bool:
         """

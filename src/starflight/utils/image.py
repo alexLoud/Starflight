@@ -9,8 +9,8 @@ from typing import cast
 
 import cv2
 import numpy as np
-from PySide6.QtCore import QCoreApplication, QRect
-from PySide6.QtGui import QColorSpace, QGuiApplication, QImage, QScreen, QWindow
+from PySide6.QtCore import QCoreApplication, QRect, QSize
+from PySide6.QtGui import QColorSpace, QGuiApplication, QImage, QImageReader, QScreen, QWindow
 
 DisplayColorSpaceResolver = Callable[[QRect | None], QColorSpace]
 _display_color_space_resolver: DisplayColorSpaceResolver | None = None
@@ -71,47 +71,94 @@ def _read_png_dimensions(path: str) -> tuple[int, int]:
 
 
 def _read_jpeg_dimensions(path: str) -> tuple[int, int]:
-    data = Path(path).read_bytes()
-    if len(data) < 4 or data[0:2] != b"\xff\xd8":
-        raise _image_load_error(path)
+    with Path(path).open("rb") as handle:
+        if handle.read(2) != b"\xff\xd8":
+            raise _image_load_error(path)
+        if _read_next_jpeg_marker(handle) is None:
+            raise _image_load_error(path)
+        handle.seek(2)
 
-    index = 2
-    sof_markers = {
-        0xC0,
-        0xC1,
-        0xC2,
-        0xC3,
-        0xC5,
-        0xC6,
-        0xC7,
-        0xC9,
-        0xCA,
-        0xCB,
-        0xCD,
-        0xCE,
-        0xCF,
-    }
-    while index + 9 < len(data):
-        if data[index] != 0xFF:
-            index += 1
-            continue
-
-        marker = data[index + 1]
-        if marker in sof_markers:
-            height = (data[index + 5] << 8) | data[index + 6]
-            width = (data[index + 7] << 8) | data[index + 8]
-            return int(width), int(height)
-
-        if marker in {0xD8, 0x01} or 0xD0 <= marker <= 0xD7:
-            index += 2
-            continue
-
-        segment_length = (data[index + 2] << 8) | data[index + 3]
-        if segment_length < 2:
-            break
-        index += 2 + segment_length
+        sof_markers = {
+            0xC0,
+            0xC1,
+            0xC2,
+            0xC3,
+            0xC5,
+            0xC6,
+            0xC7,
+            0xC9,
+            0xCA,
+            0xCB,
+            0xCD,
+            0xCE,
+            0xCF,
+        }
+        while True:
+            marker = _read_next_jpeg_marker(handle)
+            if marker is None:
+                break
+            if marker in sof_markers:
+                length_bytes = handle.read(2)
+                if len(length_bytes) < 2:
+                    break
+                segment_length = struct.unpack(">H", length_bytes)[0]
+                segment_data = handle.read(max(0, segment_length - 2))
+                if len(segment_data) < 5:
+                    break
+                height, width = struct.unpack(">HH", segment_data[1:5])
+                return int(width), int(height)
+            if marker in {0xD8, 0x01} or 0xD0 <= marker <= 0xD7:
+                continue
+            length_bytes = handle.read(2)
+            if len(length_bytes) < 2:
+                break
+            segment_length = struct.unpack(">H", length_bytes)[0]
+            if segment_length < 2:
+                break
+            handle.seek(segment_length - 2, 1)
 
     raise _image_load_error(path)
+
+
+def _read_next_jpeg_marker(handle) -> int | None:
+    """Read the next JPEG marker code, skipping fill bytes between segments."""
+
+    while True:
+        prefix = handle.read(1)
+        if not prefix:
+            return None
+        if prefix == b"\xff":
+            break
+    while True:
+        marker = handle.read(1)
+        if not marker:
+            return None
+        if marker != b"\xff":
+            return marker[0]
+
+
+def load_qimage_preview(
+    path: str,
+    *,
+    max_width: int,
+    max_height: int,
+) -> tuple[QImage, int, int]:
+    """Load a downscaled QImage preview while preserving original pixel dimensions."""
+
+    source_width, source_height = read_image_dimensions(path)
+    preview_width, preview_height = fit_size_within(
+        source_width,
+        source_height,
+        max_width,
+        max_height,
+    )
+    reader = QImageReader(path)
+    reader.setAutoTransform(False)
+    reader.setScaledSize(QSize(preview_width, preview_height))
+    image = reader.read()
+    if image.isNull():
+        raise _image_load_error(path)
+    return image, source_width, source_height
 
 
 def load_image_bgr(path: str) -> np.ndarray:
@@ -207,23 +254,23 @@ def _screen_geometry(screen: QScreen | None) -> QRect | None:
     return None if primary_screen is None else QRect(primary_screen.geometry())
 
 
-def compute_preview_size(
+def fit_size_within(
     width: int,
     height: int,
     available_width: int,
     available_height: int,
 ) -> tuple[int, int]:
     """
-    Compute preview dimensions that fit the available space.
+    Fit dimensions into a bounding box while preserving aspect ratio.
 
     width
-        target render width
+        source width
     height
-        target render height
+        source height
     available_width
-        available preview widget width
+        bounding width
     available_height
-        available preview widget height
+        bounding height
     """
 
     target_w = max(2, width)

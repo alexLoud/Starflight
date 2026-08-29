@@ -19,7 +19,7 @@ class CompatibilityTests(unittest.TestCase):
     def test_existing_methods_are_still_available(self) -> None:
         self.assertTrue(callable(CommandRegistry.list))
         self.assertTrue(callable(ProjectController.mark_clean))
-        self.assertTrue(callable(MainWindow.build_menu_shell))
+        self.assertTrue(callable(MainWindow.build_shell))
 
     def test_existing_helpers_are_still_available(self) -> None:
         helpers = (

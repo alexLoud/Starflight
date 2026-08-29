@@ -39,12 +39,6 @@ def _clamp(value: float, minimum: float, maximum: float) -> float:
     return max(minimum, min(maximum, value))
 
 
-def effective_background_settings(settings: BackgroundSettings) -> BackgroundSettings:
-    """Return the camera settings active for the selected image movement mode."""
-
-    return settings
-
-
 def resolve_camera_path(
     settings: BackgroundSettings,
 ) -> tuple[tuple[float, float], tuple[float, float]]:

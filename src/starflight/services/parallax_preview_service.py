@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import threading
-from dataclasses import dataclass
 
 import cv2
-import numpy as np
 from PySide6.QtCore import QThread, Signal
 
 from starflight.core.parallax import (
@@ -14,20 +12,12 @@ from starflight.core.parallax import (
     prepare_parallax_depth_v4,
     prepare_parallax_render_input,
 )
+from starflight.types.preview import PreparedParallaxPreview
 from starflight.types.settings import ProjectSettings, ResolutionSettings
 from starflight.utils.image import load_image_bgr
 
 PARALLAX_PREVIEW_LONG_EDGE = 640
 PARALLAX_PREVIEW_ITERATIONS = 10
-
-
-@dataclass(slots=True)
-class PreparedParallaxPreview:
-    """Snapshot inputs used to render low-resolution parallax frames on demand."""
-
-    source_image_bgr: np.ndarray
-    settings: ProjectSettings
-    disparity: np.ndarray
 
 
 class _PreviewCancelledError(RuntimeError):
@@ -131,6 +121,5 @@ class ParallaxPreviewWorker(QThread):
 __all__ = [
     "PARALLAX_PREVIEW_ITERATIONS",
     "ParallaxPreviewWorker",
-    "PreparedParallaxPreview",
     "parallax_preview_size",
 ]

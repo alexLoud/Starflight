@@ -18,7 +18,6 @@ from PySide6.QtWidgets import (
 from starflight.app.constants import SETTINGS_KEY_LANGUAGE, SETTINGS_KEY_RENDER_WORKERS
 from starflight.app.settings import (
     available_render_worker_counts,
-    default_render_worker_count,
     render_worker_count_from_settings,
 )
 from starflight.i18n import available_languages, normalize_language_code

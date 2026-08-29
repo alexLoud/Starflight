@@ -28,9 +28,7 @@ def display_color_space_for_geometry(screen_geometry: QRect | None) -> QColorSpa
     if _running_on_macos():
         icc_profile = _macos_display_icc_profile(screen_geometry)
         if icc_profile is None:
-            raise DisplayColorProfileError(
-                "The active macOS display profile could not be read."
-            )
+            raise DisplayColorProfileError("The active macOS display profile could not be read.")
         color_space = QColorSpace.fromIccProfile(icc_profile)
         if not color_space.isValid():
             raise DisplayColorProfileError(

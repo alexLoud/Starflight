@@ -4,36 +4,24 @@ from __future__ import annotations
 
 import threading
 from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
-from dataclasses import dataclass
 from multiprocessing import get_context
 
 import cv2
 import numpy as np
 from PySide6.QtCore import QThread, Signal
 
-from starflight.core.background import effective_background_settings
-from starflight.core.camera_motion import camera_motion_progress
-from starflight.core.renderer import FrameRenderer, composite_star_layer, create_renderer
+from starflight.core.renderer import FrameRenderer, create_renderer
 from starflight.core.star_renderer import StarRenderer
-from starflight.services.parallax_preview_service import PreparedParallaxPreview
+from starflight.services.preview_compositor import render_parallax_preview_frame
+from starflight.types.preview import PlaybackRenderSpec
 from starflight.types.settings import ProjectSettings, RenderQuality
 from starflight.utils.image import load_image_bgr
 
 PLAYBACK_PREVIEW_FPS = 6
 BACKGROUND_PREVIEW_FPS = 2
 PLAYBACK_PARALLAX_ITERATIONS = 6
-_PLAYBACK_JPEG_QUALITY = 100
-
-
-@dataclass(slots=True)
-class PlaybackRenderSpec:
-    """Immutable inputs shared by playback-preview render processes."""
-
-    image_path: str
-    settings: ProjectSettings
-    crop_target_size: tuple[int, int]
-    include_stars: bool
-    parallax_preview: PreparedParallaxPreview | None = None
+_PLAYBACK_JPEG_QUALITY = 90
+_PLAYBACK_CACHE_MAX_BYTES = 64 * 1024 * 1024
 
 
 class PlaybackFrameCache:
@@ -42,6 +30,7 @@ class PlaybackFrameCache:
     def __init__(self, duration_seconds: float) -> None:
         self.duration_seconds = max(0.1, float(duration_seconds))
         self._frames: dict[int, bytes] = {}
+        self._stored_bytes = 0
 
     @property
     def frame_count(self) -> int:
@@ -50,17 +39,35 @@ class PlaybackFrameCache:
     def clear(self, duration_seconds: float) -> None:
         self.duration_seconds = max(0.1, float(duration_seconds))
         self._frames.clear()
+        self._stored_bytes = 0
 
     def store(self, sample_index: int, payload: bytes) -> None:
-        if 0 <= sample_index < self.frame_count:
-            self._frames[sample_index] = payload
+        if not 0 <= sample_index < self.frame_count:
+            return
+        previous = self._frames.pop(sample_index, None)
+        if previous is not None:
+            self._stored_bytes -= len(previous)
+        self._frames[sample_index] = payload
+        self._stored_bytes += len(payload)
+        self._trim_to_budget()
+
+    def _trim_to_budget(self) -> None:
+        """Drop the oldest cached samples when the in-memory budget is exceeded."""
+
+        while self._stored_bytes > _PLAYBACK_CACHE_MAX_BYTES and self._frames:
+            oldest = min(self._frames)
+            removed = self._frames.pop(oldest)
+            self._stored_bytes -= len(removed)
 
     def frame(self, sample_index: int) -> np.ndarray | None:
         payload = self._frames.get(sample_index)
         if payload is None:
             return None
         encoded = np.frombuffer(payload, dtype=np.uint8)
-        return cv2.imdecode(encoded, cv2.IMREAD_COLOR)
+        frame_bgr = cv2.imdecode(encoded, cv2.IMREAD_COLOR)
+        if frame_bgr is None:
+            return None
+        return cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
 
     def missing(self, sample_indices: list[int]) -> list[int]:
         return [index for index in sample_indices if index not in self._frames]
@@ -151,53 +158,23 @@ def _render_playback_sample(sample_index: int) -> tuple[int, bytes]:
     ):
         raise RuntimeError("playback preview renderer was not initialized")
 
-    background = _process_parallax_renderer.render_frame(
+    frame = render_parallax_preview_frame(
+        _process_parallax_renderer,
+        _process_settings,
         time_seconds,
-        RenderQuality.PREVIEW,
-        include_stars=False,
-        include_parallax=True,
+        include_stars=_process_include_stars,
+        star_renderer=_process_star_renderer,
     )
-    width = _process_settings.resolution.width
-    height = _process_settings.resolution.height
-    if background.shape[:2] != (height, width):
-        background = cv2.resize(background, (width, height), interpolation=cv2.INTER_LINEAR)
-    if not _process_include_stars:
-        return sample_index, _encode_playback_frame(background)
-
-    source_width = _process_parallax_renderer.settings.resolution.width
-    source_height = _process_parallax_renderer.settings.resolution.height
-    scale_x = width / source_width
-    scale_y = height / source_height
-
-    def view_center_at_progress(progress: float) -> tuple[float, float]:
-        center_x, center_y = _process_parallax_renderer.view_center_at_progress(progress)
-        return center_x * scale_x, center_y * scale_y
-
-    background_settings = effective_background_settings(_process_settings.background)
-    motion_progress = camera_motion_progress(
-        time_seconds,
-        _process_settings.duration_seconds,
-        background_settings,
-        _process_settings.stars.speed,
-    )
-    star_layer = _process_star_renderer.render_layer(
-        time_seconds,
-        _process_settings.duration_seconds,
-        RenderQuality.EXPORT,
-        view_center_at_progress,
-        motion_progress,
-        track_visibility=False,
-    )
-    frame = np.clip(composite_star_layer(background, star_layer), 0, 255).astype(np.uint8)
     return sample_index, _encode_playback_frame(frame)
 
 
 def _encode_playback_frame(frame: np.ndarray) -> bytes:
     """Compress one cached frame to keep long previews memory-bounded."""
 
+    frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
     ok, encoded = cv2.imencode(
         ".jpg",
-        frame,
+        frame_bgr,
         [cv2.IMWRITE_JPEG_QUALITY, _PLAYBACK_JPEG_QUALITY],
     )
     if not ok:
@@ -292,7 +269,6 @@ __all__ = [
     "PLAYBACK_PREVIEW_FPS",
     "PlaybackFrameCache",
     "PlaybackPreviewWorker",
-    "PlaybackRenderSpec",
     "playback_sample_count",
     "playback_sample_index",
 ]

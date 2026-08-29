@@ -12,7 +12,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtWidgets import QApplication
 
-from starflight.utils.image import compute_preview_size, read_image_dimensions
+from starflight.utils.image import fit_size_within, read_image_dimensions
 from starflight.views.widgets.preview_panel import PreviewPanel
 from starflight.views.widgets.timeline_widget import TimelineWidget
 
@@ -39,8 +39,8 @@ class ImageUtilityTests(unittest.TestCase):
             self.assertEqual(read_image_dimensions(str(path)), (800, 600))
 
     def test_preview_size_keeps_aspect_ratio_and_caps_work(self) -> None:
-        self.assertEqual(compute_preview_size(1920, 1080, 800, 600), (800, 450))
-        self.assertEqual(compute_preview_size(2160, 3840, 1200, 900), (462, 820))
+        self.assertEqual(fit_size_within(1920, 1080, 800, 600), (800, 450))
+        self.assertEqual(fit_size_within(2160, 3840, 1200, 900), (462, 820))
 
     def test_preview_panel_keeps_the_original_full_target_render_size(self) -> None:
         panel = PreviewPanel()

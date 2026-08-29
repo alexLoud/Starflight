@@ -11,8 +11,7 @@ APP_ORGANIZATION = "starflight"
 APP_ORGANIZATION_DOMAIN = "starflight.local"
 APP_AUTHOR = "Alexander Lauterbach"
 APP_DESCRIPTION = (
-    "Turns a starless deep-sky image into a short fly-through video "
-    "with a rendered starfield."
+    "Turns a starless deep-sky image into a short fly-through video with a rendered starfield."
 )
 APP_GITHUB_URL = "https://github.com/alexLoud/Starflight"
 APP_GITHUB_REPO = "alexLoud/Starflight"

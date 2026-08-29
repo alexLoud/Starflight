@@ -46,7 +46,7 @@ class TimelineWidget(QWidget):
 
         self._fps = 30
         self._duration_seconds = 10.0
-        self._total_frames = 300
+        self._max_frame_index = 300
         self._current_frame = 0
         self._is_playing = False
         self._dragging = False
@@ -111,13 +111,13 @@ class TimelineWidget(QWidget):
         previous_time = self.current_time_seconds() if preserve_time else None
         self._duration_seconds = max(0.1, duration_seconds)
         self._fps = max(1, fps)
-        self._total_frames = max(1, round(self._duration_seconds * self._fps) - 1)
+        self._max_frame_index = max(1, round(self._duration_seconds * self._fps) - 1)
         if previous_time is not None:
             self._current_frame = int(
-                max(0, min(self._total_frames, round(previous_time * self._fps))),
+                max(0, min(self._max_frame_index, round(previous_time * self._fps))),
             )
         else:
-            self._current_frame = min(self._current_frame, self._total_frames)
+            self._current_frame = min(self._current_frame, self._max_frame_index)
         self._update_timer_interval()
         self._update_time_label()
         self.update()
@@ -132,7 +132,7 @@ class TimelineWidget(QWidget):
             whether to emit change signal
         """
 
-        frame_index = int(max(0, min(self._total_frames, frame_index)))
+        frame_index = int(max(0, min(self._max_frame_index, frame_index)))
         self._current_frame = frame_index
         self._update_time_label()
         self.update()
@@ -288,7 +288,7 @@ class TimelineWidget(QWidget):
         track_rect = self._track_rect()
         ratio = (x - track_rect.left()) / max(1.0, track_rect.width())
         ratio = max(0.0, min(1.0, ratio))
-        frame_index = round(ratio * self._total_frames)
+        frame_index = round(ratio * self._max_frame_index)
         self.set_frame_index(frame_index, emit_signal=emit_signal)
 
     def _paint_ruler(self, painter: QPainter, rect: QRectF) -> None:
@@ -337,7 +337,7 @@ class TimelineWidget(QWidget):
         painter.drawRoundedRect(clip_rect, 3, 3)
 
     def _paint_playhead(self, painter: QPainter, ruler_rect: QRectF, track_rect: QRectF) -> None:
-        ratio = self._current_frame / max(1, self._total_frames)
+        ratio = self._current_frame / max(1, self._max_frame_index)
         x = track_rect.left() + ratio * track_rect.width()
 
         painter.setPen(QPen(QColor(TIMELINE_PLAYHEAD), 2))
@@ -362,7 +362,7 @@ class TimelineWidget(QWidget):
 
         elapsed_seconds = max(0.0, time.perf_counter() - self._play_anchor_seconds)
         target_frame = self._play_anchor_frame + int(elapsed_seconds * self._fps)
-        if target_frame > self._total_frames:
+        if target_frame > self._max_frame_index:
             self._set_paused(emit_frame=False)
             self.set_frame_index(0, emit_signal=True)
             return

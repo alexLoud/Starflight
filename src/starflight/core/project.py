@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 from pathlib import Path
 
 from PySide6.QtCore import QCoreApplication
@@ -60,7 +62,13 @@ def resolve_source_image_path(project_path: Path | None, source_image: str | Non
     if project_path is None:
         return image_path
 
-    return (project_path.parent / image_path).resolve()
+    project_root = project_path.parent.resolve()
+    resolved = (project_root / image_path).resolve()
+    try:
+        resolved.relative_to(project_root)
+    except ValueError:
+        return None
+    return resolved
 
 
 def make_relative_image_path(project_path: Path, image_path: Path) -> str:
@@ -114,15 +122,37 @@ def save_project(project: Project, project_path: Path) -> None:
 
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
-        with target.open("w", encoding="utf-8") as handle:
-            json.dump(payload, handle, indent=2, ensure_ascii=False)
-            handle.write("\n")
-    except OSError as exc:
-        message = _tr("Project could not be saved: {error}").format(error=exc)
-        raise ProjectError(message) from exc
+        serialized = json.dumps(payload, indent=2, ensure_ascii=False)
     except (TypeError, ValueError) as exc:
         message = _tr("Project data could not be serialized: {error}").format(error=exc)
         raise ProjectError(message) from exc
+
+    temp_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            "w",
+            encoding="utf-8",
+            dir=target.parent,
+            prefix=f".{target.stem}_",
+            suffix=target.suffix,
+            delete=False,
+        ) as handle:
+            handle.write(serialized)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+            temp_path = Path(handle.name)
+        temp_path.replace(target)
+        temp_path = None
+    except OSError as exc:
+        message = _tr("Project could not be saved: {error}").format(error=exc)
+        raise ProjectError(message) from exc
+    finally:
+        if temp_path is not None:
+            try:
+                temp_path.unlink(missing_ok=True)
+            except OSError:
+                pass
 
 
 def load_project(project_path: Path) -> Project:

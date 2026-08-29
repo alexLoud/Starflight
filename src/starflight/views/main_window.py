@@ -6,6 +6,7 @@ settings panel, and the preview workspace. Rendering and file operations stay in
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 from PySide6.QtCore import QEvent, QRect, QSize, QTimer
@@ -28,19 +29,15 @@ from starflight.app.constants import (
 from starflight.app.context import AppContext
 from starflight.app.settings import render_worker_count_from_settings
 from starflight.controllers.export_controller import ExportController
+from starflight.controllers.playback_preview_controller import (
+    PlaybackPreparePlan,
+    PlaybackPreviewController,
+)
 from starflight.controllers.preview_controller import PreviewController
 from starflight.controllers.project_controller import ProjectController
 from starflight.i18n import install_translators, retranslate_ui, tr_validation
-from starflight.services.parallax_preview_service import (
-    ParallaxPreviewWorker,
-    PreparedParallaxPreview,
-)
-from starflight.services.playback_preview_service import (
-    PlaybackFrameCache,
-    PlaybackPreviewWorker,
-    PlaybackRenderSpec,
-    playback_sample_index,
-)
+from starflight.services.parallax_preview_service import ParallaxPreviewWorker
+from starflight.services.playback_preview_service import PlaybackPreviewWorker
 from starflight.services.preview_service import PreviewService
 from starflight.services.project_service import resolve_source_image_path
 from starflight.services.recent_projects_service import (
@@ -49,6 +46,7 @@ from starflight.services.recent_projects_service import (
     remove_recent_project,
 )
 from starflight.types.preset import LookPreset, apply_look
+from starflight.types.preview import PreparedParallaxPreview
 from starflight.types.settings import ImageMotionMode
 from starflight.views.dialogs.about_dialog import AboutDialog
 from starflight.views.dialogs.presets_dialog import PresetsDialog
@@ -79,15 +77,15 @@ class MainWindow(QMainWindow):
         self._parallax_preview_revision = 0
         self._parallax_preview_generation_token = 0
         self._parallax_preview_stale = False
-        self._playback_preview_worker: PlaybackPreviewWorker | None = None
-        self._playback_preview_generation = 0
-        self._playback_preview_pending: tuple[list[int], bool] | None = None
-        self._playback_worker_starts_playback = False
-        self._playback_worker_required: list[int] = []
-        self._last_playback_sample: int | None = None
-        self._playback_frame_cache = PlaybackFrameCache(
-            self._project_controller.project.settings.duration_seconds,
+        self._parallax_preview_auto_enabled = False
+        self._playback_controller = PlaybackPreviewController(
+            self._preview_service,
+            self._preview_controller,
+            duration_seconds=self._project_controller.project.settings.duration_seconds,
         )
+        self._background_renderers_idle_callback: Callable[[], None] | None = None
+        self._background_renderers_pending = 0
+        self._closing_after_background_renderers = False
 
         self._refresh_timer = QTimer(self)
         self._refresh_timer.setSingleShot(True)
@@ -142,11 +140,6 @@ class MainWindow(QMainWindow):
         self._apply_chrome_visibility()
         self.showMaximized()
         self._apply_window_minimum()
-
-    def build_menu_shell(self) -> None:
-        """Build the window shell through the legacy public entry point."""
-
-        self.build_shell()
 
     def _build_menu_from_registry(self) -> None:
         menu_bar = self.menuBar()
@@ -439,7 +432,9 @@ class MainWindow(QMainWindow):
         self.settings_panel.preview_adjustment_finished.connect(
             self._on_preview_adjustment_finished,
         )
+        self.settings_panel.image_load_failed.connect(self._on_settings_image_load_failed)
         self.preview_workspace.timeline.frame_index_changed.connect(self._on_frame_changed)
+        self.preview_workspace.timeline.play_state_changed.connect(self._on_playback_state_changed)
         self.preview_workspace.timeline.scrub_finished.connect(self._on_timeline_scrub_finished)
         self.preview_workspace.timeline.play_requested.connect(self._on_play_requested)
         self.preview_workspace.zoom_toolbar.stars_enabled_changed.connect(
@@ -583,7 +578,7 @@ class MainWindow(QMainWindow):
         has_image = bool(self._project_controller.project.source_image)
 
         registry.set_enabled("app.file.save", dirty)
-        registry.set_enabled("app.file.save_as", dirty)
+        registry.set_enabled("app.file.save_as", True)
         registry.set_enabled("app.project.export", has_image)
 
     def _update_window_title(self) -> None:
@@ -634,7 +629,7 @@ class MainWindow(QMainWindow):
 
     def _on_settings_changed(self) -> None:
         if self.preview_workspace.timeline.is_playing:
-            self.preview_workspace.timeline.pause(emit_frame=False)
+            self.preview_workspace.timeline.pause(emit_frame=True)
         self._sync_project_from_ui()
         self._project_controller.mark_dirty()
         project = self._project_controller.project
@@ -653,8 +648,8 @@ class MainWindow(QMainWindow):
         if self._preview_refresh_deferred():
             self._refresh_timer.stop()
             self._playback_preview_refresh_timer.stop()
-            if self._playback_preview_worker is not None:
-                self._playback_preview_worker.request_cancel()
+            if self._playback_controller.worker is not None:
+                self._playback_controller.cancel_active_worker()
             return
 
         self._invalidate_playback_preview()
@@ -684,21 +679,43 @@ class MainWindow(QMainWindow):
 
     def _on_frame_changed(self, _frame_index: int) -> None:
         if self.preview_workspace.timeline.is_playing:
-            sample_index = playback_sample_index(
+            controller = self._playback_controller
+            should_show, sample_index = controller.should_emit_frame(
                 self.preview_workspace.timeline.current_time_seconds(),
-                self._playback_frame_cache.duration_seconds,
             )
-            if sample_index == self._last_playback_sample:
+            if not should_show:
                 return
-            frame = self._playback_frame_cache.frame(sample_index)
+            _sample_index, frame = controller.frame_for_time(
+                self.preview_workspace.timeline.current_time_seconds(),
+            )
             if frame is not None:
-                self._last_playback_sample = sample_index
+                controller.mark_sample_shown(sample_index)
                 self.preview_workspace.preview_panel.show_frame(frame)
                 return
             self.preview_workspace.timeline.pause(emit_frame=False)
         if self.preview_workspace.timeline.is_scrubbing:
             return
         self.refresh_preview(sync_settings=False)
+
+    def _on_playback_state_changed(self, is_playing: bool) -> None:
+        """Return to the live full-resolution preview once timeline playback stops."""
+
+        if is_playing:
+            self._playback_preview_refresh_timer.stop()
+            return
+
+        self._playback_controller.clear_last_sample()
+        self._playback_preview_refresh_timer.stop()
+        if (
+            self._playback_controller.worker is not None
+            and not self._playback_controller.starts_playback
+        ):
+            self._playback_controller.cancel_active_worker()
+        if self._parallax_preview_auto_enabled:
+            self.preview_workspace.zoom_toolbar.set_parallax_preview_enabled(False)
+            self._parallax_preview_auto_enabled = False
+        if self._workspace_active and not self.preview_workspace.timeline.is_scrubbing:
+            self.refresh_preview(sync_settings=False, force_live_preview=True)
 
     def _on_preview_stars_changed(self, _enabled: bool) -> None:
         """refresh preview when the session stars toggle changes."""
@@ -710,23 +727,32 @@ class MainWindow(QMainWindow):
         """Switch immediately between the live and generated preview sources."""
 
         if enabled:
+            self._parallax_preview_auto_enabled = False
             self._schedule_parallax_preview_refresh()
         else:
+            self._parallax_preview_auto_enabled = False
             self._parallax_preview_refresh_timer.stop()
         self._invalidate_playback_preview()
         self.refresh_preview(sync_settings=False)
 
-    def refresh_preview(self, *, sync_settings: bool = True) -> None:
+    def refresh_preview(
+        self,
+        *,
+        sync_settings: bool = True,
+        force_live_preview: bool = False,
+    ) -> None:
         """
         render and show current preview frame.
 
         sync_settings
             when true, copy sidebar values into the project first
+        force_live_preview
+            when true, bypass the generated parallax preview source
         """
 
         if not self._workspace_active:
             return
-        if self._playback_worker_starts_playback:
+        if self._playback_controller.starts_playback:
             self._refresh_timer.stop()
             return
         if sync_settings:
@@ -738,156 +764,134 @@ class MainWindow(QMainWindow):
                 self.preview_workspace.preview_panel,
                 self.preview_workspace.timeline.current_time_seconds(),
                 include_stars=self.preview_workspace.zoom_toolbar.stars_enabled,
-                use_parallax_preview=(self.preview_workspace.zoom_toolbar.parallax_preview_enabled),
+                use_parallax_preview=(
+                    not force_live_preview
+                    and self.preview_workspace.zoom_toolbar.parallax_preview_enabled
+                ),
             )
         except Exception as exc:
             self._preview_controller.invalidate()
             self._clear_parallax_preview()
             self._refresh_timer.stop()
-            self._context.error_service.show_crash_report(
-                "preview rendering failed",
-                exc,
+            self._context.error_service.show_user_warning(
+                self.tr("Preview unavailable"),
+                str(exc),
                 self,
             )
+
+    def _on_settings_image_load_failed(self, message: str) -> None:
+        """Surface image reload failures from the settings panel."""
+
+        self._context.error_service.show_user_warning(
+            self.tr("Could not load image"),
+            message,
+            self,
+        )
+
+    def _reset_playback_preparation_state(self) -> None:
+        """Clear playback-preparing UI state."""
+
+        self._playback_controller.reset_preparation()
+        self.preview_workspace.timeline.set_playback_preparing(False)
 
     def _invalidate_playback_preview(self, *, schedule: bool = True) -> None:
         """Discard playback frames whenever their visual inputs change."""
 
-        self._playback_preview_generation += 1
-        self._playback_frame_cache.clear(
-            self._project_controller.project.settings.duration_seconds,
+        self._playback_controller.invalidate(
+            duration_seconds=self._project_controller.project.settings.duration_seconds,
         )
-        self._last_playback_sample = None
-        self._playback_preview_pending = None
-        self._playback_worker_starts_playback = False
-        self._playback_worker_required = []
         self.preview_workspace.timeline.set_playback_preparing(False)
-        if self._playback_preview_worker is not None:
-            self._playback_preview_worker.request_cancel()
-        if schedule and self._workspace_active and not self._playback_worker_starts_playback:
-            self._playback_preview_refresh_timer.stop()
-            self._start_background_playback_preview()
-        else:
-            self._playback_preview_refresh_timer.stop()
-
-    def _playback_render_spec(self) -> PlaybackRenderSpec | None:
-        """Snapshot the current inputs used by background preview renderers."""
-
-        project = self._project_controller.project
-        validation = self._preview_service.validate(
-            project,
-            self._project_controller.project_path,
-        )
-        if not validation.ok:
-            return None
-        image_path = resolve_source_image_path(
-            self._project_controller.project_path,
-            project.source_image,
-        )
-        if image_path is None:
-            return None
-        settings = self._preview_controller.build_preview_settings(
-            project,
-            self.preview_workspace.preview_panel,
-            playback=True,
-        )
-        parallax_preview = None
-        if self.preview_workspace.zoom_toolbar.parallax_preview_enabled:
-            parallax_preview = self._preview_service.prepared_parallax_preview
-        return PlaybackRenderSpec(
-            image_path=str(image_path),
-            settings=settings,
-            crop_target_size=(
-                project.settings.resolution.width,
-                project.settings.resolution.height,
-            ),
-            include_stars=self.preview_workspace.zoom_toolbar.stars_enabled,
-            parallax_preview=parallax_preview,
-        )
+        self._playback_preview_refresh_timer.stop()
+        if schedule and self._workspace_active:
+            self._playback_preview_refresh_timer.start()
 
     def _start_background_playback_preview(self) -> None:
         """Keep a sparse two-fps cache warm while the timeline is paused."""
 
         if self.preview_workspace.timeline.is_playing:
             return
-        indices = self._playback_frame_cache.missing(
-            self._playback_frame_cache.background_indices(),
-        )
-        self._start_playback_preview_worker(indices, start_playback=False)
+        plan = self._playback_controller.background_warmup_plan()
+        if plan.missing:
+            self._start_playback_preview_worker(
+                PlaybackPreparePlan(
+                    sample_indices=plan.sample_indices,
+                    start_playback=False,
+                    missing=plan.missing,
+                    required=[],
+                ),
+            )
 
     def _on_play_requested(self) -> None:
         """Fill the six-fps cache from the playhead before starting playback."""
 
-        if self._playback_worker_starts_playback:
+        if self._playback_controller.starts_playback:
             return
         self._refresh_timer.stop()
         self._playback_preview_refresh_timer.stop()
-        required = self._playback_frame_cache.playback_indices_from(
+        plan = self._playback_controller.play_plan(
             self.preview_workspace.timeline.current_time_seconds(),
         )
-        missing = self._playback_frame_cache.missing(required)
-        if not missing:
+        if not plan.missing:
             self._begin_cached_playback()
             return
-        self._playback_worker_starts_playback = True
-        self._playback_worker_required = required
+        self._playback_controller.arm_playback_prepare(plan.required)
         self.preview_workspace.timeline.set_playback_preparing(True)
         self._set_status(
             self.tr("Preparing playback preview… {current} of {total}").format(
                 current=0,
-                total=len(missing),
+                total=len(plan.missing),
             )
         )
-        self._start_playback_preview_worker(missing, start_playback=True)
+        self._start_playback_preview_worker(
+            PlaybackPreparePlan(
+                sample_indices=plan.sample_indices,
+                start_playback=True,
+                missing=plan.missing,
+                required=plan.required,
+            ),
+        )
 
-    def _start_playback_preview_worker(
-        self,
-        sample_indices: list[int],
-        *,
-        start_playback: bool,
-    ) -> None:
+    def _start_playback_preview_worker(self, plan: PlaybackPreparePlan) -> None:
         """Start or queue one cache-fill operation for the current revision."""
 
-        missing = self._playback_frame_cache.missing(sample_indices)
-        if not missing:
-            if start_playback:
+        if not plan.missing:
+            if plan.start_playback:
                 self._begin_cached_playback()
             return
-        if self._playback_preview_worker is not None:
-            self._playback_preview_worker.request_cancel()
-            self._playback_preview_pending = (sample_indices, start_playback)
-            if start_playback:
-                self._playback_worker_starts_playback = True
-                self._playback_worker_required = list(
-                    self._playback_frame_cache.playback_indices_from(
-                        self.preview_workspace.timeline.current_time_seconds(),
-                    ),
-                )
+        if self._playback_controller.worker is not None:
+            self._playback_controller.cancel_active_worker()
+            self._playback_controller.queue_worker(plan)
+            if plan.start_playback:
+                self._playback_controller.arm_playback_prepare(plan.required)
             return
 
-        spec = self._playback_render_spec()
+        spec = self._playback_controller.build_render_spec(
+            self._project_controller.project,
+            self._project_controller.project_path,
+            self.preview_workspace.preview_panel,
+            crop_target_size=(
+                self._project_controller.project.settings.resolution.width,
+                self._project_controller.project.settings.resolution.height,
+            ),
+            include_stars=self.preview_workspace.zoom_toolbar.stars_enabled,
+            parallax_preview_enabled=(self.preview_workspace.zoom_toolbar.parallax_preview_enabled),
+        )
         if spec is None:
             self.preview_workspace.timeline.set_playback_preparing(False)
-            self._playback_worker_starts_playback = False
-            self._playback_worker_required = []
+            self._playback_controller.reset_preparation()
             return
-        token = self._playback_preview_generation
+        token = self._playback_controller.generation
         worker = PlaybackPreviewWorker(
             spec,
-            missing,
+            plan.missing,
             render_workers=render_worker_count_from_settings(self._context.settings),
             parent=self,
         )
-        self._playback_preview_worker = worker
-        self._playback_worker_starts_playback = start_playback
-        if start_playback:
-            self._playback_worker_required = list(
-                self._playback_frame_cache.playback_indices_from(
-                    self.preview_workspace.timeline.current_time_seconds(),
-                ),
-            )
-        else:
-            self._playback_worker_required = []
+        self._playback_controller.attach_worker(
+            worker,
+            start_playback=plan.start_playback,
+            required=plan.required,
+        )
         worker.frame_ready.connect(
             lambda index, frame, active=worker, current=token: self._on_playback_frame_ready(
                 active,
@@ -929,12 +933,12 @@ class MainWindow(QMainWindow):
         sample_index: int,
         frame: object,
     ) -> None:
-        if worker is not self._playback_preview_worker:
+        if worker is not self._playback_controller.worker:
             return
-        if token != self._playback_preview_generation:
+        if not self._playback_controller.is_current(token):
             return
         if isinstance(frame, bytes):
-            self._playback_frame_cache.store(sample_index, frame)
+            self._playback_controller.store_frame(sample_index, frame)
 
     def _on_playback_preview_progress(
         self,
@@ -942,9 +946,9 @@ class MainWindow(QMainWindow):
         current: int,
         total: int,
     ) -> None:
-        if worker is not self._playback_preview_worker:
+        if worker is not self._playback_controller.worker:
             return
-        if self._playback_worker_starts_playback:
+        if self._playback_controller.starts_playback:
             self._set_status(
                 self.tr("Preparing playback preview… {current} of {total}").format(
                     current=current,
@@ -957,12 +961,13 @@ class MainWindow(QMainWindow):
         worker: PlaybackPreviewWorker,
         token: int,
     ) -> None:
-        if worker is not self._playback_preview_worker:
+        if worker is not self._playback_controller.worker:
             return
-        if token != self._playback_preview_generation:
+        if not self._playback_controller.is_current(token):
             return
-        if self._playback_worker_starts_playback and not self._playback_frame_cache.missing(
-            self._playback_worker_required,
+        if (
+            self._playback_controller.starts_playback
+            and self._playback_controller.playback_cache_ready()
         ):
             self._begin_cached_playback()
 
@@ -972,44 +977,49 @@ class MainWindow(QMainWindow):
         token: int,
         failure: object,
     ) -> None:
-        if worker is not self._playback_preview_worker:
+        if worker is not self._playback_controller.worker:
             return
-        if token != self._playback_preview_generation:
+        if not self._playback_controller.is_current(token):
             return
-        self.preview_workspace.timeline.set_playback_preparing(False)
-        self._playback_worker_starts_playback = False
+        self._reset_playback_preparation_state()
         if isinstance(failure, BaseException):
-            self._context.error_service.show_crash_report(
-                "playback preview generation failed",
-                failure,
+            self._context.error_service.show_user_warning(
+                self.tr("Preview unavailable"),
+                str(failure),
                 self,
             )
 
     def _on_playback_preview_worker_finished(self, worker: PlaybackPreviewWorker) -> None:
-        if worker is not self._playback_preview_worker:
+        if worker is not self._playback_controller.worker:
+            self._notify_background_renderer_idle(worker)
             return
-        self._playback_preview_worker = None
-        pending = self._playback_preview_pending
-        self._playback_preview_pending = None
+        pending, should_reset = self._playback_controller.detach_worker()
+        if should_reset:
+            self._reset_playback_preparation_state()
+            self._set_status(self.tr("Ready"))
+        self._notify_background_renderer_idle(worker)
         if pending is not None:
             indices, start_playback = pending
-            self._start_playback_preview_worker(indices, start_playback=start_playback)
+            missing = self._playback_controller.frame_cache.missing(indices)
+            required = list(indices) if start_playback else []
+            self._start_playback_preview_worker(
+                PlaybackPreparePlan(
+                    sample_indices=list(indices),
+                    start_playback=start_playback,
+                    missing=missing,
+                    required=required,
+                ),
+            )
 
     def _begin_cached_playback(self) -> None:
         """Start the timeline only after every required six-fps frame is cached."""
 
-        self._playback_worker_starts_playback = False
-        self._playback_worker_required = []
-        sample_index = playback_sample_index(
+        self._playback_controller.reset_preparation()
+        sample_index, frame = self._playback_controller.frame_for_time(
             self.preview_workspace.timeline.current_time_seconds(),
-            self._playback_frame_cache.duration_seconds,
         )
-        frame = self._playback_frame_cache.frame(sample_index)
         if frame is not None:
             self.preview_workspace.preview_panel.show_frame(frame)
-            self._last_playback_sample = sample_index
-        else:
-            self._last_playback_sample = None
         self.preview_workspace.timeline.set_playback_preparing(False)
         self._set_status(self.tr("Ready"))
         self.preview_workspace.timeline.play()
@@ -1083,6 +1093,7 @@ class MainWindow(QMainWindow):
             self._parallax_preview_preparing = True
         self._preview_service.clear_parallax_preview()
         self._parallax_preview_stale = False
+        self._parallax_preview_auto_enabled = False
         self._sync_parallax_preview_ui()
 
     def _create_or_update_parallax_preview(self) -> None:
@@ -1129,6 +1140,9 @@ class MainWindow(QMainWindow):
         )
         self._parallax_preview_worker = worker
         self._parallax_preview_preparing = True
+        worker.progress_changed.connect(
+            lambda progress, active=worker: self._on_parallax_preview_progress(active, progress),
+        )
         worker.preview_ready.connect(
             lambda preview, active=worker, current=token, revision=source_revision: (
                 self._on_parallax_preview_ready(active, current, revision, preview)
@@ -1175,8 +1189,13 @@ class MainWindow(QMainWindow):
         self._parallax_preview_stale = source_revision != self._parallax_preview_revision
         self._sync_parallax_preview_ui()
         if self._parallax_effect_enabled():
-            if not had_preview:
+            if (
+                not had_preview
+                and not self.preview_workspace.timeline.is_playing
+                and not self._playback_controller.starts_playback
+            ):
                 self.preview_workspace.zoom_toolbar.set_parallax_preview_enabled(True)
+                self._parallax_preview_auto_enabled = True
             if was_enabled:
                 self.refresh_preview(sync_settings=False)
             if (
@@ -1198,9 +1217,9 @@ class MainWindow(QMainWindow):
         self._parallax_preview_preparing = False
         self._sync_parallax_preview_ui()
         if isinstance(failure, BaseException):
-            self._context.error_service.show_crash_report(
-                "parallax preview generation failed",
-                failure,
+            self._context.error_service.show_user_warning(
+                self.tr("Preview unavailable"),
+                str(failure),
                 self,
             )
 
@@ -1209,10 +1228,12 @@ class MainWindow(QMainWindow):
         worker: ParallaxPreviewWorker,
     ) -> None:
         if worker is not self._parallax_preview_worker:
+            self._notify_background_renderer_idle(worker)
             return
         self._parallax_preview_worker = None
         self._parallax_preview_preparing = False
         self._sync_parallax_preview_ui()
+        self._notify_background_renderer_idle(worker)
 
     def new_project_action(self) -> None:
         if not self._project_controller.confirm_discard_changes(self):
@@ -1347,42 +1368,80 @@ class MainWindow(QMainWindow):
         self._refresh_timer.start()
         self._update_action_states()
 
-    def export_video(self) -> None:
-        self._sync_project_from_ui()
-        self._pause_background_renderers_for_export()
-        try:
-            self._export_controller.open_export_dialog(
-                self._project_controller.project,
-                self._project_controller.project_path,
-                self,
-            )
-        finally:
-            self._resume_background_renderers_after_export()
+    def _on_parallax_preview_progress(
+        self,
+        worker: ParallaxPreviewWorker,
+        progress: int,
+    ) -> None:
+        if worker is not self._parallax_preview_worker:
+            return
+        self._set_status(self.tr("Preparing parallax… {progress}%").format(progress=progress))
 
-    def _pause_background_renderers_for_export(self) -> None:
-        """stop preview workers so export owns cpu and process pools."""
+    def _notify_background_renderer_idle(self, worker: object) -> None:
+        """Invoke the deferred callback once every requested background worker has stopped."""
+
+        if worker is self._parallax_preview_worker:
+            self._parallax_preview_worker = None
+        if self._background_renderers_pending <= 0:
+            return
+        self._background_renderers_pending -= 1
+        if self._background_renderers_pending > 0:
+            return
+        callback = self._background_renderers_idle_callback
+        self._background_renderers_idle_callback = None
+        if callback is not None:
+            callback()
+
+    def _cancel_background_renderers(
+        self,
+        *,
+        on_idle: Callable[[], None] | None = None,
+    ) -> None:
+        """Stop background preview workers without blocking the GUI thread."""
 
         self._playback_preview_refresh_timer.stop()
         self._parallax_preview_refresh_timer.stop()
-        self._playback_preview_pending = None
-        self._playback_preview_generation += 1
+        self._playback_controller.cancel_active_worker()
+        self._reset_playback_preparation_state()
         if self.preview_workspace.timeline.is_playing:
             self.preview_workspace.timeline.pause(emit_frame=False)
-        if self._playback_preview_worker is not None:
-            worker = self._playback_preview_worker
-            worker.request_cancel()
-            worker.wait()
-            if self._playback_preview_worker is worker:
-                self._playback_preview_worker = None
+
+        workers: list[object] = []
+        playback_worker = self._playback_controller.worker
+        if playback_worker is not None:
+            workers.append(playback_worker)
+            playback_worker.request_cancel()
         if self._parallax_preview_worker is not None:
-            worker = self._parallax_preview_worker
-            worker.request_cancel()
-            worker.wait()
-            if self._parallax_preview_worker is worker:
-                self._parallax_preview_worker = None
+            workers.append(self._parallax_preview_worker)
+            self._parallax_preview_worker.request_cancel()
+
+        if not workers:
+            if on_idle is not None:
+                on_idle()
+            return
+
+        self._background_renderers_idle_callback = on_idle
+        self._background_renderers_pending = len(workers)
+
+    def export_video(self) -> None:
+        self._sync_project_from_ui()
+        self._cancel_background_renderers()
+        self._export_controller.open_export_dialog(
+            self._project_controller.project,
+            self._project_controller.project_path,
+            self,
+        )
+        if self._workspace_active:
+            self._mark_parallax_preview_stale()
+            self._invalidate_playback_preview()
+
+    def _pause_background_renderers_for_export(self) -> None:
+        """Backward-compatible alias for export entry points."""
+
+        self._cancel_background_renderers()
 
     def _resume_background_renderers_after_export(self) -> None:
-        """restart preview preparation after export completes."""
+        """Backward-compatible alias for export entry points."""
 
         if not self._workspace_active:
             return
@@ -1411,18 +1470,30 @@ class MainWindow(QMainWindow):
         retranslate_ui(self)
 
     def closeEvent(self, event: QCloseEvent) -> None:
-        if self._project_controller.confirm_discard_changes(self):
-            self._playback_preview_refresh_timer.stop()
-            if self._playback_preview_worker is not None:
-                self._playback_preview_worker.request_cancel()
-                self._playback_preview_worker.wait()
-            if self._parallax_preview_worker is not None:
-                self._parallax_preview_worker.request_cancel()
-                self._parallax_preview_worker.wait()
-            self._save_layout()
-            event.accept()
-        else:
+        if not self._project_controller.confirm_discard_changes(self):
             event.ignore()
+            return
+
+        if (
+            self._playback_controller.worker is not None
+            or self._parallax_preview_worker is not None
+        ):
+            event.ignore()
+            self._closing_after_background_renderers = True
+            self._cancel_background_renderers(on_idle=self._finish_deferred_window_close)
+            return
+
+        self._save_layout()
+        event.accept()
+
+    def _finish_deferred_window_close(self) -> None:
+        """Complete a close request once background preview workers have stopped."""
+
+        if not self._closing_after_background_renderers:
+            return
+        self._closing_after_background_renderers = False
+        self._save_layout()
+        self.close()
 
 
 __all__ = ["MainWindow"]

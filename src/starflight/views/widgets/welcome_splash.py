@@ -99,9 +99,8 @@ class _WelcomeActionButton(QFrame):
             child.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
-        if (
-            event.button() == Qt.MouseButton.LeftButton
-            and self.rect().contains(event.position().toPoint())
+        if event.button() == Qt.MouseButton.LeftButton and self.rect().contains(
+            event.position().toPoint()
         ):
             self.clicked.emit()
         super().mouseReleaseEvent(event)
@@ -580,9 +579,7 @@ class WelcomeSplash(QWidget):
         if leftover < _RECENT_ROW_HEIGHT:
             return 0
 
-        count = 1 + (leftover - _RECENT_ROW_HEIGHT) // (
-            _RECENT_ROW_HEIGHT + _RECENT_ROW_SPACING
-        )
+        count = 1 + (leftover - _RECENT_ROW_HEIGHT) // (_RECENT_ROW_HEIGHT + _RECENT_ROW_SPACING)
         return max(0, min(stored, count))
 
     def _on_update_available(self, update: UpdateInfo) -> None:

@@ -40,9 +40,7 @@ class SourceQualityTests(unittest.TestCase):
         self.assertFalse(any(infra_directory.glob("*.py")))
 
     def test_german_catalog_has_no_missing_or_stale_entries(self) -> None:
-        catalog = ET.parse(
-            ROOT / "src" / "starflight" / "i18n" / "starflight_de.ts"
-        )
+        catalog = ET.parse(ROOT / "src" / "starflight" / "i18n" / "starflight_de.ts")
         invalid: list[str] = []
         for context in catalog.getroot().findall("context"):
             context_name = context.findtext("name", default="")

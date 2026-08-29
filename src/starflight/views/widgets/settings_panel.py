@@ -44,7 +44,7 @@ from starflight.types.settings import (
     coerce_parallax_strength,
     density_preset_from_count,
 )
-from starflight.utils.image import bgr_to_rgb, load_image_bgr, numpy_rgb_to_qimage
+from starflight.utils.image import load_qimage_preview
 from starflight.views.icons import load_icon_asset
 from starflight.views.widgets.collapsible_section import CollapsibleSection
 from starflight.views.widgets.crop_control import CropControl
@@ -85,6 +85,8 @@ _RESOLUTION_ICON_FILES: dict[str, str] = {
     "custom": "resolution-custom.svg",
 }
 _DEFAULT_SETTINGS = ProjectSettings()
+_SOURCE_PREVIEW_MAX_WIDTH = 960
+_SOURCE_PREVIEW_MAX_HEIGHT = 820
 
 
 class SettingsPanel(QWidget):
@@ -96,6 +98,7 @@ class SettingsPanel(QWidget):
     timeline_settings_changed = Signal()
     load_image_requested = Signal()
     preview_adjustment_finished = Signal()
+    image_load_failed = Signal(str)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -108,6 +111,8 @@ class SettingsPanel(QWidget):
         self._source_qimage: QImage | None = None
         self._source_width = 1
         self._source_height = 1
+        self._source_preview_width = 1
+        self._source_preview_height = 1
         self._crop_orientation: int | None = None
         self._last_crop = CropSettings()
         self._crop_drag_start: CropSettings | None = None
@@ -1432,6 +1437,8 @@ class SettingsPanel(QWidget):
             self._source_qimage = None
             self._source_width = 1
             self._source_height = 1
+            self._source_preview_width = 1
+            self._source_preview_height = 1
             self.crop_control.clear_image()
             self.focus_points.clear_image()
             self._sync_crop_editor_state()
@@ -1439,22 +1446,34 @@ class SettingsPanel(QWidget):
             return
 
         try:
-            source_bgr = load_image_bgr(str(image_path))
-            source_rgb = bgr_to_rgb(source_bgr)
-            self._source_qimage = numpy_rgb_to_qimage(source_rgb, screen=self.screen())
-            source_h, source_w = source_rgb.shape[:2]
-            self._source_width = source_w
-            self._source_height = source_h
-            self.crop_control.set_image(self._source_qimage, source_w, source_h)
+            (
+                self._source_qimage,
+                self._source_width,
+                self._source_height,
+            ) = load_qimage_preview(
+                str(image_path),
+                max_width=_SOURCE_PREVIEW_MAX_WIDTH,
+                max_height=_SOURCE_PREVIEW_MAX_HEIGHT,
+            )
+            self._source_preview_width = max(1, self._source_qimage.width())
+            self._source_preview_height = max(1, self._source_qimage.height())
+            self.crop_control.set_image(
+                self._source_qimage,
+                self._source_width,
+                self._source_height,
+            )
             self._sync_crop_editor_state()
             self._sync_focus_crop_image()
-        except (OSError, ValueError):
+        except (OSError, ValueError) as exc:
             self._source_qimage = None
             self._source_width = 1
             self._source_height = 1
+            self._source_preview_width = 1
+            self._source_preview_height = 1
             self.crop_control.clear_image()
             self.focus_points.clear_image()
             self._sync_crop_editor_state()
+            self.image_load_failed.emit(str(exc))
         self._sync_focus_availability()
 
     def _sync_focus_crop_image(self) -> None:
@@ -1472,7 +1491,16 @@ class SettingsPanel(QWidget):
             self.width_spin.value(),
             self.height_spin.value(),
         )
-        cropped = self._source_qimage.copy(left, top, right - left, bottom - top)
+        preview_left = round(left * self._source_preview_width / self._source_width)
+        preview_top = round(top * self._source_preview_height / self._source_height)
+        preview_right = round(right * self._source_preview_width / self._source_width)
+        preview_bottom = round(bottom * self._source_preview_height / self._source_height)
+        cropped = self._source_qimage.copy(
+            preview_left,
+            preview_top,
+            max(1, preview_right - preview_left),
+            max(1, preview_bottom - preview_top),
+        )
         self.focus_points.set_image(cropped, right - left, bottom - top)
         self._sync_focus_availability()
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from starflight.core.background import BackgroundRenderer, effective_background_settings
+from starflight.core.background import BackgroundRenderer
 from starflight.core.camera_motion import camera_motion_progress
 from starflight.core.parallax import parallax_motion_for_strength
 from starflight.core.star_renderer import StarRenderer
@@ -70,7 +70,7 @@ class FrameRenderer:
         """
 
         duration = self.settings.duration_seconds
-        background_settings = effective_background_settings(self.settings.background)
+        background_settings = self.settings.background
         motion_progress = camera_motion_progress(
             time_seconds,
             duration,
@@ -116,7 +116,7 @@ class FrameRenderer:
             normalized animation progress 0..1
         """
 
-        background_settings = effective_background_settings(self.settings.background)
+        background_settings = self.settings.background
         return self.background.focus_screen_position(progress, background_settings)
 
 

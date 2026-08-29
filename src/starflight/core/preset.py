@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -117,7 +118,7 @@ def load_preset(path: Path, *, builtin: bool) -> LookPreset:
         name = str(payload.get("name", "")).strip()
         if not name:
             raise ValueError("name must not be empty")
-        preset_id = str(payload.get("id", path.stem)).strip() or path.stem
+        preset_id = _validated_preset_id(str(payload.get("id", path.stem)).strip() or path.stem)
         description = payload.get("description", "")
         if description is not None and not isinstance(description, str):
             raise TypeError("description must be a string")
@@ -170,10 +171,11 @@ def save_user_preset(preset: LookPreset, *, user_directory: Path | None = None) 
     """
 
     target_dir = user_directory if user_directory is not None else user_presets_directory()
-    target = target_dir / f"{preset.id}.json"
+    preset_id = _validated_preset_id(preset.id)
+    target = target_dir / f"{preset_id}.json"
     payload: dict[str, Any] = {
         "format_version": preset.format_version,
-        "id": preset.id,
+        "id": preset_id,
         "name": preset.name,
         "description": preset.description,
         "settings": look_settings_to_dict(preset.settings),
@@ -181,16 +183,39 @@ def save_user_preset(preset: LookPreset, *, user_directory: Path | None = None) 
 
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
-        with target.open("w", encoding="utf-8") as handle:
-            json.dump(payload, handle, indent=2, ensure_ascii=False)
-            handle.write("\n")
-    except OSError as exc:
-        message = _tr("Preset could not be saved: {error}").format(error=exc)
-        raise PresetError(message) from exc
+        serialized = json.dumps(payload, indent=2, ensure_ascii=False)
     except (TypeError, ValueError) as exc:
         message = _tr("Preset data could not be serialized: {error}").format(error=exc)
         raise PresetError(message) from exc
 
+    temp_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            "w",
+            encoding="utf-8",
+            dir=target.parent,
+            prefix=f".{target.stem}_",
+            suffix=target.suffix,
+            delete=False,
+        ) as handle:
+            handle.write(serialized)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+            temp_path = Path(handle.name)
+        temp_path.replace(target)
+        temp_path = None
+    except OSError as exc:
+        message = _tr("Preset could not be saved: {error}").format(error=exc)
+        raise PresetError(message) from exc
+    finally:
+        if temp_path is not None:
+            try:
+                temp_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+    preset.id = preset_id
     preset.path = target
     preset.builtin = False
     preset.source_settings = dict(payload["settings"])
@@ -261,3 +286,17 @@ def find_user_preset_by_name(name: str, presets: list[LookPreset]) -> LookPreset
         if not preset.builtin and preset.name.strip().casefold() == needle:
             return preset
     return None
+
+
+def _validated_preset_id(value: str) -> str:
+    """Accept only plain file ids that cannot escape the preset directory."""
+
+    candidate = value.strip()
+    if (
+        not candidate
+        or candidate in {".", ".."}
+        or Path(candidate).name != candidate
+        or any(separator in candidate for separator in ("/", "\\"))
+    ):
+        raise PresetError(_tr("The preset file has an invalid format."))
+    return candidate

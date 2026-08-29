@@ -7,8 +7,7 @@
 - New Parallax effect for starless images
 - Easing for camera movement (Linear, Ease-In, Ease-Out, Ease-In/Out)
 - Stars in the Preview now matches the configured size, brightness, glow, and color
-- Timeline playback pre-renders a smooth six-fps cache while paused frames stay export-accurate
-- Export renders star-heavy frames faster, especially near the end of a clip
+- Timeline playback pre-render
 - Several UI improvements and redesigns
 
 ## [1.0.3] - 2026-08-24
@@ -40,3 +39,4 @@
 ## [1.0.0] - 2026-08-22
 
 - Initial release
+

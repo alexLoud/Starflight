@@ -4,17 +4,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import cv2
 import numpy as np
 
-from starflight.core.background import effective_background_settings
-from starflight.core.camera_motion import camera_motion_progress
-from starflight.core.renderer import FrameRenderer, composite_star_layer, create_renderer
+from starflight.core.renderer import FrameRenderer, create_renderer
 from starflight.core.star_renderer import StarRenderer
 from starflight.services.parallax_preview_service import (
     PARALLAX_PREVIEW_ITERATIONS,
-    PreparedParallaxPreview,
 )
+from starflight.services.preview_compositor import render_parallax_preview_frame
+from starflight.types.preview import PreparedParallaxPreview
 from starflight.types.settings import Project, ProjectSettings, RenderQuality, StarSettings
 from starflight.utils.image import load_image_bgr
 from starflight.utils.validation import ValidationResult, validate_project_for_render
@@ -97,21 +95,8 @@ class PreviewService:
 
         if self._parallax_preview_renderer is None:
             return None
-        background = self._parallax_preview_renderer.render_frame(
-            time_seconds,
-            RenderQuality.PREVIEW,
-            include_stars=False,
-            include_parallax=True,
-        )
         width = preview_settings.resolution.width
         height = preview_settings.resolution.height
-        if background.shape[:2] != (height, width):
-            background = cv2.resize(background, (width, height), interpolation=cv2.INTER_LINEAR)
-
-        if not include_stars:
-            self._last_preview_frame = background
-            return background
-
         if self._parallax_star_renderer is None or _needs_starfield_rebuild(
             self._parallax_star_settings,
             preview_settings,
@@ -125,33 +110,13 @@ class PreviewService:
             )
             self._parallax_star_renderer.field.settings = self._parallax_star_renderer.settings
         self._parallax_star_settings = _cache_settings(preview_settings)
-
-        source_width = self._parallax_preview_renderer.settings.resolution.width
-        source_height = self._parallax_preview_renderer.settings.resolution.height
-        scale_x = width / source_width
-        scale_y = height / source_height
-
-        def view_center_at_progress(progress: float) -> tuple[float, float]:
-            center_x, center_y = self._parallax_preview_renderer.view_center_at_progress(progress)
-            return center_x * scale_x, center_y * scale_y
-
-        duration = preview_settings.duration_seconds
-        background_settings = effective_background_settings(preview_settings.background)
-        motion_progress = camera_motion_progress(
+        frame = render_parallax_preview_frame(
+            self._parallax_preview_renderer,
+            preview_settings,
             time_seconds,
-            duration,
-            background_settings,
-            preview_settings.stars.speed,
+            include_stars=include_stars,
+            star_renderer=self._parallax_star_renderer,
         )
-        star_layer = self._parallax_star_renderer.render_layer(
-            time_seconds,
-            duration,
-            RenderQuality.EXPORT,
-            view_center_at_progress,
-            motion_progress,
-            track_visibility=False,
-        )
-        frame = np.clip(composite_star_layer(background, star_layer), 0, 255).astype(np.uint8)
         self._last_preview_frame = frame
         return frame
 

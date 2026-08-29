@@ -290,15 +290,11 @@ class RecoveredCrashReportDialog(CrashReportDialog):
                 )
             )
         self._update_details_button_text()
-        self.copy_button.setText(
-            QCoreApplication.translate("CrashReportDialog", "Copy report")
-        )
+        self.copy_button.setText(QCoreApplication.translate("CrashReportDialog", "Copy report"))
         self.open_logs_button.setText(
             QCoreApplication.translate("CrashReportDialog", "Open log folder")
         )
-        self.close_button.setText(
-            QCoreApplication.translate("CrashReportDialog", "Close message")
-        )
+        self.close_button.setText(QCoreApplication.translate("CrashReportDialog", "Close message"))
 
 
 __all__ = ["CrashReportDialog", "RecoveredCrashReportDialog"]
