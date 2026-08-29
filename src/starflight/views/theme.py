@@ -410,6 +410,8 @@ QWidget#welcome_splash {{
 
 QWidget#welcome_splash_frame,
 QLabel#welcome_splash_logo,
+QWidget#welcome_hero_host,
+QWidget#welcome_content_host,
 QWidget#welcome_actions_host,
 QWidget#welcome_recent_list,
 QWidget#welcome_recent_section {{
@@ -417,7 +419,7 @@ QWidget#welcome_recent_section {{
 }}
 
 QWidget#welcome_splash_meta_bar {{
-    background-color: rgba(20, 26, 34, 170);
+    background-color: transparent;
 }}
 
 QFrame#welcome_action_button {{
@@ -526,16 +528,20 @@ QLabel#welcome_recent_date {{
 
 QLabel#welcome_splash_meta {{
     color: {TEXT_PRIMARY};
-    background-color: transparent;
+    background-color: rgba(20, 26, 34, 190);
+    border: 1px solid rgba(122, 186, 232, 45);
+    border-radius: 8px;
     font-size: 12px;
-    padding: 0;
+    padding: 0 8px;
 }}
 
 QLabel#welcome_splash_update {{
     color: {ACCENT};
-    background-color: transparent;
+    background-color: rgba(20, 26, 34, 190);
+    border: 1px solid rgba(122, 186, 232, 45);
+    border-radius: 8px;
     font-size: 12px;
-    padding: 0;
+    padding: 0 8px;
 }}
 
 QLabel#welcome_splash_update a {{

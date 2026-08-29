@@ -39,10 +39,11 @@ _ACTION_WIDTH = 264
 _ACTION_HEIGHT = 96
 _ACTION_GAP = 16
 _ACTION_ROW_MAX_WIDTH = _ACTION_WIDTH * 2 + _ACTION_GAP
-_RECENT_ROW_HEIGHT = 58
+_RECENT_ROW_HEIGHT = 60
 _RECENT_ROW_SPACING = 2
 _RECENT_PANEL_MARGIN = 12
 _MIN_LOGO_HEIGHT = 240
+_CONTENT_OVERLAP_FRACTION = 0.30
 
 
 def welcome_logo_path() -> Path:
@@ -139,7 +140,7 @@ class _RecentProjectButton(QPushButton):
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setAutoDefault(False)
         self.setFlat(True)
-        self.setMinimumHeight(58)
+        self.setMinimumHeight(_RECENT_ROW_HEIGHT)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setToolTip(str(path))
         self.path = path
@@ -234,7 +235,10 @@ class WelcomeSplash(QWidget):
         self._fitted_logical_size: tuple[int, int] | None = None
         self._fitting_logo = False
 
-        self._logo_frame = QWidget(self)
+        self._hero_host = QWidget(self)
+        self._hero_host.setObjectName("welcome_hero_host")
+
+        self._logo_frame = QWidget(self._hero_host)
         self._logo_frame.setObjectName("welcome_splash_frame")
 
         self._logo_label = QLabel(self._logo_frame)
@@ -262,12 +266,15 @@ class WelcomeSplash(QWidget):
         self._update_label.setOpenExternalLinks(True)
         self._update_label.hide()
 
-        self._new_button = _WelcomeActionButton("file-new.svg", self)
-        self._open_button = _WelcomeActionButton("file-open.svg", self)
+        self._content_host = QWidget(self._hero_host)
+        self._content_host.setObjectName("welcome_content_host")
+
+        self._new_button = _WelcomeActionButton("file-new.svg", self._content_host)
+        self._open_button = _WelcomeActionButton("file-open.svg", self._content_host)
         self._new_button.clicked.connect(self.new_project_requested.emit)
         self._open_button.clicked.connect(self.open_project_requested.emit)
 
-        self._actions_host = QWidget(self)
+        self._actions_host = QWidget(self._content_host)
         self._actions_host.setObjectName("welcome_actions_host")
         actions = QHBoxLayout(self._actions_host)
         actions.setContentsMargins(0, 0, 0, 0)
@@ -275,16 +282,16 @@ class WelcomeSplash(QWidget):
         actions.addWidget(self._new_button)
         actions.addWidget(self._open_button)
 
-        self._recent_heading = QLabel(self)
+        self._recent_heading = QLabel(self._content_host)
         self._recent_heading.setObjectName("welcome_recent_heading")
 
-        self._recent_list = QWidget(self)
+        self._recent_list = QWidget(self._content_host)
         self._recent_list.setObjectName("welcome_recent_list")
         self._recent_list_layout = QVBoxLayout(self._recent_list)
         self._recent_list_layout.setContentsMargins(0, 0, 0, 0)
         self._recent_list_layout.setSpacing(2)
 
-        self._recent_panel = QFrame(self)
+        self._recent_panel = QFrame(self._content_host)
         self._recent_panel.setObjectName("welcome_recent_panel")
         self._recent_panel.setFrameShape(QFrame.Shape.NoFrame)
         self._recent_panel.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
@@ -293,7 +300,7 @@ class WelcomeSplash(QWidget):
         recent_layout.setSpacing(0)
         recent_layout.addWidget(self._recent_list)
 
-        self._recent_section = QWidget(self)
+        self._recent_section = QWidget(self._content_host)
         self._recent_section.setObjectName("welcome_recent_section")
         recent_section_layout = QVBoxLayout(self._recent_section)
         recent_section_layout.setContentsMargins(0, 0, 0, 0)
@@ -302,14 +309,11 @@ class WelcomeSplash(QWidget):
         recent_section_layout.addWidget(self._recent_panel)
         self._recent_section.hide()
 
-        root = QVBoxLayout(self)
-        root.setContentsMargins(_OUTER_MARGIN, _OUTER_MARGIN, _OUTER_MARGIN, _OUTER_MARGIN)
-        root.setSpacing(_CONTENT_GAP)
-        root.addStretch(1)
-        root.addWidget(self._logo_frame, 0, Qt.AlignmentFlag.AlignHCenter)
-        root.addWidget(self._actions_host, 0, Qt.AlignmentFlag.AlignHCenter)
-        root.addWidget(self._recent_section, 0, Qt.AlignmentFlag.AlignHCenter)
-        root.addStretch(1)
+        content = QVBoxLayout(self._content_host)
+        content.setContentsMargins(0, 0, 0, 0)
+        content.setSpacing(_CONTENT_GAP)
+        content.addWidget(self._actions_host)
+        content.addWidget(self._recent_section)
 
         self._network_manager = QNetworkAccessManager(self)
         request = QNetworkRequest(QUrl(latest_release_api_url()))
@@ -383,6 +387,7 @@ class WelcomeSplash(QWidget):
         target_width = max(int(native.width() * scale), 1)
         target_height = max(int(native.height() * scale), 1)
         if self._fitted_logical_size == (target_width, target_height):
+            self._position_hero_content()
             return
 
         self._fitting_logo = True
@@ -398,7 +403,8 @@ class WelcomeSplash(QWidget):
             actions_width = button_width * 2 + _ACTION_GAP
             self._actions_host.setFixedWidth(actions_width)
             self._recent_section.setFixedWidth(actions_width)
-            self._logo_label.move(0, 0)
+            self._content_host.setFixedWidth(actions_width)
+            self._position_hero_content()
             self._position_overlays()
         finally:
             self._fitting_logo = False
@@ -413,23 +419,73 @@ class WelcomeSplash(QWidget):
             margins = self.layout().contentsMargins()
             margin_x = margins.left() + margins.right()
             margin_y = margins.top() + margins.bottom()
-            spacing = self.layout().spacing()
         else:
             margin_x = 2 * _OUTER_MARGIN
             margin_y = 2 * _OUTER_MARGIN
-            spacing = _CONTENT_GAP
-        gap_count = 4 if self._recent_section.isVisible() else 3
 
-        reserved_height = margin_y + (gap_count * spacing) + _ACTION_HEIGHT
-        if self._recent_section.isVisible():
-            reserved_height += (
-                self._recent_section.height() or self._recent_section.sizeHint().height()
-            )
+        available_height = max(self.height() - margin_y, 160)
+        content_height = self._content_block_height()
+        anchor_fraction = 1.0 - _CONTENT_OVERLAP_FRACTION
+        composition_height = max(int((available_height - content_height) / anchor_fraction), 160)
 
         return QSize(
             max(self.width() - margin_x, 240),
-            max(self.height() - reserved_height, 160),
+            min(available_height, composition_height),
         )
+
+    def _content_block_height(self) -> int:
+        height = _ACTION_HEIGHT
+        if self._recent_section.isVisible():
+            row_count = self._recent_list_layout.count()
+            row_spacing = max(row_count - 1, 0) * _RECENT_ROW_SPACING
+            row_heights = row_count * self._recent_row_height()
+            recent_height = (
+                max(self._recent_heading.sizeHint().height(), 1)
+                + 10
+                + self._recent_panel_vertical_overhead()
+                + row_heights
+                + row_spacing
+            )
+            height += _CONTENT_GAP + recent_height
+        return height
+
+    def _recent_panel_vertical_overhead(self) -> int:
+        layout = self._recent_panel.layout()
+        if layout is None:
+            layout_margin = _RECENT_PANEL_MARGIN
+        else:
+            margins = layout.contentsMargins()
+            layout_margin = margins.top() + margins.bottom()
+        return layout_margin + (2 * self._recent_panel.frameWidth())
+
+    def _recent_row_height(self) -> int:
+        for index in range(self._recent_list_layout.count()):
+            widget = self._recent_list_layout.itemAt(index).widget()
+            if widget is not None:
+                return max(widget.sizeHint().height(), _RECENT_ROW_HEIGHT)
+        return _RECENT_ROW_HEIGHT
+
+    def _position_hero_content(self) -> None:
+        """Place the unchanged action block over the lower part of the artwork."""
+
+        frame_width = self._logo_frame.width()
+        frame_height = self._logo_frame.height()
+        content_width = self._content_host.width()
+        content_height = self._content_block_height()
+        content_y = int(frame_height * (1.0 - _CONTENT_OVERLAP_FRACTION))
+        hero_width = max(frame_width, content_width)
+        hero_height = max(frame_height, content_y + content_height)
+
+        self._content_host.setFixedHeight(content_height)
+        self._hero_host.setFixedSize(hero_width, hero_height)
+        self._hero_host.move(
+            max((self.width() - hero_width) // 2, 0),
+            max((self.height() - hero_height) // 2, 0),
+        )
+        self._logo_frame.move(max((hero_width - frame_width) // 2, 0), 0)
+        self._logo_label.move(0, 0)
+        self._content_host.move(max((hero_width - content_width) // 2, 0), content_y)
+        self._content_host.raise_()
 
     def _native_logo_size(self) -> QSize:
         """
@@ -471,18 +527,16 @@ class WelcomeSplash(QWidget):
         """place version and update text on the splash artwork."""
 
         frame_width = self._logo_frame.width()
-        frame_height = self._logo_frame.height()
 
         self._meta_bar.setGeometry(
             0,
-            frame_height - _META_BAR_HEIGHT,
+            0,
             frame_width,
             _META_BAR_HEIGHT,
         )
 
         meta_height = max(self._meta_label.sizeHint().height(), 1)
         meta_y = (_META_BAR_HEIGHT - meta_height) // 2
-        meta_left = _META_LEFT_MARGIN
 
         if self._update_info is not None and self._update_label.isVisible():
             update_width = max(self._update_label.sizeHint().width(), 1)
@@ -494,11 +548,10 @@ class WelcomeSplash(QWidget):
                 update_height,
             )
             self._update_label.raise_()
-            meta_left = _META_LEFT_MARGIN + update_width + 8
 
-        meta_width = max(frame_width - meta_left - _META_RIGHT_MARGIN, 1)
+        meta_width = max(self._meta_label.sizeHint().width(), 1)
         self._meta_label.setGeometry(
-            meta_left,
+            max(frame_width - _META_RIGHT_MARGIN - meta_width, 0),
             meta_y,
             meta_width,
             meta_height,
@@ -557,11 +610,9 @@ class WelcomeSplash(QWidget):
             margins = self.layout().contentsMargins()
             margin_x = margins.left() + margins.right()
             margin_y = margins.top() + margins.bottom()
-            spacing = self.layout().spacing()
         else:
             margin_x = 2 * _OUTER_MARGIN
             margin_y = 2 * _OUTER_MARGIN
-            spacing = _CONTENT_GAP
 
         native = self._native_logo_size()
         available_width = max(self.width() - margin_x, 240)
@@ -573,13 +624,15 @@ class WelcomeSplash(QWidget):
             max(int(scaled_native_height * 0.45), _MIN_LOGO_HEIGHT),
         )
 
-        leftover = available_height - (4 * spacing) - _ACTION_HEIGHT - min_logo_height
+        content_y = int(min_logo_height * (1.0 - _CONTENT_OVERLAP_FRACTION))
+        leftover = available_height - content_y - _ACTION_HEIGHT - _CONTENT_GAP
         leftover -= max(self._recent_heading.sizeHint().height(), 16) + 10
-        leftover -= _RECENT_PANEL_MARGIN
-        if leftover < _RECENT_ROW_HEIGHT:
+        leftover -= self._recent_panel_vertical_overhead()
+        row_height = self._recent_row_height()
+        if leftover < row_height:
             return 0
 
-        count = 1 + (leftover - _RECENT_ROW_HEIGHT) // (_RECENT_ROW_HEIGHT + _RECENT_ROW_SPACING)
+        count = 1 + (leftover - row_height) // (row_height + _RECENT_ROW_SPACING)
         return max(0, min(stored, count))
 
     def _on_update_available(self, update: UpdateInfo) -> None:
