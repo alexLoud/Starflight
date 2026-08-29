@@ -19,6 +19,11 @@ from starflight.commands.registry import CommandRegistry
 from starflight.views.dialogs.welcome_dialog import WelcomeDialog
 from starflight.views.main_window import MainWindow
 
+try:
+    from qt_test_helpers import welcome_splash_network_patch
+except ModuleNotFoundError:
+    from tests.qt_test_helpers import welcome_splash_network_patch
+
 
 class WelcomeDialogTests(unittest.TestCase):
     @classmethod
@@ -84,7 +89,8 @@ class WelcomeDialogTests(unittest.TestCase):
             settings=self._settings,
             command_registry=CommandRegistry(Mock()),
         )
-        window = MainWindow(context)
+        with welcome_splash_network_patch():
+            window = MainWindow(context)
 
         with patch("starflight.views.main_window.QTimer.singleShot") as single_shot:
             window._show_workspace()

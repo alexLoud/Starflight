@@ -4,8 +4,10 @@
 
 ## [1.1.1] - 2026-08-29
 
-- Video export progress uses a fixed preparation band (0–10%) and frame rendering (10–100%); star preparation is no longer shown as a separate step
-- Closing the export dialog no longer regenerates an already valid parallax preview
+- Fix visual Export progress issues
+- Fix launch issues under Windows
+- Unittest fixes
+- Several other fixes
 
 ## [1.1.0] - 2026-08-29
 
@@ -16,6 +18,8 @@
 - Enhanced Preview performance with pre-rendering and cached timeline playback
 - Guided introduction that walks new users through the app
 - Several UI improvements and redesigns across settings, export, and the project window
+
+
 
 ## [1.0.3] - 2026-08-24
 

@@ -221,6 +221,7 @@ class WelcomeSplash(QWidget):
     new_project_requested = Signal()
     open_project_requested = Signal()
     recent_project_requested = Signal(str)
+    startup_network_settled = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -663,6 +664,7 @@ class WelcomeSplash(QWidget):
                 self._on_up_to_date()
         finally:
             reply.deleteLater()
+            self.startup_network_settled.emit()
 
     def _on_up_to_date(self) -> None:
         """mark the installed version as current after a successful release check."""

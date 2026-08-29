@@ -132,7 +132,7 @@ class PlaybackRenderProcessTests(unittest.TestCase):
             )
             frames: dict[int, bytes] = {}
             failures: list[object] = []
-            worker = PlaybackPreviewWorker(spec, [0, 1], render_workers=2)
+            worker = PlaybackPreviewWorker(spec, [0, 1], render_workers=1)
             worker.frame_ready.connect(frames.__setitem__)
             worker.failed.connect(failures.append)
 

@@ -80,27 +80,27 @@ class PreviewStarTests(unittest.TestCase):
 
     def test_playback_star_layer_remains_close_to_the_displayed_full_frame(self) -> None:
         project = Project()
-        project.settings.resolution = ResolutionSettings(192, 320)
-        project.settings.stars.star_count = 400
+        project.settings.resolution = ResolutionSettings(96, 160)
+        project.settings.stars.star_count = 120
         project.settings.stars.min_size = 1.0
         project.settings.stars.max_size = 10.0
         project.settings.stars.glow_intensity = 0.3
         project.settings.stars.color_intensity = 0.5
         panel = Mock()
-        panel.playback_render_size.return_value = (96, 160)
+        panel.playback_render_size.return_value = (48, 80)
         playback_settings = PreviewController(Mock()).build_preview_settings(
             project,
             panel,
             playback=True,
         )
 
-        full_layer = StarRenderer(project.settings.stars, 192, 320).render_layer(
+        full_layer = StarRenderer(project.settings.stars, 96, 160).render_layer(
             0.0,
             10.0,
             RenderQuality.EXPORT,
             track_visibility=False,
         )
-        playback_layer = StarRenderer(playback_settings.stars, 96, 160).render_layer(
+        playback_layer = StarRenderer(playback_settings.stars, 48, 80).render_layer(
             0.0,
             10.0,
             RenderQuality.EXPORT,

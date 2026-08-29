@@ -10,7 +10,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from PySide6.QtCore import QEvent, QRect, QSize, QTimer
-from PySide6.QtGui import QAction, QCloseEvent, QScreen
+from PySide6.QtGui import QAction, QCloseEvent, QScreen, QShowEvent
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
@@ -67,6 +67,7 @@ from starflight.views.widgets.settings_panel import SettingsPanel
 from starflight.views.widgets.welcome_splash import WelcomeSplash
 
 _MIN_WINDOW_SIZE = QSize(800, 520)
+_INITIAL_MAXIMIZE_RETRY_DELAYS_MS = (0, 500, 1500)
 
 
 class MainWindow(QMainWindow):
@@ -124,6 +125,7 @@ class MainWindow(QMainWindow):
         self._active_look_preset_id: str | None = None
         self._constraining_window = False
         self._reset_popover: ResetConfirmPopover | None = None
+        self._initial_maximize_pending = False
 
         self._build_ui()
         self._connect_signals()
@@ -151,6 +153,7 @@ class MainWindow(QMainWindow):
         self._apply_chrome_visibility()
         self.showMaximized()
         self._apply_window_minimum()
+        self._schedule_initial_maximize()
 
     def _build_menu_from_registry(self) -> None:
         menu_bar = self.menuBar()
@@ -392,10 +395,51 @@ class MainWindow(QMainWindow):
 
     def changeEvent(self, event: QEvent) -> None:
         super().changeEvent(event)
-        if event.type() != QEvent.Type.WindowStateChange:
+        event_type = event.type()
+        if event_type == QEvent.Type.WindowStateChange:
+            if self._initial_maximize_pending and self.isMaximized():
+                self._initial_maximize_pending = False
+            if self._workspace_active and self.isMaximized():
+                self._constrain_window_to_screen()
             return
-        if self._workspace_active and self.isMaximized():
-            self._constrain_window_to_screen()
+        if event_type == QEvent.Type.WindowActivate:
+            self._apply_initial_maximize()
+
+    def showEvent(self, event: QShowEvent) -> None:
+        super().showEvent(event)
+        self._apply_initial_maximize()
+
+    def _has_stored_window_geometry(self) -> bool:
+        """return whether a previous window geometry was persisted in settings."""
+
+        geometry = self._context.settings.value(SETTINGS_KEY_WINDOW_GEOMETRY)
+        if geometry is None:
+            return False
+        try:
+            return len(bytes(geometry)) > 0
+        except TypeError:
+            return bool(geometry)
+
+    def _schedule_initial_maximize(self) -> None:
+        """retry maximize on first launch until the platform accepts the request."""
+
+        if not self._initial_maximize_pending:
+            return
+        for delay_ms in _INITIAL_MAXIMIZE_RETRY_DELAYS_MS:
+            QTimer.singleShot(delay_ms, self._apply_initial_maximize)
+
+    def _apply_initial_maximize(self) -> None:
+        """maximize the window on first launch when no geometry has been stored yet."""
+
+        if not self._initial_maximize_pending or not self.isVisible():
+            return
+        if self.isMaximized():
+            self._initial_maximize_pending = False
+            return
+        self.showMaximized()
+        self._apply_window_minimum()
+        if self.isMaximized():
+            self._initial_maximize_pending = False
 
     def _build_ui(self) -> None:
         self.menuBar().setVisible(False)
@@ -466,8 +510,10 @@ class MainWindow(QMainWindow):
         self.welcome_splash.new_project_requested.connect(self.new_project_action)
         self.welcome_splash.open_project_requested.connect(self.open_project)
         self.welcome_splash.recent_project_requested.connect(self._on_start_recent_project)
+        self.welcome_splash.startup_network_settled.connect(self._apply_initial_maximize)
 
     def _restore_layout(self) -> None:
+        self._initial_maximize_pending = not self._has_stored_window_geometry()
         geometry = self._context.settings.value(SETTINGS_KEY_WINDOW_GEOMETRY)
         if geometry is not None:
             self.restoreGeometry(geometry)

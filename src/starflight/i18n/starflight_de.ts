@@ -129,8 +129,8 @@
     <message>
         <location filename="../views/dialogs/export_dialog.py" line="253"/>
         <location filename="../views/dialogs/export_dialog.py" line="261"/>
-        <location filename="../views/dialogs/export_dialog.py" line="573"/>
-        <location filename="../views/dialogs/export_dialog.py" line="614"/>
+        <location filename="../views/dialogs/export_dialog.py" line="514"/>
+        <location filename="../views/dialogs/export_dialog.py" line="555"/>
         <source>Export video</source>
         <translation>Video exportieren</translation>
     </message>
@@ -196,20 +196,20 @@
     </message>
     <message>
         <location filename="../views/dialogs/export_dialog.py" line="407"/>
-        <location filename="../views/dialogs/export_dialog.py" line="574"/>
+        <location filename="../views/dialogs/export_dialog.py" line="515"/>
         <source>File: {name}</source>
         <translation>Datei: {name}</translation>
     </message>
     <message>
         <location filename="../views/dialogs/export_dialog.py" line="412"/>
-        <location filename="../views/dialogs/export_dialog.py" line="533"/>
+        <location filename="../views/dialogs/export_dialog.py" line="474"/>
         <source>Preparing parallax…</source>
         <translation>Parallax wird vorbereitet…</translation>
     </message>
     <message>
         <location filename="../views/dialogs/export_dialog.py" line="414"/>
-        <location filename="../views/dialogs/export_dialog.py" line="473"/>
-        <location filename="../views/dialogs/export_dialog.py" line="537"/>
+        <location filename="../views/dialogs/export_dialog.py" line="441"/>
+        <location filename="../views/dialogs/export_dialog.py" line="478"/>
         <source>Preparing export…</source>
         <translation>Export wird vorbereitet…</translation>
     </message>
@@ -220,7 +220,7 @@
     </message>
     <message>
         <location filename="../views/dialogs/export_dialog.py" line="263"/>
-        <location filename="../views/dialogs/export_dialog.py" line="616"/>
+        <location filename="../views/dialogs/export_dialog.py" line="557"/>
         <source>Review the summary and choose where to save the video.</source>
         <translation>Zusammenfassung prüfen und Speicherort wählen.</translation>
     </message>
@@ -261,43 +261,43 @@
         <translation>Im Zielordner existiert bereits eine Datei mit dem Namen „{name}“. Überschreiben?</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="516"/>
+        <location filename="../views/dialogs/export_dialog.py" line="457"/>
         <source>Rendering frames… {current} of {total}</source>
         <translation>Frames werden gerendert… {current} von {total}</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="572"/>
+        <location filename="../views/dialogs/export_dialog.py" line="513"/>
         <source>Export completed.</source>
         <translation>Export abgeschlossen.</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="584"/>
+        <location filename="../views/dialogs/export_dialog.py" line="525"/>
         <source>Export cancelled.</source>
         <translation>Export abgebrochen.</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="594"/>
+        <location filename="../views/dialogs/export_dialog.py" line="535"/>
         <source>Export failed due to an internal error.</source>
         <translation>Der Export ist aufgrund eines internen Fehlers fehlgeschlagen.</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="591"/>
-        <location filename="../views/dialogs/export_dialog.py" line="606"/>
+        <location filename="../views/dialogs/export_dialog.py" line="532"/>
+        <location filename="../views/dialogs/export_dialog.py" line="547"/>
         <source>Export failed</source>
         <translation>Export fehlgeschlagen</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="543"/>
+        <location filename="../views/dialogs/export_dialog.py" line="484"/>
         <source>Starting render workers…</source>
         <translation>Rendering wird gestartet…</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="546"/>
+        <location filename="../views/dialogs/export_dialog.py" line="487"/>
         <source>Encoding video…</source>
-        <translation type="unfinished"></translation>
+        <translation>Video wird kodiert…</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/export_dialog.py" line="626"/>
+        <location filename="../views/dialogs/export_dialog.py" line="567"/>
         <source>Cancelling export…</source>
         <translation>Export wird abgebrochen…</translation>
     </message>
@@ -305,46 +305,46 @@
 <context>
     <name>ExportWorker</name>
     <message>
-        <location filename="../core/exporter.py" line="649"/>
+        <location filename="../core/exporter.py" line="583"/>
         <source>A rendered chunk has an invalid size ({actual_bytes} instead of {expected_bytes}).</source>
         <translation>Ein gerenderter Abschnitt hat eine ungültige Größe ({actual_bytes} statt {expected_bytes}).</translation>
     </message>
     <message>
-        <location filename="../core/exporter.py" line="958"/>
+        <location filename="../core/exporter.py" line="892"/>
         <source>Fade snapshots are missing for chunk starts: {starts}</source>
         <translation>Überblendungsstände fehlen für folgende Abschnittsanfänge: {starts}</translation>
     </message>
     <message>
-        <location filename="../core/exporter.py" line="654"/>
-        <location filename="../core/exporter.py" line="981"/>
+        <location filename="../core/exporter.py" line="588"/>
+        <location filename="../core/exporter.py" line="915"/>
         <source>FFmpeg could not be started.</source>
         <translation>FFmpeg konnte nicht gestartet werden.</translation>
     </message>
     <message>
-        <location filename="../core/exporter.py" line="658"/>
-        <location filename="../core/exporter.py" line="670"/>
-        <location filename="../core/exporter.py" line="1125"/>
+        <location filename="../core/exporter.py" line="592"/>
+        <location filename="../core/exporter.py" line="604"/>
+        <location filename="../core/exporter.py" line="1043"/>
         <source>FFmpeg error: {error}</source>
         <translation>FFmpeg-Fehler: {error}</translation>
     </message>
     <message>
-        <location filename="../core/exporter.py" line="861"/>
+        <location filename="../core/exporter.py" line="795"/>
         <source>FFmpeg was not found. Install FFmpeg and make sure it is available on PATH.</source>
         <translation>FFmpeg wurde nicht gefunden. Installiere FFmpeg und stelle sicher, dass es über PATH verfügbar ist.</translation>
     </message>
     <message>
-        <location filename="../core/exporter.py" line="1135"/>
+        <location filename="../core/exporter.py" line="1053"/>
         <source>The export file could not be saved: {error}</source>
         <translation>Die Exportdatei konnte nicht gespeichert werden: {error}</translation>
     </message>
     <message>
-        <location filename="../core/exporter.py" line="659"/>
-        <location filename="../core/exporter.py" line="1126"/>
+        <location filename="../core/exporter.py" line="593"/>
+        <location filename="../core/exporter.py" line="1044"/>
         <source>Unknown error</source>
         <translation>Unbekannter Fehler</translation>
     </message>
     <message>
-        <location filename="../core/exporter.py" line="853"/>
+        <location filename="../core/exporter.py" line="787"/>
         <source>The output folder does not exist:
 {path}</source>
         <translation>Der Ausgabeordner existiert nicht:
@@ -428,140 +428,140 @@
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../views/main_window.py" line="187"/>
-        <location filename="../views/main_window.py" line="228"/>
+        <location filename="../views/main_window.py" line="190"/>
+        <location filename="../views/main_window.py" line="231"/>
         <source>Open Recent</source>
         <translation>Zuletzt geöffnet</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="232"/>
+        <location filename="../views/main_window.py" line="235"/>
         <source>No Recent Projects</source>
         <translation>Keine zuletzt geöffneten Projekte</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="507"/>
-        <location filename="../views/main_window.py" line="1099"/>
-        <location filename="../views/main_window.py" line="1127"/>
-        <location filename="../views/main_window.py" line="1591"/>
+        <location filename="../views/main_window.py" line="553"/>
+        <location filename="../views/main_window.py" line="1145"/>
+        <location filename="../views/main_window.py" line="1173"/>
+        <location filename="../views/main_window.py" line="1578"/>
         <source>Ready</source>
         <translation>Bereit</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="530"/>
+        <location filename="../views/main_window.py" line="576"/>
         <source>New</source>
         <translation>Neues Projekt</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="531"/>
+        <location filename="../views/main_window.py" line="577"/>
         <source>Open…</source>
         <translation>Projekt öffnen…</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="532"/>
+        <location filename="../views/main_window.py" line="578"/>
         <source>Save</source>
         <translation>Speichern</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="533"/>
+        <location filename="../views/main_window.py" line="579"/>
         <source>Save as…</source>
         <translation>Speichern unter…</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="536"/>
+        <location filename="../views/main_window.py" line="582"/>
         <source>Presets</source>
         <translation>Vorlagen</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="537"/>
+        <location filename="../views/main_window.py" line="583"/>
         <source>Reset all settings</source>
         <translation>Zurücksetzen</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="538"/>
+        <location filename="../views/main_window.py" line="584"/>
         <source>Export video…</source>
         <translation>Video exportieren…</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="539"/>
+        <location filename="../views/main_window.py" line="585"/>
         <source>Settings…</source>
         <translation>Einstellungen…</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="540"/>
+        <location filename="../views/main_window.py" line="586"/>
         <source>Welcome tour…</source>
         <translation>Einführung…</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="541"/>
+        <location filename="../views/main_window.py" line="587"/>
         <source>About Starflight</source>
         <translation>Über Starflight</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="577"/>
+        <location filename="../views/main_window.py" line="623"/>
         <source>Project</source>
         <translation>Projekt</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="578"/>
+        <location filename="../views/main_window.py" line="624"/>
         <source>Settings</source>
         <translation>Einstellungen</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="579"/>
+        <location filename="../views/main_window.py" line="625"/>
         <source>Help</source>
         <translation>Hilfe</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="850"/>
+        <location filename="../views/main_window.py" line="896"/>
         <source>Could not load image</source>
         <translation>Bild konnte nicht geladen werden</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="1494"/>
+        <location filename="../views/main_window.py" line="1481"/>
         <source>Image loaded: {name}</source>
         <translation>Bild geladen: {name}</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="1497"/>
+        <location filename="../views/main_window.py" line="1484"/>
         <source>Image loaded: {name} ({width} × {height})</source>
         <translation>Bild geladen: {name} ({width} × {height})</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="1581"/>
+        <location filename="../views/main_window.py" line="1568"/>
         <source>Preparing parallax… {progress}%</source>
         <translation>Parallax-Vorschau wird vorbereitet… {progress} %</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="841"/>
-        <location filename="../views/main_window.py" line="1087"/>
-        <location filename="../views/main_window.py" line="1283"/>
-        <location filename="../views/main_window.py" line="1386"/>
+        <location filename="../views/main_window.py" line="887"/>
+        <location filename="../views/main_window.py" line="1133"/>
+        <location filename="../views/main_window.py" line="1270"/>
+        <location filename="../views/main_window.py" line="1373"/>
         <source>Preview unavailable</source>
         <translation>Vorschau nicht verfügbar</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="534"/>
+        <location filename="../views/main_window.py" line="580"/>
         <source>Quit</source>
         <translation>Beenden</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="535"/>
+        <location filename="../views/main_window.py" line="581"/>
         <source>Import image…</source>
         <translation>Bild laden…</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="576"/>
+        <location filename="../views/main_window.py" line="622"/>
         <source>File</source>
         <translation>Datei</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="1057"/>
+        <location filename="../views/main_window.py" line="1103"/>
         <source>Preparing preview… {progress}%</source>
         <translation>Vorschau wird vorbereitet… {progress}&#x202f;%</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="1435"/>
-        <location filename="../views/main_window.py" line="1445"/>
+        <location filename="../views/main_window.py" line="1422"/>
+        <location filename="../views/main_window.py" line="1432"/>
         <source>Project saved: {path}</source>
         <translation>Projekt gespeichert: {path}</translation>
     </message>
@@ -1607,42 +1607,42 @@ Vergrößerung vermeiden</translation>
 <context>
     <name>WelcomeSplash</name>
     <message>
-        <location filename="../views/widgets/welcome_splash.py" line="345"/>
+        <location filename="../views/widgets/welcome_splash.py" line="346"/>
         <source>New Project</source>
         <translation>Neues Projekt</translation>
     </message>
     <message>
-        <location filename="../views/widgets/welcome_splash.py" line="346"/>
+        <location filename="../views/widgets/welcome_splash.py" line="347"/>
         <source>Start a new fly-through</source>
         <translation>Neuen Flug beginnen</translation>
     </message>
     <message>
-        <location filename="../views/widgets/welcome_splash.py" line="349"/>
+        <location filename="../views/widgets/welcome_splash.py" line="350"/>
         <source>Open Project</source>
         <translation>Projekt öffnen</translation>
     </message>
     <message>
-        <location filename="../views/widgets/welcome_splash.py" line="350"/>
+        <location filename="../views/widgets/welcome_splash.py" line="351"/>
         <source>Open a saved project</source>
         <translation>Gespeichertes Projekt öffnen</translation>
     </message>
     <message>
-        <location filename="../views/widgets/welcome_splash.py" line="352"/>
+        <location filename="../views/widgets/welcome_splash.py" line="353"/>
         <source>Recent Projects</source>
         <translation>Zuletzt geöffnet</translation>
     </message>
     <message>
-        <location filename="../views/widgets/welcome_splash.py" line="680"/>
+        <location filename="../views/widgets/welcome_splash.py" line="682"/>
         <source>Version {version} (current)</source>
         <translation>Version {version} (aktuell)</translation>
     </message>
     <message>
-        <location filename="../views/widgets/welcome_splash.py" line="682"/>
+        <location filename="../views/widgets/welcome_splash.py" line="684"/>
         <source>Version {version}</source>
         <translation>Version {version}</translation>
     </message>
     <message>
-        <location filename="../views/widgets/welcome_splash.py" line="696"/>
+        <location filename="../views/widgets/welcome_splash.py" line="698"/>
         <source>&lt;a href=&quot;{url}&quot;&gt;Update available: Version {version}&lt;/a&gt;</source>
         <translation>&lt;a href=&quot;{url}&quot;&gt;Update verfügbar: Version {version}&lt;/a&gt;</translation>
     </message>

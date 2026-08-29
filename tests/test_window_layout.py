@@ -22,6 +22,11 @@ from starflight.views.main_window import MainWindow
 from starflight.views.widgets.main_toolbar import MainToolbar
 from starflight.views.widgets.settings_panel import SettingsPanel
 
+try:
+    from qt_test_helpers import suppress_welcome_tour, welcome_splash_network_patch
+except ModuleNotFoundError:
+    from tests.qt_test_helpers import suppress_welcome_tour, welcome_splash_network_patch
+
 
 class SettingsPanelSizeTests(unittest.TestCase):
     @classmethod
@@ -64,8 +69,12 @@ class MainWindowLayoutTests(unittest.TestCase):
             str(Path(self._temp_directory.name) / "ui.ini"),
             QSettings.Format.IniFormat,
         )
+        suppress_welcome_tour(self._settings)
+        self._network_patch = welcome_splash_network_patch()
+        self._network_patch.start()
 
     def tearDown(self) -> None:
+        self._network_patch.stop()
         self._temp_directory.cleanup()
 
     def _make_window(self) -> MainWindow:
@@ -78,6 +87,7 @@ class MainWindowLayoutTests(unittest.TestCase):
         window = MainWindow(context)
         register_core_commands(context.command_registry, window)
         window.build_shell()
+        window.show()
         return window
 
     def test_project_mode_minimum_size_fits_the_available_screen(self) -> None:
@@ -111,6 +121,23 @@ class MainWindowLayoutTests(unittest.TestCase):
         client = QRect(0, 53, 1280, 730)
         target = MainWindow._client_rect_for_frame(available, frame, client)
         self.assertEqual(target, QRect(0, 53, 1280, 672))
+
+    def test_first_launch_requests_initial_maximize_without_saved_geometry(self) -> None:
+        context = AppContext(
+            logger=Mock(),
+            error_service=Mock(),
+            settings=self._settings,
+            command_registry=CommandRegistry(Mock()),
+        )
+        window = MainWindow(context)
+        self.assertTrue(window._initial_maximize_pending)
+
+    def test_saved_geometry_skips_initial_maximize(self) -> None:
+        window = self._make_window()
+        window.close()
+        window = self._make_window()
+        self.assertFalse(window._initial_maximize_pending)
+        window.close()
 
 
 if __name__ == "__main__":

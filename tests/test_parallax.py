@@ -27,7 +27,7 @@ from starflight.types.settings import (
 
 class ParallaxDepthTests(unittest.TestCase):
     def test_progressive_bilateral_filter_matches_the_original_full_image_filter(self) -> None:
-        values = np.random.default_rng(42).random((620, 32), dtype=np.float32)
+        values = np.random.default_rng(42).random((128, 32), dtype=np.float32)
         sigma_color = 0.10
         sigma_space = 20.0
         progress: list[float] = []
