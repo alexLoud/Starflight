@@ -200,7 +200,7 @@ class ParallaxPreviewToggleTests(unittest.TestCase):
         self.assertEqual(toolbar.preview_status_label.property("previewStatus"), "disabled")
 
         toolbar.set_parallax_preview_state(available=False, status="generating")
-        self.assertNotEqual(toolbar.preview_status_label.text(), "")
+        self.assertEqual(toolbar.preview_status_label.text(), "")
 
         toolbar.set_parallax_preview_state(available=True, status="stale")
         self.assertEqual(toolbar.preview_status_label.text(), "")
@@ -214,20 +214,33 @@ class ParallaxPreviewRefreshTests(unittest.TestCase):
     def test_settings_slider_requests_refresh_only_when_released(self) -> None:
         panel = SettingsPanel()
         releases: list[bool] = []
+        background_releases: list[bool] = []
         panel.preview_adjustment_finished.connect(lambda: releases.append(True))
+        panel.background_adjustment_finished.connect(lambda: background_releases.append(True))
 
         panel.zoom_row.slider.setSliderDown(True)
         panel.zoom_row.slider.setValue(panel.zoom_row.slider.value() + 1)
 
         self.assertTrue(panel.preview_adjustment_active)
-        self.assertTrue(panel.slider_adjustment_active)
         self.assertEqual(releases, [])
+        self.assertEqual(background_releases, [])
 
         panel.zoom_row.slider.setSliderDown(False)
 
         self.assertFalse(panel.preview_adjustment_active)
-        self.assertFalse(panel.slider_adjustment_active)
         self.assertEqual(releases, [True])
+        self.assertEqual(background_releases, [True])
+
+    def test_star_slider_release_does_not_request_parallax_refresh(self) -> None:
+        panel = SettingsPanel()
+        background_releases: list[bool] = []
+        panel.background_adjustment_finished.connect(lambda: background_releases.append(True))
+
+        panel.min_size_row.slider.setSliderDown(True)
+        panel.min_size_row.slider.setValue(panel.min_size_row.slider.value() + 1)
+        panel.min_size_row.slider.setSliderDown(False)
+
+        self.assertEqual(background_releases, [])
 
     def test_refresh_is_scheduled_only_for_missing_or_active_stale_preview(self) -> None:
         cases = (
@@ -307,13 +320,13 @@ class SettingsPreviewRefreshTests(unittest.TestCase):
                 ),
             ),
             _update_window_title=Mock(),
-            _mark_parallax_preview_stale=Mock(),
             _update_action_states=Mock(),
             settings_panel=SimpleNamespace(preview_adjustment_active=True),
             _preview_refresh_deferred=lambda: True,
             _refresh_timer=refresh_timer,
             _playback_preview_refresh_timer=playback_timer,
             _playback_controller=playback_controller,
+            _playback_prerender_enabled=lambda: True,
             _invalidate_playback_preview=Mock(),
         )
 
@@ -330,9 +343,9 @@ class SettingsPreviewRefreshTests(unittest.TestCase):
         window = SimpleNamespace(
             _sync_project_from_ui=Mock(),
             _project_controller=SimpleNamespace(mark_dirty=Mock()),
+            _playback_prerender_enabled=lambda: True,
             _invalidate_playback_preview=Mock(),
             _refresh_timer=refresh_timer,
-            _schedule_parallax_preview_refresh=Mock(),
         )
 
         MainWindow._on_preview_adjustment_finished(window)
@@ -341,7 +354,26 @@ class SettingsPreviewRefreshTests(unittest.TestCase):
         window._project_controller.mark_dirty.assert_called_once_with()
         window._invalidate_playback_preview.assert_called_once_with()
         refresh_timer.start.assert_called_once_with()
-        window._schedule_parallax_preview_refresh.assert_called_once_with()
+
+    def test_background_adjustment_finished_marks_parallax_stale(self) -> None:
+        window = SimpleNamespace(
+            _parallax_effect_enabled=lambda: True,
+            _mark_parallax_preview_stale=Mock(),
+        )
+
+        MainWindow._on_background_adjustment_finished(window)
+
+        window._mark_parallax_preview_stale.assert_called_once_with()
+
+    def test_background_adjustment_finished_skips_parallax_when_disabled(self) -> None:
+        window = SimpleNamespace(
+            _parallax_effect_enabled=lambda: False,
+            _mark_parallax_preview_stale=Mock(),
+        )
+
+        MainWindow._on_background_adjustment_finished(window)
+
+        window._mark_parallax_preview_stale.assert_not_called()
 
 
 if __name__ == "__main__":

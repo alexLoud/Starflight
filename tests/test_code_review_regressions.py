@@ -119,7 +119,7 @@ class ExportCancelTests(unittest.TestCase):
 
 class PlaybackPreparingCancelTests(unittest.TestCase):
     def test_detach_worker_resets_preparation_when_required_frames_are_missing(self) -> None:
-        controller = PlaybackPreviewController(Mock(), Mock(), duration_seconds=1.0)
+        controller = PlaybackPreviewController(Mock(), Mock(), duration_seconds=1.0, preview_fps=6)
         controller.worker = Mock()
         controller.arm_playback_prepare(list(range(controller.frame_cache.frame_count)))
 
@@ -128,6 +128,68 @@ class PlaybackPreparingCancelTests(unittest.TestCase):
         self.assertTrue(should_reset)
         self.assertFalse(controller.starts_playback)
         self.assertEqual(controller.required_indices, [])
+
+    def test_detach_worker_keeps_preparation_when_follow_up_play_is_pending(self) -> None:
+        controller = PlaybackPreviewController(Mock(), Mock(), duration_seconds=1.0, preview_fps=6)
+        controller.worker = Mock()
+        controller.arm_playback_prepare(list(range(controller.frame_cache.frame_count)))
+        controller.pending = (list(range(controller.frame_cache.frame_count)), True)
+
+        pending, should_reset = controller.detach_worker()
+
+        self.assertTrue(controller.starts_playback)
+        self.assertIsNotNone(pending)
+        self.assertFalse(should_reset)
+
+
+class PlaybackPreviewFpsSettingsTests(unittest.TestCase):
+    def test_default_preview_fps_is_six(self) -> None:
+        from PySide6.QtCore import QSettings
+
+        from starflight.app.settings import (
+            DEFAULT_PLAYBACK_PREVIEW_FPS,
+            playback_preview_fps_from_settings,
+        )
+
+        settings = QSettings("starflight-test", "preview-fps-default")
+        settings.clear()
+        self.assertEqual(
+            playback_preview_fps_from_settings(settings),
+            DEFAULT_PLAYBACK_PREVIEW_FPS,
+        )
+
+    def test_default_background_update_is_partial(self) -> None:
+        from PySide6.QtCore import QSettings
+
+        from starflight.app.settings import (
+            DEFAULT_BACKGROUND_PREVIEW_UPDATE,
+            PARTIAL_BACKGROUND_PRELOAD_FRACTION,
+            background_preview_preload_fraction_from_settings,
+            background_preview_update_from_settings,
+        )
+
+        settings = QSettings("starflight-test", "background-preview-default")
+        settings.clear()
+        self.assertEqual(
+            background_preview_update_from_settings(settings),
+            DEFAULT_BACKGROUND_PREVIEW_UPDATE,
+        )
+        self.assertEqual(
+            background_preview_preload_fraction_from_settings(settings),
+            PARTIAL_BACKGROUND_PRELOAD_FRACTION,
+        )
+
+    def test_preview_fps_scales_cached_frame_count(self) -> None:
+        cache_low = PlaybackFrameCache(10.0, preview_fps=3)
+        cache_high = PlaybackFrameCache(10.0, preview_fps=12)
+
+        self.assertEqual(cache_low.frame_count, 30)
+        self.assertEqual(cache_high.frame_count, 120)
+
+    def test_partial_preload_fraction_matches_forty_percent(self) -> None:
+        cache = PlaybackFrameCache(10.0, preview_fps=6)
+
+        self.assertEqual(len(cache.preload_indices(0.4)), 24)
 
 
 class PlaybackCacheBudgetTests(unittest.TestCase):

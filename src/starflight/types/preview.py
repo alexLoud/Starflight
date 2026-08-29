@@ -27,3 +27,4 @@ class PlaybackRenderSpec:
     crop_target_size: tuple[int, int]
     include_stars: bool
     parallax_preview: PreparedParallaxPreview | None = None
+    preview_fps: float = 6.0

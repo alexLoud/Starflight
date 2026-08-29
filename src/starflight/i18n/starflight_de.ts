@@ -403,124 +403,124 @@
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../views/main_window.py" line="179"/>
-        <location filename="../views/main_window.py" line="220"/>
+        <location filename="../views/main_window.py" line="183"/>
+        <location filename="../views/main_window.py" line="224"/>
         <source>Open Recent</source>
         <translation>Zuletzt geöffnet</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="224"/>
+        <location filename="../views/main_window.py" line="228"/>
         <source>No Recent Projects</source>
         <translation>Keine zuletzt geöffneten Projekte</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="488"/>
-        <location filename="../views/main_window.py" line="1005"/>
-        <location filename="../views/main_window.py" line="1029"/>
+        <location filename="../views/main_window.py" line="493"/>
+        <location filename="../views/main_window.py" line="1014"/>
+        <location filename="../views/main_window.py" line="1042"/>
         <source>Ready</source>
         <translation>Bereit</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="511"/>
+        <location filename="../views/main_window.py" line="516"/>
         <source>New</source>
         <translation>Neues Projekt</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="512"/>
+        <location filename="../views/main_window.py" line="517"/>
         <source>Open…</source>
         <translation>Projekt öffnen…</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="513"/>
+        <location filename="../views/main_window.py" line="518"/>
         <source>Save</source>
         <translation>Speichern</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="514"/>
+        <location filename="../views/main_window.py" line="519"/>
         <source>Save as…</source>
         <translation>Speichern unter…</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="516"/>
+        <location filename="../views/main_window.py" line="521"/>
         <source>Load image…</source>
         <translation>Bild laden…</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="517"/>
+        <location filename="../views/main_window.py" line="522"/>
         <source>Presets</source>
         <translation>Vorlagen</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="518"/>
+        <location filename="../views/main_window.py" line="523"/>
         <source>Reset all settings</source>
         <translation>Zurücksetzen</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="519"/>
+        <location filename="../views/main_window.py" line="524"/>
         <source>Export video…</source>
         <translation>Video exportieren…</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="520"/>
+        <location filename="../views/main_window.py" line="525"/>
         <source>Settings…</source>
         <translation>Einstellungen…</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="521"/>
+        <location filename="../views/main_window.py" line="526"/>
         <source>About Starflight</source>
         <translation>Über Starflight</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="557"/>
+        <location filename="../views/main_window.py" line="562"/>
         <source>Project</source>
         <translation>Projekt</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="558"/>
+        <location filename="../views/main_window.py" line="563"/>
         <source>Settings</source>
         <translation>Einstellungen</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="559"/>
+        <location filename="../views/main_window.py" line="564"/>
         <source>Help</source>
         <translation>Hilfe</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="754"/>
+        <location filename="../views/main_window.py" line="793"/>
         <source>Could not load image</source>
         <translation>Bild konnte nicht geladen werden</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="845"/>
-        <location filename="../views/main_window.py" line="958"/>
-        <source>Preparing playback preview… {current} of {total}</source>
-        <translation>Wiedergabevorschau wird vorbereitet… {current} von {total}</translation>
-    </message>
-    <message>
-        <location filename="../views/main_window.py" line="1377"/>
+        <location filename="../views/main_window.py" line="1396"/>
         <source>Preparing parallax… {progress}%</source>
         <translation>Parallax-Vorschau wird vorbereitet… {progress} %</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="745"/>
-        <location filename="../views/main_window.py" line="991"/>
-        <location filename="../views/main_window.py" line="1125"/>
+        <location filename="../views/main_window.py" line="784"/>
+        <location filename="../views/main_window.py" line="1002"/>
+        <location filename="../views/main_window.py" line="1139"/>
+        <location filename="../views/main_window.py" line="1239"/>
         <source>Preview unavailable</source>
         <translation>Vorschau nicht verfügbar</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="515"/>
+        <location filename="../views/main_window.py" line="520"/>
         <source>Quit</source>
         <translation>Beenden</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="556"/>
+        <location filename="../views/main_window.py" line="561"/>
         <source>File</source>
         <translation>Datei</translation>
     </message>
     <message>
-        <location filename="../views/main_window.py" line="1268"/>
-        <location filename="../views/main_window.py" line="1278"/>
+        <location filename="../views/main_window.py" line="972"/>
+        <source>Preparing preview… {progress}%</source>
+        <translation>Vorschau wird vorbereitet… {progress}&#x202f;%</translation>
+    </message>
+    <message>
+        <location filename="../views/main_window.py" line="1287"/>
+        <location filename="../views/main_window.py" line="1297"/>
         <source>Project saved: {path}</source>
         <translation>Projekt gespeichert: {path}</translation>
     </message>
@@ -854,29 +854,79 @@
         <translation>Englisch</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/settings_dialog.py" line="79"/>
+        <location filename="../views/dialogs/settings_dialog.py" line="108"/>
         <source>Settings</source>
         <translation>Einstellungen</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/settings_dialog.py" line="80"/>
+        <location filename="../views/dialogs/settings_dialog.py" line="109"/>
         <source>Language</source>
         <translation>Sprache</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/settings_dialog.py" line="81"/>
+        <location filename="../views/dialogs/settings_dialog.py" line="110"/>
         <source>CPU cores for rendering</source>
         <translation>CPU-Kerne für Rendering</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/settings_dialog.py" line="85"/>
+        <location filename="../views/dialogs/settings_dialog.py" line="116"/>
         <source>{count} core</source>
         <translation>{count} Kern</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/settings_dialog.py" line="87"/>
+        <location filename="../views/dialogs/settings_dialog.py" line="118"/>
         <source>{count} cores</source>
         <translation>{count} Kerne</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/settings_dialog.py" line="111"/>
+        <source>Preview frame rate</source>
+        <translation>Vorschau-Bildrate</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/settings_dialog.py" line="133"/>
+        <source>Low</source>
+        <translation>Niedrig</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/settings_dialog.py" line="135"/>
+        <source>Medium</source>
+        <translation>Mittel</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/settings_dialog.py" line="137"/>
+        <source>High</source>
+        <translation>Hoch</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/settings_dialog.py" line="139"/>
+        <source>Very high</source>
+        <translation>Sehr hoch</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/settings_dialog.py" line="140"/>
+        <source>{quality} ({fps} fps)</source>
+        <translation>{quality} ({fps} fps)</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/settings_dialog.py" line="112"/>
+        <source>Update preview in background</source>
+        <translation>Vorschau im Hintergrund aktualisieren</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/settings_dialog.py" line="144"/>
+        <source>Disabled</source>
+        <translation>Deaktiviert</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/settings_dialog.py" line="146"/>
+        <source>Update fully</source>
+        <translation>Vollständig aktualisieren</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/settings_dialog.py" line="147"/>
+        <source>Update partially</source>
+        <translation>Teilweise aktualisieren</translation>
     </message>
 </context>
 <context>

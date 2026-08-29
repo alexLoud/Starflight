@@ -10,6 +10,7 @@ import cv2
 import numpy as np
 from PySide6.QtCore import QThread, Signal
 
+from starflight.app.settings import DEFAULT_PLAYBACK_PREVIEW_FPS
 from starflight.core.renderer import FrameRenderer, create_renderer
 from starflight.core.star_renderer import StarRenderer
 from starflight.services.preview_compositor import render_parallax_preview_frame
@@ -17,8 +18,6 @@ from starflight.types.preview import PlaybackRenderSpec
 from starflight.types.settings import ProjectSettings, RenderQuality
 from starflight.utils.image import load_image_bgr
 
-PLAYBACK_PREVIEW_FPS = 6
-BACKGROUND_PREVIEW_FPS = 2
 PLAYBACK_PARALLAX_ITERATIONS = 6
 _PLAYBACK_JPEG_QUALITY = 90
 _PLAYBACK_CACHE_MAX_BYTES = 64 * 1024 * 1024
@@ -27,17 +26,25 @@ _PLAYBACK_CACHE_MAX_BYTES = 64 * 1024 * 1024
 class PlaybackFrameCache:
     """Keep rendered frames for one project/settings revision."""
 
-    def __init__(self, duration_seconds: float) -> None:
+    def __init__(
+        self,
+        duration_seconds: float,
+        *,
+        preview_fps: float = DEFAULT_PLAYBACK_PREVIEW_FPS,
+    ) -> None:
         self.duration_seconds = max(0.1, float(duration_seconds))
+        self.preview_fps = max(1.0, float(preview_fps))
         self._frames: dict[int, bytes] = {}
         self._stored_bytes = 0
 
     @property
     def frame_count(self) -> int:
-        return playback_sample_count(self.duration_seconds)
+        return playback_sample_count(self.duration_seconds, self.preview_fps)
 
-    def clear(self, duration_seconds: float) -> None:
+    def clear(self, duration_seconds: float, *, preview_fps: float | None = None) -> None:
         self.duration_seconds = max(0.1, float(duration_seconds))
+        if preview_fps is not None:
+            self.preview_fps = max(1.0, float(preview_fps))
         self._frames.clear()
         self._stored_bytes = 0
 
@@ -72,26 +79,47 @@ class PlaybackFrameCache:
     def missing(self, sample_indices: list[int]) -> list[int]:
         return [index for index in sample_indices if index not in self._frames]
 
-    def background_indices(self) -> list[int]:
-        step = max(1, PLAYBACK_PREVIEW_FPS // BACKGROUND_PREVIEW_FPS)
-        return list(range(0, self.frame_count, step))
+    def preload_indices(self, preload_fraction: float) -> list[int]:
+        """Return timeline samples to warm in the background for one preload fraction."""
+
+        fraction = max(0.0, min(1.0, float(preload_fraction)))
+        if fraction <= 0.0:
+            return []
+        total = self.frame_count
+        if fraction >= 1.0:
+            return list(range(total))
+        preload_count = max(1, round(total * fraction))
+        return list(range(min(preload_count, total)))
 
     def playback_indices_from(self, time_seconds: float) -> list[int]:
-        start = playback_sample_index(time_seconds, self.duration_seconds)
+        start = playback_sample_index(
+            time_seconds,
+            self.duration_seconds,
+            self.preview_fps,
+        )
         return list(range(start, self.frame_count))
 
 
-def playback_sample_count(duration_seconds: float) -> int:
+def playback_sample_count(
+    duration_seconds: float,
+    preview_fps: float = DEFAULT_PLAYBACK_PREVIEW_FPS,
+) -> int:
     """Return the number of cached frames needed for one non-looping preview."""
 
-    return max(1, round(max(0.1, duration_seconds) * PLAYBACK_PREVIEW_FPS))
+    fps = max(1.0, float(preview_fps))
+    return max(1, round(max(0.1, duration_seconds) * fps))
 
 
-def playback_sample_index(time_seconds: float, duration_seconds: float) -> int:
+def playback_sample_index(
+    time_seconds: float,
+    duration_seconds: float,
+    preview_fps: float = DEFAULT_PLAYBACK_PREVIEW_FPS,
+) -> int:
     """Map timeline time onto the nearest cached playback frame."""
 
-    last_index = playback_sample_count(duration_seconds) - 1
-    return max(0, min(last_index, round(max(0.0, time_seconds) * PLAYBACK_PREVIEW_FPS)))
+    fps = max(1.0, float(preview_fps))
+    last_index = playback_sample_count(duration_seconds, fps) - 1
+    return max(0, min(last_index, round(max(0.0, time_seconds) * fps)))
 
 
 _process_renderer: FrameRenderer | None = None
@@ -99,6 +127,7 @@ _process_parallax_renderer: FrameRenderer | None = None
 _process_star_renderer: StarRenderer | None = None
 _process_settings: ProjectSettings | None = None
 _process_include_stars = True
+_process_preview_fps = float(DEFAULT_PLAYBACK_PREVIEW_FPS)
 
 
 def _initialize_playback_process(spec: PlaybackRenderSpec) -> None:
@@ -109,9 +138,11 @@ def _initialize_playback_process(spec: PlaybackRenderSpec) -> None:
     global _process_star_renderer
     global _process_settings
     global _process_include_stars
+    global _process_preview_fps
 
     _process_settings = spec.settings.clone()
     _process_include_stars = spec.include_stars
+    _process_preview_fps = max(1.0, float(spec.preview_fps))
     if spec.parallax_preview is None:
         source = load_image_bgr(spec.image_path)
         _process_renderer = create_renderer(
@@ -141,7 +172,7 @@ def _initialize_playback_process(spec: PlaybackRenderSpec) -> None:
 def _render_playback_sample(sample_index: int) -> tuple[int, bytes]:
     """Render one cached timeline sample inside a worker process."""
 
-    time_seconds = sample_index / PLAYBACK_PREVIEW_FPS
+    time_seconds = sample_index / _process_preview_fps
     if _process_renderer is not None:
         frame = _process_renderer.render_frame(
             time_seconds,
@@ -264,9 +295,8 @@ class PlaybackPreviewWorker(QThread):
 
 
 __all__ = [
-    "BACKGROUND_PREVIEW_FPS",
+    "DEFAULT_PLAYBACK_PREVIEW_FPS",
     "PLAYBACK_PARALLAX_ITERATIONS",
-    "PLAYBACK_PREVIEW_FPS",
     "PlaybackFrameCache",
     "PlaybackPreviewWorker",
     "playback_sample_count",

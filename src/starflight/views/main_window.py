@@ -13,6 +13,7 @@ from PySide6.QtCore import QEvent, QRect, QSize, QTimer
 from PySide6.QtGui import QAction, QCloseEvent, QScreen
 from PySide6.QtWidgets import (
     QApplication,
+    QDialog,
     QMainWindow,
     QMenu,
     QSplitter,
@@ -27,7 +28,12 @@ from starflight.app.constants import (
     SETTINGS_KEY_WINDOW_GEOMETRY,
 )
 from starflight.app.context import AppContext
-from starflight.app.settings import render_worker_count_from_settings
+from starflight.app.settings import (
+    background_preview_preload_fraction_from_settings,
+    background_preview_update_from_settings,
+    playback_preview_fps_from_settings,
+    render_worker_count_from_settings,
+)
 from starflight.controllers.export_controller import ExportController
 from starflight.controllers.playback_preview_controller import (
     PlaybackPreparePlan,
@@ -78,10 +84,12 @@ class MainWindow(QMainWindow):
         self._parallax_preview_generation_token = 0
         self._parallax_preview_stale = False
         self._parallax_preview_auto_enabled = False
+        self._parallax_status_active = False
         self._playback_controller = PlaybackPreviewController(
             self._preview_service,
             self._preview_controller,
             duration_seconds=self._project_controller.project.settings.duration_seconds,
+            preview_fps=playback_preview_fps_from_settings(context.settings),
         )
         self._background_renderers_idle_callback: Callable[[], None] | None = None
         self._background_renderers_pending = 0
@@ -425,12 +433,18 @@ class MainWindow(QMainWindow):
 
     def _connect_signals(self) -> None:
         self.settings_panel.settings_changed.connect(self._on_settings_changed)
+        self.settings_panel.background_settings_changed.connect(
+            self._on_background_settings_changed,
+        )
         self.settings_panel.ui_state_changed.connect(self._on_ui_state_changed)
         self.settings_panel.meta_settings_changed.connect(self._on_meta_settings_changed)
         self.settings_panel.timeline_settings_changed.connect(self._on_timeline_settings_changed)
         self.settings_panel.load_image_requested.connect(self.load_image)
         self.settings_panel.preview_adjustment_finished.connect(
             self._on_preview_adjustment_finished,
+        )
+        self.settings_panel.background_adjustment_finished.connect(
+            self._on_background_adjustment_finished,
         )
         self.settings_panel.image_load_failed.connect(self._on_settings_image_load_failed)
         self.preview_workspace.timeline.frame_index_changed.connect(self._on_frame_changed)
@@ -606,7 +620,8 @@ class MainWindow(QMainWindow):
 
         self._sync_project_from_ui()
         self._project_controller.mark_dirty()
-        self._invalidate_playback_preview()
+        if self._playback_prerender_enabled():
+            self._invalidate_playback_preview()
         self._mark_parallax_preview_stale()
         self._update_window_title()
         self._update_action_states()
@@ -622,10 +637,31 @@ class MainWindow(QMainWindow):
             project.settings.fps,
             preserve_time=True,
         )
-        self._invalidate_playback_preview()
-        self._mark_parallax_preview_stale()
+        if self._playback_prerender_enabled():
+            self._invalidate_playback_preview()
         self._update_window_title()
         self._update_action_states()
+
+    def _on_background_settings_changed(self) -> None:
+        """Refresh parallax snapshots after background-affecting sidebar edits."""
+
+        if self.preview_workspace.timeline.is_playing:
+            self.preview_workspace.timeline.pause(emit_frame=True)
+        self._sync_project_from_ui()
+        self._project_controller.mark_dirty()
+        self._update_window_title()
+        self._mark_parallax_preview_stale()
+        self._update_action_states()
+        if self._preview_refresh_deferred():
+            self._refresh_timer.stop()
+            self._playback_preview_refresh_timer.stop()
+            if self._playback_controller.worker is not None:
+                self._playback_controller.cancel_active_worker()
+            return
+
+        if self._playback_prerender_enabled():
+            self._invalidate_playback_preview()
+        self._refresh_timer.start()
 
     def _on_settings_changed(self) -> None:
         if self.preview_workspace.timeline.is_playing:
@@ -643,7 +679,6 @@ class MainWindow(QMainWindow):
             preserve_time=True,
         )
         self._update_window_title()
-        self._mark_parallax_preview_stale()
         self._update_action_states()
         if self._preview_refresh_deferred():
             self._refresh_timer.stop()
@@ -652,7 +687,8 @@ class MainWindow(QMainWindow):
                 self._playback_controller.cancel_active_worker()
             return
 
-        self._invalidate_playback_preview()
+        if self._playback_prerender_enabled():
+            self._invalidate_playback_preview()
         self._refresh_timer.start()
 
     def _preview_refresh_deferred(self) -> bool:
@@ -668,9 +704,15 @@ class MainWindow(QMainWindow):
 
         self._sync_project_from_ui()
         self._project_controller.mark_dirty()
-        self._invalidate_playback_preview()
+        if self._playback_prerender_enabled():
+            self._invalidate_playback_preview()
         self._refresh_timer.start()
-        self._schedule_parallax_preview_refresh()
+
+    def _on_background_adjustment_finished(self) -> None:
+        """Refresh parallax snapshots after background slider or crop edits."""
+
+        if self._parallax_effect_enabled():
+            self._mark_parallax_preview_stale()
 
     def _on_timeline_scrub_finished(self) -> None:
         """Render the selected frame once timeline scrubbing ends."""
@@ -679,6 +721,10 @@ class MainWindow(QMainWindow):
 
     def _on_frame_changed(self, _frame_index: int) -> None:
         if self.preview_workspace.timeline.is_playing:
+            if not self._playback_prerender_enabled():
+                if not self.preview_workspace.timeline.is_scrubbing:
+                    self.refresh_preview(sync_settings=False)
+                return
             controller = self._playback_controller
             should_show, sample_index = controller.should_emit_frame(
                 self.preview_workspace.timeline.current_time_seconds(),
@@ -717,10 +763,19 @@ class MainWindow(QMainWindow):
         if self._workspace_active and not self.preview_workspace.timeline.is_scrubbing:
             self.refresh_preview(sync_settings=False, force_live_preview=True)
 
-    def _on_preview_stars_changed(self, _enabled: bool) -> None:
+    def _on_preview_stars_changed(self, enabled: bool) -> None:
         """refresh preview when the session stars toggle changes."""
 
-        self._invalidate_playback_preview()
+        if enabled:
+            self._invalidate_playback_preview()
+        else:
+            self._playback_controller.cancel_active_worker()
+            self._playback_controller.invalidate(
+                duration_seconds=self._project_controller.project.settings.duration_seconds,
+                preview_fps=playback_preview_fps_from_settings(self._context.settings),
+            )
+            self.preview_workspace.timeline.set_playback_preparing(False)
+            self._playback_preview_refresh_timer.stop()
         self.refresh_preview(sync_settings=False)
 
     def _on_preview_mode_changed(self, enabled: bool) -> None:
@@ -732,7 +787,8 @@ class MainWindow(QMainWindow):
         else:
             self._parallax_preview_auto_enabled = False
             self._parallax_preview_refresh_timer.stop()
-        self._invalidate_playback_preview()
+        if self._playback_prerender_enabled():
+            self._invalidate_playback_preview()
         self.refresh_preview(sync_settings=False)
 
     def refresh_preview(
@@ -794,23 +850,58 @@ class MainWindow(QMainWindow):
         self._playback_controller.reset_preparation()
         self.preview_workspace.timeline.set_playback_preparing(False)
 
+    def _playback_prerender_enabled(self) -> bool:
+        """Return whether timeline playback should use the star frame cache."""
+
+        return self.preview_workspace.zoom_toolbar.stars_enabled
+
+    def _parallax_preview_blocks_playback_preload(self) -> bool:
+        """Return whether star preload must wait for the parallax snapshot."""
+
+        if not self._parallax_effect_enabled():
+            return False
+        if not self.preview_workspace.zoom_toolbar.parallax_preview_enabled:
+            return False
+        return (
+            self._parallax_preview_preparing
+            or self._parallax_preview_stale
+            or not self._preview_service.has_parallax_preview
+        )
+
     def _invalidate_playback_preview(self, *, schedule: bool = True) -> None:
         """Discard playback frames whenever their visual inputs change."""
 
         self._playback_controller.invalidate(
             duration_seconds=self._project_controller.project.settings.duration_seconds,
+            preview_fps=playback_preview_fps_from_settings(self._context.settings),
         )
         self.preview_workspace.timeline.set_playback_preparing(False)
         self._playback_preview_refresh_timer.stop()
-        if schedule and self._workspace_active:
+        if not self._playback_prerender_enabled():
+            return
+        if (
+            schedule
+            and self._workspace_active
+            and background_preview_preload_fraction_from_settings(self._context.settings) > 0.0
+            and not self._parallax_preview_blocks_playback_preload()
+        ):
             self._playback_preview_refresh_timer.start()
 
     def _start_background_playback_preview(self) -> None:
-        """Keep a sparse two-fps cache warm while the timeline is paused."""
+        """Preload playback frames in the background after preview-affecting edits."""
 
         if self.preview_workspace.timeline.is_playing:
             return
-        plan = self._playback_controller.background_warmup_plan()
+        if not self._playback_prerender_enabled():
+            return
+        if self._parallax_preview_blocks_playback_preload():
+            return
+        preload_fraction = background_preview_preload_fraction_from_settings(
+            self._context.settings,
+        )
+        if preload_fraction <= 0.0:
+            return
+        plan = self._playback_controller.background_warmup_plan(preload_fraction)
         if plan.missing:
             self._start_playback_preview_worker(
                 PlaybackPreparePlan(
@@ -828,6 +919,9 @@ class MainWindow(QMainWindow):
             return
         self._refresh_timer.stop()
         self._playback_preview_refresh_timer.stop()
+        if not self._playback_prerender_enabled():
+            self.preview_workspace.timeline.play()
+            return
         plan = self._playback_controller.play_plan(
             self.preview_workspace.timeline.current_time_seconds(),
         )
@@ -836,12 +930,7 @@ class MainWindow(QMainWindow):
             return
         self._playback_controller.arm_playback_prepare(plan.required)
         self.preview_workspace.timeline.set_playback_preparing(True)
-        self._set_status(
-            self.tr("Preparing playback preview… {current} of {total}").format(
-                current=0,
-                total=len(plan.missing),
-            )
-        )
+        self._set_playback_prepare_progress(0, len(plan.missing))
         self._start_playback_preview_worker(
             PlaybackPreparePlan(
                 sample_indices=plan.sample_indices,
@@ -859,11 +948,13 @@ class MainWindow(QMainWindow):
                 self._begin_cached_playback()
             return
         if self._playback_controller.worker is not None:
-            self._playback_controller.cancel_active_worker()
-            self._playback_controller.queue_worker(plan)
             if plan.start_playback:
-                self._playback_controller.arm_playback_prepare(plan.required)
-            return
+                self._playback_controller.worker.request_cancel()
+                self._playback_controller.worker = None
+                self._playback_controller.pending = None
+            else:
+                self._playback_controller.queue_worker(plan)
+                return
 
         spec = self._playback_controller.build_render_spec(
             self._project_controller.project,
@@ -949,12 +1040,13 @@ class MainWindow(QMainWindow):
         if worker is not self._playback_controller.worker:
             return
         if self._playback_controller.starts_playback:
-            self._set_status(
-                self.tr("Preparing playback preview… {current} of {total}").format(
-                    current=current,
-                    total=total,
-                )
-            )
+            self._set_playback_prepare_progress(current, total)
+
+    def _set_playback_prepare_progress(self, current: int, total: int) -> None:
+        """Show playback cache preparation progress as a percentage."""
+
+        progress = 0 if total <= 0 else min(100, round(current * 100 / total))
+        self._set_status(self.tr("Preparing preview… {progress}%").format(progress=progress))
 
     def _on_playback_preview_completed(
         self,
@@ -994,7 +1086,7 @@ class MainWindow(QMainWindow):
             self._notify_background_renderer_idle(worker)
             return
         pending, should_reset = self._playback_controller.detach_worker()
-        if should_reset:
+        if should_reset and pending is None:
             self._reset_playback_preparation_state()
             self._set_status(self.tr("Ready"))
         self._notify_background_renderer_idle(worker)
@@ -1002,6 +1094,9 @@ class MainWindow(QMainWindow):
             indices, start_playback = pending
             missing = self._playback_controller.frame_cache.missing(indices)
             required = list(indices) if start_playback else []
+            if start_playback:
+                self.preview_workspace.timeline.set_playback_preparing(True)
+                self._set_playback_prepare_progress(0, len(missing))
             self._start_playback_preview_worker(
                 PlaybackPreparePlan(
                     sample_indices=list(indices),
@@ -1140,6 +1235,7 @@ class MainWindow(QMainWindow):
         )
         self._parallax_preview_worker = worker
         self._parallax_preview_preparing = True
+        self._parallax_status_active = True
         worker.progress_changed.connect(
             lambda progress, active=worker: self._on_parallax_preview_progress(active, progress),
         )
@@ -1188,6 +1284,7 @@ class MainWindow(QMainWindow):
         self._parallax_preview_preparing = False
         self._parallax_preview_stale = source_revision != self._parallax_preview_revision
         self._sync_parallax_preview_ui()
+        self._clear_parallax_prepare_status()
         if self._parallax_effect_enabled():
             if (
                 not had_preview
@@ -1216,6 +1313,7 @@ class MainWindow(QMainWindow):
             return
         self._parallax_preview_preparing = False
         self._sync_parallax_preview_ui()
+        self._clear_parallax_prepare_status()
         if isinstance(failure, BaseException):
             self._context.error_service.show_user_warning(
                 self.tr("Preview unavailable"),
@@ -1233,6 +1331,7 @@ class MainWindow(QMainWindow):
         self._parallax_preview_worker = None
         self._parallax_preview_preparing = False
         self._sync_parallax_preview_ui()
+        self._clear_parallax_prepare_status()
         self._notify_background_renderer_idle(worker)
 
     def new_project_action(self) -> None:
@@ -1362,7 +1461,8 @@ class MainWindow(QMainWindow):
             project_path=self._project_controller.project_path,
         )
         self._project_controller.mark_dirty()
-        self._invalidate_playback_preview()
+        if self._playback_prerender_enabled():
+            self._invalidate_playback_preview()
         self._mark_parallax_preview_stale()
         self._update_window_title()
         self._refresh_timer.start()
@@ -1375,7 +1475,18 @@ class MainWindow(QMainWindow):
     ) -> None:
         if worker is not self._parallax_preview_worker:
             return
+        self._parallax_status_active = True
         self._set_status(self.tr("Preparing parallax… {progress}%").format(progress=progress))
+
+    def _clear_parallax_prepare_status(self) -> None:
+        """Reset the status bar after parallax preparation finishes."""
+
+        if not self._parallax_status_active:
+            return
+        self._parallax_status_active = False
+        if self._playback_controller.starts_playback:
+            return
+        self._set_status(self.tr("Ready"))
 
     def _notify_background_renderer_idle(self, worker: object) -> None:
         """Invoke the deferred callback once every requested background worker has stopped."""
@@ -1449,12 +1560,26 @@ class MainWindow(QMainWindow):
         self._invalidate_playback_preview()
 
     def open_settings(self) -> None:
+        previous_preview_fps = playback_preview_fps_from_settings(self._context.settings)
+        previous_background_update = background_preview_update_from_settings(
+            self._context.settings,
+        )
         dialog = SettingsDialog(
             self._context.settings,
             self,
             on_language_changed=self._change_language,
         )
-        dialog.exec()
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        new_preview_fps = playback_preview_fps_from_settings(self._context.settings)
+        new_background_update = background_preview_update_from_settings(
+            self._context.settings,
+        )
+        if (
+            new_preview_fps != previous_preview_fps
+            or new_background_update != previous_background_update
+        ):
+            self._invalidate_playback_preview()
 
     def open_about(self) -> None:
         dialog = AboutDialog(self)

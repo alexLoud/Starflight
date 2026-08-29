@@ -93,11 +93,13 @@ class SettingsPanel(QWidget):
     """project settings sidebar."""
 
     settings_changed = Signal()
+    background_settings_changed = Signal()
     ui_state_changed = Signal()
     meta_settings_changed = Signal()
     timeline_settings_changed = Signal()
     load_image_requested = Signal()
     preview_adjustment_finished = Signal()
+    background_adjustment_finished = Signal()
     image_load_failed = Signal(str)
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -118,16 +120,22 @@ class SettingsPanel(QWidget):
         self._crop_drag_start: CropSettings | None = None
         self._setting_field_rows: list[SettingFieldRow] = []
         self._build_ui()
-        self._parallax_refresh_sliders = tuple(self.findChildren(NoWheelSlider))
-        for slider in self._parallax_refresh_sliders:
+        self._preview_adjustment_sliders = tuple(self.findChildren(NoWheelSlider))
+        self._background_adjustment_sliders = (
+            self.zoom_row.slider,
+            self.rotation_row.slider,
+        )
+        for slider in self._preview_adjustment_sliders:
             slider.sliderReleased.connect(self.preview_adjustment_finished.emit)
+        for slider in self._background_adjustment_sliders:
+            slider.sliderReleased.connect(self.background_adjustment_finished.emit)
         self.retranslate_ui()
 
     @property
     def preview_adjustment_active(self) -> bool:
         """Return whether a slider, crop, or focus control is being dragged."""
 
-        if any(slider.isSliderDown() for slider in self._parallax_refresh_sliders):
+        if any(slider.isSliderDown() for slider in self._preview_adjustment_sliders):
             return True
         if self.crop_control.is_adjusting():
             return True
@@ -451,6 +459,7 @@ class SettingsPanel(QWidget):
             suffix=" %",
         )
         self.zoom_row.value_changed.connect(self._emit_settings_changed)
+        self.zoom_row.value_changed.connect(self._emit_background_settings_changed)
         self._style_field(self.zoom_row)
         self._label_zoom = self._create_setting_label()
         self._add_setting_row(
@@ -471,6 +480,7 @@ class SettingsPanel(QWidget):
             suffix="°",
         )
         self.rotation_row.value_changed.connect(self._emit_settings_changed)
+        self.rotation_row.value_changed.connect(self._emit_background_settings_changed)
         self._style_field(self.rotation_row)
         self._label_rotation = self._create_setting_label()
         self._add_setting_row(
@@ -485,6 +495,7 @@ class SettingsPanel(QWidget):
 
         self.fill_frame_checkbox = QCheckBox()
         self.fill_frame_checkbox.toggled.connect(self._emit_settings_changed)
+        self.fill_frame_checkbox.toggled.connect(self._emit_background_settings_changed)
         self._label_fill_frame = self._create_setting_label()
         camera_form.addRow(self._label_fill_frame, self.fill_frame_checkbox)
         layout.addLayout(camera_form)
@@ -543,7 +554,9 @@ class SettingsPanel(QWidget):
 
         self.focus_points = FocusPointsControl()
         self.focus_points.focus_changed.connect(self._emit_settings_changed)
+        self.focus_points.focus_changed.connect(self._emit_background_settings_changed)
         self.focus_points.adjustment_finished.connect(self.preview_adjustment_finished.emit)
+        self.focus_points.adjustment_finished.connect(self.background_adjustment_finished.emit)
         self._style_field(self.focus_points)
         layout.addWidget(self.focus_points)
 
@@ -552,6 +565,7 @@ class SettingsPanel(QWidget):
 
         self._sync_parallax_controls()
         self._emit_settings_changed()
+        self._emit_background_settings_changed()
 
     def _on_crop_changed(self) -> None:
         """Keep camera-path points on the same source pixels after crop edits."""
@@ -575,6 +589,7 @@ class SettingsPanel(QWidget):
             )
             self._crop_drag_start = None
         self.preview_adjustment_finished.emit()
+        self.background_adjustment_finished.emit()
 
     def _apply_crop_change(
         self,
@@ -1170,6 +1185,12 @@ class SettingsPanel(QWidget):
         if not self._updates_blocked():
             self.settings_changed.emit()
 
+    def _emit_background_settings_changed(self, *_args: object) -> None:
+        """emit background edits that affect the parallax depth snapshot."""
+
+        if not self._updates_blocked():
+            self.background_settings_changed.emit()
+
     def _emit_ui_state_changed(self, *_args: object) -> None:
         """emit sidebar-only ui changes without triggering a preview refresh."""
 
@@ -1252,6 +1273,8 @@ class SettingsPanel(QWidget):
         self._remap_focus_points_for_crop(old_crop, new_crop)
         self._last_crop = new_crop
         self._sync_focus_crop_image()
+        if orientation_changed:
+            self._emit_background_settings_changed()
 
     def _on_density_changed(self) -> None:
         if self._updates_blocked():

@@ -46,10 +46,11 @@ class PlaybackPreviewController:
         preview_controller: PreviewController,
         *,
         duration_seconds: float,
+        preview_fps: float,
     ) -> None:
         self._preview_service = preview_service
         self._preview_controller = preview_controller
-        self.frame_cache = PlaybackFrameCache(duration_seconds)
+        self.frame_cache = PlaybackFrameCache(duration_seconds, preview_fps=preview_fps)
         self.generation = 0
         self.worker: PlaybackPreviewWorker | None = None
         self.pending: tuple[list[int], bool] | None = None
@@ -63,11 +64,11 @@ class PlaybackPreviewController:
         self.starts_playback = False
         self.required_indices = []
 
-    def invalidate(self, *, duration_seconds: float) -> None:
+    def invalidate(self, *, duration_seconds: float, preview_fps: float | None = None) -> None:
         """Discard cached playback frames whenever their visual inputs change."""
 
         self.generation += 1
-        self.frame_cache.clear(duration_seconds)
+        self.frame_cache.clear(duration_seconds, preview_fps=preview_fps)
         self.last_sample = None
         self.pending = None
         self.reset_preparation()
@@ -89,7 +90,11 @@ class PlaybackPreviewController:
     def sample_index_for_time(self, time_seconds: float) -> int:
         """Map timeline time to the nearest cached playback sample."""
 
-        return playback_sample_index(time_seconds, self.frame_cache.duration_seconds)
+        return playback_sample_index(
+            time_seconds,
+            self.frame_cache.duration_seconds,
+            self.frame_cache.preview_fps,
+        )
 
     def frame_for_time(self, time_seconds: float) -> tuple[int, np.ndarray | None]:
         """Return the cached sample index and frame for one timeline time."""
@@ -115,10 +120,10 @@ class PlaybackPreviewController:
 
         self.last_sample = None
 
-    def background_warmup_plan(self) -> PlaybackPreparePlan:
-        """Build a sparse background cache fill plan."""
+    def background_warmup_plan(self, preload_fraction: float) -> PlaybackPreparePlan:
+        """Build a background cache fill plan for one preload fraction."""
 
-        indices = self.frame_cache.background_indices()
+        indices = self.frame_cache.preload_indices(preload_fraction)
         missing = self.frame_cache.missing(indices)
         return PlaybackPreparePlan(
             sample_indices=indices,
@@ -184,9 +189,9 @@ class PlaybackPreviewController:
         """
 
         self.worker = None
-        should_reset = self.starts_playback and not self.playback_cache_ready()
         pending = self.pending
         self.pending = None
+        should_reset = pending is None and self.starts_playback and not self.playback_cache_ready()
         if should_reset:
             self.reset_preparation()
         return pending, should_reset
@@ -235,6 +240,7 @@ class PlaybackPreviewController:
             crop_target_size=crop_target_size,
             include_stars=include_stars,
             parallax_preview=parallax_preview,
+            preview_fps=self.frame_cache.preview_fps,
         )
 
 

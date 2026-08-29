@@ -266,9 +266,7 @@ class ZoomToolbar(QWidget):
             self.parallax_button.setToolTip(
                 self.tr("Enable the parallax effect in the sidebar first."),
             )
-        self.preview_status_label.setText(
-            self.tr("Updating preview…") if status == "generating" else "",
-        )
+        self.preview_status_label.setText("")
         self.preview_status_label.setProperty("previewStatus", status)
         self.preview_status_label.style().unpolish(self.preview_status_label)
         self.preview_status_label.style().polish(self.preview_status_label)
