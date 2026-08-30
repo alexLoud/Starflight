@@ -8,6 +8,7 @@ on:
     branches: [main, master]
     paths:
       - pyproject.toml
+      - .github/workflows/release.yml
   workflow_dispatch:
 
 permissions:
@@ -49,6 +50,12 @@ jobs:
           echo "version=${version}" >> "$GITHUB_OUTPUT"
           echo "tag=${tag}" >> "$GITHUB_OUTPUT"
 
+          if gh release view "${tag}" >/dev/null 2>&1; then
+            echo "Release ${tag} already exists; skipping."
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           if [[ "${EVENT_NAME}" == "push" ]]; then
             previous=""
             if [[ -n "${BEFORE_SHA}" && "${BEFORE_SHA}" != "0000000000000000000000000000000000000000" ]] \
@@ -58,19 +65,12 @@ jobs:
               previous="$(git show HEAD^:pyproject.toml | read_version)"
             fi
             if [[ -n "${previous}" && "${previous}" == "${version}" ]]; then
-              echo "Version ${version} unchanged in this push."
-              echo "should_release=false" >> "$GITHUB_OUTPUT"
-              exit 0
+              echo "Version ${version} unchanged, but release ${tag} is missing; building."
+            else
+              echo "Version changed in push: ${previous:-unknown} -> ${version}"
             fi
-            echo "Version changed in push: ${previous:-unknown} -> ${version}"
           else
-            echo "Manual dispatch for version ${version}."
-          fi
-
-          if gh release view "${tag}" >/dev/null 2>&1; then
-            echo "Release ${tag} already exists; skipping."
-            echo "should_release=false" >> "$GITHUB_OUTPUT"
-            exit 0
+            echo "Manual dispatch for version ${version} (release ${tag} missing)."
           fi
 
           if ! awk -v ver="${version}" '
