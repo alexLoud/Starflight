@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
 
 from starflight.app.constants import APP_AUTHOR, APP_DESCRIPTION, APP_DISPLAY_NAME, APP_GITHUB_URL
 from starflight.app.metadata import app_icon_path, app_version
+from starflight.views.dialogs.licenses_dialog import LicensesDialog
 
 
 class AboutDialog(QDialog):
@@ -67,6 +68,11 @@ class AboutDialog(QDialog):
         self._author_label.setObjectName("about_dialog_author")
         text_column.addWidget(self._author_label)
 
+        self._license_label = QLabel(self)
+        self._license_label.setObjectName("about_dialog_author")
+        self._license_label.setWordWrap(True)
+        text_column.addWidget(self._license_label)
+
         self._github_label = QLabel(self)
         self._github_label.setObjectName("about_dialog_link")
         self._github_label.setOpenExternalLinks(True)
@@ -76,6 +82,15 @@ class AboutDialog(QDialog):
         )
         text_column.addWidget(self._github_label)
 
+        self._licenses_link = QLabel(self)
+        self._licenses_link.setObjectName("about_dialog_link")
+        self._licenses_link.setTextInteractionFlags(
+            Qt.TextInteractionFlag.LinksAccessibleByMouse
+            | Qt.TextInteractionFlag.LinksAccessibleByKeyboard,
+        )
+        self._licenses_link.linkActivated.connect(self._open_licenses)
+        text_column.addWidget(self._licenses_link)
+
         header.addLayout(text_column, stretch=1)
         layout.addLayout(header)
 
@@ -83,8 +98,19 @@ class AboutDialog(QDialog):
         self.button_box.accepted.connect(self.accept)
         layout.addWidget(self.button_box)
 
-        self.resize(440, 260)
+        self.resize(440, 300)
         self.retranslate_ui()
+
+    def _open_licenses(self, _link: str = "") -> None:
+        """
+        open the bundled open-source licenses dialog.
+
+        _link
+            unused link target from qlabel
+        """
+
+        dialog = LicensesDialog(self)
+        dialog.exec()
 
     def retranslate_ui(self) -> None:
         """refresh translatable texts."""
@@ -98,8 +124,14 @@ class AboutDialog(QDialog):
         self._author_label.setText(
             self.tr("Author: {author}").format(author=APP_AUTHOR),
         )
+        self._license_label.setText(
+            self.tr("License: PolyForm Noncommercial 1.0.0"),
+        )
         self._github_label.setText(
             self.tr('<a href="{url}">GitHub</a>').format(url=APP_GITHUB_URL),
+        )
+        self._licenses_link.setText(
+            self.tr('<a href="licenses">Open-Source Licenses</a>'),
         )
 
 

@@ -637,6 +637,19 @@ QLabel#about_dialog_link a:hover {{
     text-decoration: underline;
 }}
 
+QLabel#licenses_dialog_intro {{
+    color: {TEXT_PRIMARY};
+    font-size: 13px;
+}}
+
+QPlainTextEdit#licenses_dialog_text {{
+    background-color: {PANEL_BG};
+    color: {TEXT_PRIMARY};
+    border: 1px solid {BORDER};
+    border-radius: 6px;
+    padding: 8px;
+}}
+
 QWidget#timeline_widget {{
     background-color: {PANEL_BG};
 }}

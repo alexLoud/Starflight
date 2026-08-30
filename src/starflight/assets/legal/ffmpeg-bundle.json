@@ -1,0 +1,63 @@
+{
+  "description": "Pinned redistributable FFmpeg builds used by packaged Starflight apps. GPL with libx264, without --enable-nonfree. Corresponding source URLs are listed per target.",
+  "targets": {
+    "macos-arm": {
+      "provider": "Martin Riedl static builds",
+      "version": "9.0.1",
+      "url": "https://ffmpeg.martin-riedl.de/download/macos/arm64/1787073674_9.0.1/ffmpeg.zip",
+      "sha256": "8287a1b2229e05eb41859f073e18e6c52c60a778f2f5e6881070fe51b79407fe",
+      "format": "zip",
+      "sources": [
+        "https://ffmpeg.org/releases/ffmpeg-9.0.1.tar.xz",
+        "https://git.martin-riedl.de/ffmpeg/build-script"
+      ]
+    },
+    "macos-intel": {
+      "provider": "Martin Riedl static builds",
+      "version": "9.0.1",
+      "url": "https://ffmpeg.martin-riedl.de/download/macos/amd64/1787081194_9.0.1/ffmpeg.zip",
+      "sha256": "5bdead62ff504ab9b447cc72b212c4fb481e3f7de5877d427a51bee8136dda40",
+      "format": "zip",
+      "sources": [
+        "https://ffmpeg.org/releases/ffmpeg-9.0.1.tar.xz",
+        "https://git.martin-riedl.de/ffmpeg/build-script"
+      ]
+    },
+    "windows": {
+      "provider": "BtbN/FFmpeg-Builds gpl (not nonfree)",
+      "version": "n8.1.2-50-g1a748fe2cd",
+      "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-08-30-13-12/ffmpeg-n8.1.2-50-g1a748fe2cd-win64-gpl-8.1.zip",
+      "sha256": "962d052ff9a18ae3558a521f91969e1f7d2ca3aa3d1116681e42f7d99f5b66fb",
+      "format": "zip",
+      "sources": [
+        "https://github.com/FFmpeg/FFmpeg/tree/n8.1.2",
+        "https://github.com/BtbN/FFmpeg-Builds/releases/tag/autobuild-2026-08-30-13-12",
+        "https://github.com/BtbN/FFmpeg-Builds"
+      ]
+    },
+    "linux-amd64": {
+      "provider": "BtbN/FFmpeg-Builds gpl (not nonfree)",
+      "version": "n8.1.2-50-g1a748fe2cd",
+      "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-08-30-13-12/ffmpeg-n8.1.2-50-g1a748fe2cd-linux64-gpl-8.1.tar.xz",
+      "sha256": "ea0aa14aa7a45bba0825616c5b2a1c331d8ca19dff4fa51f941587fc16affb27",
+      "format": "tar.xz",
+      "sources": [
+        "https://github.com/FFmpeg/FFmpeg/tree/n8.1.2",
+        "https://github.com/BtbN/FFmpeg-Builds/releases/tag/autobuild-2026-08-30-13-12",
+        "https://github.com/BtbN/FFmpeg-Builds"
+      ]
+    },
+    "linux-arm64": {
+      "provider": "BtbN/FFmpeg-Builds gpl (not nonfree)",
+      "version": "n8.1.2-50-g1a748fe2cd",
+      "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-08-30-13-12/ffmpeg-n8.1.2-50-g1a748fe2cd-linuxarm64-gpl-8.1.tar.xz",
+      "sha256": "df7ae09ed730f62051ff239e836061c976134d06b04b8ad054b3796fead4bb6f",
+      "format": "tar.xz",
+      "sources": [
+        "https://github.com/FFmpeg/FFmpeg/tree/n8.1.2",
+        "https://github.com/BtbN/FFmpeg-Builds/releases/tag/autobuild-2026-08-30-13-12",
+        "https://github.com/BtbN/FFmpeg-Builds"
+      ]
+    }
+  }
+}

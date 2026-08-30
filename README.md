@@ -61,7 +61,8 @@ Outputs in `dist/`:
 - `Starflight-<version>-windows.zip`
 - `Starflight-<version>-linux.tar.gz`
 
-Packaged builds include a bundled FFmpeg binary (via `imageio-ffmpeg` at build time).
+Packaged builds include a pinned, redistributable GPL FFmpeg binary with
+libx264 (no `--enable-nonfree`). See `src/starflight/assets/legal/ffmpeg-bundle.json`.
 
 ## Translation
 

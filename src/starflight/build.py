@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import os
 import platform
 import plistlib
@@ -12,6 +14,7 @@ import subprocess
 import sys
 import tarfile
 import tomllib
+import urllib.request
 import zipfile
 from pathlib import Path
 
@@ -42,6 +45,8 @@ MACOS_ICON_SIZES = (
 )
 WINDOWS_ICON_SIZES = (16, 32, 48, 64, 128, 256)
 LINUX_ICON_SIZE = 256
+FFMPEG_BUNDLE_MANIFEST = SRC / "starflight" / "assets" / "legal" / "ffmpeg-bundle.json"
+FFMPEG_DOWNLOAD_UA = "Starflight-packaging/1.0 (+https://github.com/alexLoud/Starflight)"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -265,34 +270,181 @@ def _write_ico(png_by_size: dict[int, bytes], dest: Path) -> None:
     dest.write_bytes(header + directory + images)
 
 
-def _copy_vendor_ffmpeg(dest: Path) -> Path:
+def _ffmpeg_bundle_key(target: str) -> str:
     """
-    copy the imageio-ffmpeg vendor binary to dest.
+    return the ffmpeg-bundle.json key for a packaging target.
+
+    target
+        packaging target name
+    """
+
+    if target != "linux":
+        return target
+    machine = platform.machine().lower()
+    if machine in {"arm64", "aarch64"}:
+        return "linux-arm64"
+    if machine in {"x86_64", "amd64"}:
+        return "linux-amd64"
+    raise RuntimeError(f"unsupported linux architecture for ffmpeg bundle: {machine}")
+
+
+def _assert_ffmpeg_redistributable(version_text: str) -> None:
+    """
+    reject ffmpeg builds that are not redistributable or lack libx264.
+
+    version_text
+        output of ffmpeg -version
+    """
+
+    lowered = version_text.lower()
+    if "--enable-nonfree" in lowered:
+        raise RuntimeError(
+            "refusing to bundle FFmpeg: this binary was built with --enable-nonfree "
+            "and cannot be redistributed"
+        )
+    if "--enable-libx264" not in lowered and "libx264" not in lowered:
+        raise RuntimeError("refusing to bundle FFmpeg: libx264 is required for export")
+    if "--enable-gpl" not in lowered:
+        raise RuntimeError("refusing to bundle FFmpeg: expected a GPL build with libx264")
+
+
+def _copy_vendor_ffmpeg(dest: Path, target: str) -> Path:
+    """
+    download a pinned redistributable ffmpeg build and copy it to dest.
 
     dest
         destination path (ffmpeg or ffmpeg.exe)
+    target
+        packaging target name
     """
 
-    try:
-        import importlib.resources
+    spec = _ffmpeg_bundle_spec(target)
+    archive_dir = dest.parent / "download"
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    url = str(spec["url"])
+    archive_path = archive_dir / Path(url).name
+    _download_verified_file(url, str(spec["sha256"]), archive_path)
 
-        import imageio_ffmpeg  # noqa: F401
-    except ImportError as exc:
-        raise RuntimeError(
-            "imageio-ffmpeg is required to bundle FFmpeg; run: poetry install --with dev"
-        ) from exc
-
-    root = importlib.resources.files("imageio_ffmpeg.binaries")
-    matches = [entry for entry in root.iterdir() if entry.name.startswith("ffmpeg-")]
-    if not matches:
-        raise RuntimeError("imageio-ffmpeg wheel contains no ffmpeg binary for this platform")
+    extract_dir = dest.parent / "extract"
+    if extract_dir.exists():
+        shutil.rmtree(extract_dir)
+    extract_dir.mkdir(parents=True)
+    _extract_archive(archive_path, extract_dir, str(spec["format"]))
+    binary = _find_ffmpeg_binary(extract_dir, dest.name)
+    _assert_ffmpeg_redistributable(_ffmpeg_version_output(binary))
 
     dest.parent.mkdir(parents=True, exist_ok=True)
-    with importlib.resources.as_file(matches[0]) as source:
-        shutil.copy2(source, dest)
+    shutil.copy2(binary, dest)
     mode = dest.stat().st_mode
     dest.chmod(mode | 0o111)
     return dest
+
+
+def _ffmpeg_bundle_spec(target: str) -> dict[str, object]:
+    """
+    return the pinned ffmpeg download spec for a target.
+
+    target
+        packaging target name
+    """
+
+    key = _ffmpeg_bundle_key(target)
+    manifest = json.loads(FFMPEG_BUNDLE_MANIFEST.read_text(encoding="utf-8"))
+    spec = manifest["targets"].get(key)
+    if not isinstance(spec, dict):
+        raise RuntimeError(f"no ffmpeg bundle spec for {key}")
+    return spec
+
+
+def _download_verified_file(url: str, expected_sha256: str, dest: Path) -> None:
+    """
+    download url to dest and verify the sha-256 digest.
+
+    url
+        download url
+    expected_sha256
+        expected lowercase hex digest
+    dest
+        destination file
+    """
+
+    if dest.is_file() and hashlib.sha256(dest.read_bytes()).hexdigest() == expected_sha256:
+        return
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    request = urllib.request.Request(url, headers={"User-Agent": FFMPEG_DOWNLOAD_UA})
+    print(f"downloading ffmpeg from {url}...", flush=True)
+    with urllib.request.urlopen(request) as response, dest.open("wb") as handle:
+        shutil.copyfileobj(response, handle)
+
+    digest = hashlib.sha256(dest.read_bytes()).hexdigest()
+    if digest != expected_sha256:
+        dest.unlink(missing_ok=True)
+        raise RuntimeError(
+            f"ffmpeg download hash mismatch for {url}: got {digest}, expected {expected_sha256}"
+        )
+
+
+def _extract_archive(archive_path: Path, dest_dir: Path, archive_format: str) -> None:
+    """
+    extract a zip or tar.xz archive into dest_dir.
+
+    archive_path
+        downloaded archive
+    dest_dir
+        extraction directory
+    archive_format
+        zip or tar.xz
+    """
+
+    if archive_format == "zip":
+        with zipfile.ZipFile(archive_path) as archive:
+            archive.extractall(dest_dir)
+        return
+    if archive_format == "tar.xz":
+        with tarfile.open(archive_path, "r:xz") as archive:
+            archive.extractall(dest_dir, filter="data")
+        return
+    raise RuntimeError(f"unsupported ffmpeg archive format: {archive_format}")
+
+
+def _find_ffmpeg_binary(root: Path, expected_name: str) -> Path:
+    """
+    return the ffmpeg executable inside an extracted archive.
+
+    root
+        extracted archive directory
+    expected_name
+        ffmpeg or ffmpeg.exe
+    """
+
+    matches = [
+        path for path in root.rglob(expected_name) if path.is_file() and path.name == expected_name
+    ]
+    if not matches:
+        raise RuntimeError(f"extracted ffmpeg archive does not contain {expected_name}")
+    matches.sort(key=lambda path: len(path.parts))
+    return matches[0]
+
+
+def _ffmpeg_version_output(binary: Path) -> str:
+    """
+    return ffmpeg -version output for license checks.
+
+    binary
+        ffmpeg executable
+    """
+
+    completed = subprocess.run(
+        [str(binary), "-hide_banner", "-version"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    output = (completed.stdout or "") + (completed.stderr or "")
+    if completed.returncode != 0 and not output:
+        raise RuntimeError(f"could not run bundled ffmpeg: {binary}")
+    return output
 
 
 def _run_pyinstaller(target: str, icon_path: Path, work_dir: Path, dist_dir: Path) -> None:
@@ -315,7 +467,7 @@ def _run_pyinstaller(target: str, icon_path: Path, work_dir: Path, dist_dir: Pat
     ffmpeg_name = "ffmpeg.exe" if target == "windows" else "ffmpeg"
     ffmpeg_src = work_dir / "ffmpeg_bundle" / ffmpeg_name
     print("bundling ffmpeg...", flush=True)
-    _copy_vendor_ffmpeg(ffmpeg_src)
+    _copy_vendor_ffmpeg(ffmpeg_src, target)
 
     args = [
         str(ROOT / "main.py"),
@@ -330,6 +482,7 @@ def _run_pyinstaller(target: str, icon_path: Path, work_dir: Path, dist_dir: Pat
         f"--distpath={dist_dir}",
         f"--add-data={SRC / 'starflight' / 'assets'}{data_sep}starflight/assets",
         f"--add-data={SRC / 'starflight' / 'i18n'}{data_sep}starflight/i18n",
+        f"--add-data={ROOT / 'LICENSE'}{data_sep}starflight/assets/legal",
         f"--add-binary={ffmpeg_src}{data_sep}starflight/bin",
         "--hidden-import=PySide6.QtSvg",
         "--hidden-import=PySide6.QtXml",

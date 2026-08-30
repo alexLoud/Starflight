@@ -4,24 +4,34 @@
 <context>
     <name>AboutDialog</name>
     <message>
-        <location filename="../views/dialogs/about_dialog.py" line="92"/>
+        <location filename="../views/dialogs/about_dialog.py" line="118"/>
         <source>About Starflight</source>
         <translation>Über Starflight</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/about_dialog.py" line="95"/>
+        <location filename="../views/dialogs/about_dialog.py" line="121"/>
         <source>Version {version}</source>
         <translation>Version {version}</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/about_dialog.py" line="99"/>
+        <location filename="../views/dialogs/about_dialog.py" line="125"/>
         <source>Author: {author}</source>
         <translation>Autor: {author}</translation>
     </message>
     <message>
-        <location filename="../views/dialogs/about_dialog.py" line="102"/>
+        <location filename="../views/dialogs/about_dialog.py" line="128"/>
+        <source>License: PolyForm Noncommercial 1.0.0</source>
+        <translation>Lizenz: PolyForm Noncommercial 1.0.0</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/about_dialog.py" line="131"/>
         <source>&lt;a href=&quot;{url}&quot;&gt;GitHub&lt;/a&gt;</source>
         <translation>&lt;a href=&quot;{url}&quot;&gt;GitHub&lt;/a&gt;</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/about_dialog.py" line="134"/>
+        <source>&lt;a href=&quot;licenses&quot;&gt;Open-Source Licenses&lt;/a&gt;</source>
+        <translation>&lt;a href=&quot;licenses&quot;&gt;Open-Source-Lizenzen&lt;/a&gt;</translation>
     </message>
 </context>
 <context>
@@ -423,6 +433,19 @@
         <location filename="../views/dialogs/image_open_dialog.py" line="36"/>
         <source>Images (*.jpg *.jpeg *.png *.tif *.tiff);;All files (*)</source>
         <translation>Bilder (*.jpg *.jpeg *.png *.tif *.tiff);;Alle Dateien (*)</translation>
+    </message>
+</context>
+<context>
+    <name>LicensesDialog</name>
+    <message>
+        <location filename="../views/dialogs/licenses_dialog.py" line="60"/>
+        <source>Open-Source Licenses</source>
+        <translation>Open-Source-Lizenzen</translation>
+    </message>
+    <message>
+        <location filename="../views/dialogs/licenses_dialog.py" line="63"/>
+        <source>Starflight and the third-party components bundled with this application are provided under the following license terms.</source>
+        <translation>Starflight und die mit dieser Anwendung gebündelten Drittkomponenten unterliegen den folgenden Lizenzbedingungen.</translation>
     </message>
 </context>
 <context>
