@@ -9,4 +9,4 @@ Full license texts: [`src/starflight/assets/legal/licenses/`](src/starflight/ass
 
 In the application: **Help → About Starflight → Open-Source Licenses**.
 
-Starflight itself: [`LICENSE`](LICENSE) (PolyForm Noncommercial License 1.0.0).
+Starflight itself: [`LICENSE`](LICENSE) (GNU GPLv3 or later).

@@ -5,9 +5,9 @@ releases and packaged desktop builds. Full license texts are in the
 `licenses/` directory next to this file and are also shown in the app under
 **Help → About Starflight → Open-Source Licenses**.
 
-Starflight itself is licensed under the **PolyForm Noncommercial License 1.0.0**
-(see `LICENSE` at the repository root; packaged builds include the same file
-under `assets/legal/LICENSE`).
+Starflight itself is licensed under the **GNU General Public License v3**
+(or later; see `LICENSE` at the repository root; packaged builds include the
+same file under `assets/legal/LICENSE`).
 
 ---
 

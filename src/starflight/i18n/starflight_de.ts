@@ -20,8 +20,8 @@
     </message>
     <message>
         <location filename="../views/dialogs/about_dialog.py" line="128"/>
-        <source>License: PolyForm Noncommercial 1.0.0</source>
-        <translation>Lizenz: PolyForm Noncommercial 1.0.0</translation>
+        <source>License: GNU GPLv3</source>
+        <translation>Lizenz: GNU GPLv3</translation>
     </message>
     <message>
         <location filename="../views/dialogs/about_dialog.py" line="131"/>

@@ -4,7 +4,7 @@
 
 ## [1.1.3] - 2026-08-30
 
-- Licensed under PolyForm Noncommercial 1.0.0, with third-party notices in Help → About
+- Licensed under GNU GPLv3, with third-party notices in Help → About
 - Packaged builds bundle a redistributable GPL FFmpeg (libx264, no nonfree)
 
 ## [1.1.2] - 2026-08-30

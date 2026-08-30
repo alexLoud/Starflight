@@ -331,12 +331,12 @@ def _copy_vendor_ffmpeg(dest: Path, target: str) -> Path:
     extract_dir.mkdir(parents=True)
     _extract_archive(archive_path, extract_dir, str(spec["format"]))
     binary = _find_ffmpeg_binary(extract_dir, dest.name)
+    binary.chmod(binary.stat().st_mode | 0o111)
     _assert_ffmpeg_redistributable(_ffmpeg_version_output(binary))
 
     dest.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(binary, dest)
-    mode = dest.stat().st_mode
-    dest.chmod(mode | 0o111)
+    dest.chmod(dest.stat().st_mode | 0o111)
     return dest
 
 

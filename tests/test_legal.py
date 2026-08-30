@@ -19,7 +19,8 @@ class LegalNoticesTests(unittest.TestCase):
         path = starflight_license_path()
         self.assertTrue(path.is_file(), msg=f"missing license: {path}")
         text = path.read_text(encoding="utf-8")
-        self.assertIn("PolyForm Noncommercial License 1.0.0", text)
+        self.assertIn("GNU GENERAL PUBLIC LICENSE", text)
+        self.assertIn("Version 3", text)
 
     def test_third_party_notices_exist(self) -> None:
         path = third_party_notices_path()
@@ -51,7 +52,8 @@ class LegalNoticesTests(unittest.TestCase):
         self.assertIn("STARFLIGHT LICENSE", text)
         self.assertIn("THIRD-PARTY NOTICES", text)
         self.assertIn("LGPL-3.0.txt", text)
-        self.assertIn("PolyForm Noncommercial License 1.0.0", text)
+        self.assertIn("GNU GENERAL PUBLIC LICENSE", text)
+        self.assertIn("Version 3", text)
 
 
 if __name__ == "__main__":

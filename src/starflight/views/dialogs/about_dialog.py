@@ -125,7 +125,7 @@ class AboutDialog(QDialog):
             self.tr("Author: {author}").format(author=APP_AUTHOR),
         )
         self._license_label.setText(
-            self.tr("License: PolyForm Noncommercial 1.0.0"),
+            self.tr("License: GNU GPLv3"),
         )
         self._github_label.setText(
             self.tr('<a href="{url}">GitHub</a>').format(url=APP_GITHUB_URL),
