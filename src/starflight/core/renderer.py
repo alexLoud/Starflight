@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
 
 from starflight.core.background import BackgroundRenderer
@@ -97,6 +99,9 @@ class FrameRenderer:
         if not include_stars:
             return np.clip(background_rgb, 0, 255).astype(np.uint8)
 
+        field_rotation = math.radians(
+            background_settings.rotation_degrees * motion_progress
+        )
         star_layer = self.stars.render_layer(
             time_seconds,
             duration,
@@ -104,6 +109,7 @@ class FrameRenderer:
             self.view_center_at_progress,
             motion_progress,
             track_visibility=quality == RenderQuality.EXPORT,
+            field_rotation_radians=field_rotation,
         )
         composite = composite_star_layer(background_rgb, star_layer)
         return np.clip(composite, 0, 255).astype(np.uint8)

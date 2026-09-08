@@ -451,17 +451,22 @@ def _advance_star_fade_state(renderer: FrameRenderer, time_seconds: float) -> No
         animation time to apply
     """
 
+    motion_progress = camera_motion_progress(
+        time_seconds,
+        renderer.settings.duration_seconds,
+        renderer.settings.background,
+        renderer.settings.stars.speed,
+    )
+    field_rotation = math.radians(
+        renderer.settings.background.rotation_degrees * motion_progress
+    )
     renderer.stars.field.project_at_time(
         time_seconds,
         renderer.settings.duration_seconds,
         renderer.view_center_at_progress,
         RenderQuality.EXPORT,
-        camera_motion_progress(
-            time_seconds,
-            renderer.settings.duration_seconds,
-            renderer.settings.background,
-            renderer.settings.stars.speed,
-        ),
+        motion_progress,
+        field_rotation_radians=field_rotation,
     )
 
 

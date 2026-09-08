@@ -407,6 +407,7 @@ class StarRenderer:
         view_center_at_progress: Callable[[float], tuple[float, float]] | None = None,
         motion_progress: float | None = None,
         track_visibility: bool | None = None,
+        field_rotation_radians: float = 0.0,
     ) -> np.ndarray:
         """
         render star rgb layer at a given time.
@@ -423,6 +424,8 @@ class StarRenderer:
             optional eased progress for look-at and star travel
         track_visibility
             whether to update sequential export fade state
+        field_rotation_radians
+            background-coupled field rotation θ
         """
 
         projections = self.field.project_at_time(
@@ -432,6 +435,7 @@ class StarRenderer:
             quality,
             motion_progress,
             track_visibility,
+            field_rotation_radians,
         )
         width = self.field.width
         height = self.field.height

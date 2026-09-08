@@ -298,6 +298,7 @@ class StarField:
         focal: float,
         center_x: float,
         center_y: float,
+        field_rotation_radians: float = 0.0,
     ) -> tuple[float, float]:
         """
         project a star seed to screen coordinates.
@@ -312,11 +313,23 @@ class StarField:
             screen center x
         center_y
             screen center y
+        field_rotation_radians
+            background-coupled field rotation θ (R_θ applied to offsets)
         """
 
         z_safe = max(z, self._Z_EPSILON)
-        screen_x = center_x + (star.offset_x / z_safe) * focal
-        screen_y = center_y + (star.offset_y / z_safe) * focal
+        offset_x = star.offset_x
+        offset_y = star.offset_y
+        if field_rotation_radians != 0.0:
+            cos_t = float(np.cos(field_rotation_radians))
+            sin_t = float(np.sin(field_rotation_radians))
+            # R_θ: same screen-angle sense as background content for +rotation_degrees
+            rotated_x = offset_x * cos_t - offset_y * sin_t
+            rotated_y = offset_x * sin_t + offset_y * cos_t
+            offset_x = rotated_x
+            offset_y = rotated_y
+        screen_x = center_x + (offset_x / z_safe) * focal
+        screen_y = center_y + (offset_y / z_safe) * focal
         return screen_x, screen_y
 
     def _depth_gain(self, z: float) -> float:
@@ -416,6 +429,7 @@ class StarField:
         center_y: float,
         base_margin: float,
         settings: StarSettings,
+        field_rotation_radians: float = 0.0,
     ) -> bool:
         """
         check whether a star should be rendered at a given depth.
@@ -434,6 +448,8 @@ class StarField:
             minimum culling margin
         settings
             star settings
+        field_rotation_radians
+            background-coupled field rotation θ
         """
 
         depth_gain = self._depth_gain(z)
@@ -445,6 +461,7 @@ class StarField:
             focal,
             center_x,
             center_y,
+            field_rotation_radians,
         )
         return self._is_on_screen(screen_x, screen_y, margin)
 
@@ -471,6 +488,7 @@ class StarField:
         settings: StarSettings,
         max_travel: float,
         duration_seconds: float,
+        field_rotation_radians: float = 0.0,
     ) -> float | None:
         """
         resolve render depth without popping visible stars via z-wrapping.
@@ -496,6 +514,8 @@ class StarField:
             normalized travel at clip end
         duration_seconds
             clip duration in seconds
+        field_rotation_radians
+            background-coupled field rotation θ
 
         Returns None when the star should not be rendered this frame.
         """
@@ -511,6 +531,7 @@ class StarField:
                 center_y,
                 base_margin,
                 settings,
+                field_rotation_radians,
             ):
                 return z_continuous
             return None
@@ -523,6 +544,7 @@ class StarField:
             center_y,
             base_margin,
             settings,
+            field_rotation_radians,
         ):
             return z_continuous
 
@@ -542,6 +564,7 @@ class StarField:
                     center_y,
                     base_margin,
                     settings,
+                    field_rotation_radians,
                 ):
                     return None
             elif self._is_star_visible_at_depth(
@@ -552,6 +575,7 @@ class StarField:
                 center_y,
                 base_margin,
                 settings,
+                field_rotation_radians,
             ):
                 return None
 
@@ -564,6 +588,7 @@ class StarField:
             center_y,
             base_margin,
             settings,
+            field_rotation_radians,
         ):
             return wrapped_z
 
@@ -577,6 +602,7 @@ class StarField:
         quality: RenderQuality = RenderQuality.EXPORT,
         motion_progress: float | None = None,
         track_visibility: bool | None = None,
+        field_rotation_radians: float = 0.0,
     ) -> list[StarProjection]:
         """
         project stars for a specific time.
@@ -593,6 +619,8 @@ class StarField:
             optional eased progress for look-at and star travel
         track_visibility
             whether to update sequential export fade state
+        field_rotation_radians
+            background-coupled field rotation θ applied to offsets and spikes
         """
 
         settings = self.settings
@@ -627,6 +655,7 @@ class StarField:
                 settings,
                 max_travel,
                 duration_seconds,
+                field_rotation_radians,
             )
             if z is None:
                 if use_fade:
@@ -639,6 +668,7 @@ class StarField:
                 focal,
                 center_x,
                 center_y,
+                field_rotation_radians,
             )
 
             depth_gain = self._depth_gain(z)
@@ -668,7 +698,7 @@ class StarField:
             )
 
             spike_strength = 0.0
-            spike_angle = star.spike_roll
+            spike_angle = star.spike_roll + field_rotation_radians
             if export_appearance and depth_gain > 0.82 and brightness > 0.55 and radius >= 2.5:
                 spike_strength = float((depth_gain - 0.82) / 0.18) * visibility
 

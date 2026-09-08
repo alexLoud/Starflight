@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Color Profile fixes
+- Star field rotation follows the background camera roll
 
 ## [1.1.3] - 2026-08-30
 
