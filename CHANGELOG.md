@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Linux packages bundle Qt xcb/EGL helper libraries so the tarball starts on slim desktops without `apt install libegl1 libxcb-cursor0`
 - Color Profile fixes
 - Star field rotation follows the background camera roll
 
