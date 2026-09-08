@@ -21,6 +21,8 @@ def render_parallax_preview_frame(
 ) -> np.ndarray:
     """Render a parallax preview frame with an optional star overlay."""
 
+    # length edits do not rebuild the snapshot; apply the live clip duration here
+    background_renderer.settings.duration_seconds = preview_settings.duration_seconds
     background = background_renderer.render_frame(
         time_seconds,
         RenderQuality.PREVIEW,

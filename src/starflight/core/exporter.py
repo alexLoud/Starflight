@@ -57,6 +57,80 @@ def _ffmpeg_popen_kwargs() -> dict[str, int]:
     return {"creationflags": creationflags}
 
 
+def _ffmpeg_encode_command(
+    ffmpeg_path: str,
+    width: int,
+    height: int,
+    fps: float,
+    crf: int,
+    staging_path: Path,
+) -> list[str]:
+    """
+    build the ffmpeg argv that encodes full-range srgb frames as rec.709 h.264.
+
+    hd video has no photo icc profile; rec.709 nclx tags (bt.709 primaries,
+    srgb transfer) are the counterpart so players match a color-managed photo.
+
+    ffmpeg_path
+        ffmpeg executable
+    width
+        frame width in pixels
+    height
+        frame height in pixels
+    fps
+        frames per second
+    crf
+        x264 quality
+    staging_path
+        temporary output path
+    """
+
+    return [
+        ffmpeg_path,
+        "-hide_banner",
+        "-nostats",
+        "-loglevel",
+        "error",
+        "-y",
+        "-f",
+        "rawvideo",
+        "-pix_fmt",
+        "rgb24",
+        "-color_range",
+        "pc",
+        "-s",
+        f"{width}x{height}",
+        "-r",
+        str(fps),
+        "-i",
+        "-",
+        "-vf",
+        (
+            "scale=in_range=pc:out_color_matrix=bt709:out_range=tv"
+            ":flags=accurate_rnd+full_chroma_int,format=yuv420p"
+        ),
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+        "-color_primaries",
+        "bt709",
+        "-color_trc",
+        "iec61966-2-1",
+        "-colorspace",
+        "bt709",
+        "-color_range",
+        "tv",
+        "-movflags",
+        "+write_colr",
+        "-crf",
+        str(crf),
+        "-preset",
+        "medium",
+        _ffmpeg_output_arg(staging_path),
+    ]
+
+
 def _ffmpeg_output_arg(path: Path) -> str:
     """
     return a local output path that ffmpeg can open on windows.
@@ -799,33 +873,14 @@ class ExportWorker(QThread):
         staging_path = _create_export_staging_path(self.output_path)
         self._staging_path = staging_path
 
-        command = [
+        command = _ffmpeg_encode_command(
             ffmpeg_path,
-            "-hide_banner",
-            "-nostats",
-            "-loglevel",
-            "error",
-            "-y",
-            "-f",
-            "rawvideo",
-            "-pix_fmt",
-            "rgb24",
-            "-s",
-            f"{width}x{height}",
-            "-r",
-            str(fps),
-            "-i",
-            "-",
-            "-c:v",
-            "libx264",
-            "-pix_fmt",
-            "yuv420p",
-            "-crf",
-            str(crf),
-            "-preset",
-            "medium",
-            _ffmpeg_output_arg(staging_path),
-        ]
+            width,
+            height,
+            float(fps),
+            crf,
+            staging_path,
+        )
 
         chunk_count = min(worker_count, total_frames)
         chunk_size = math.ceil(total_frames / chunk_count)

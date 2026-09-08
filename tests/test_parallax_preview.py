@@ -120,6 +120,31 @@ class ParallaxPreviewCacheTests(unittest.TestCase):
             )
         )
 
+    def test_cached_snapshot_follows_live_clip_duration(self) -> None:
+        source = np.zeros((48, 32, 3), dtype=np.uint8)
+        source[8:40, 8:24] = (40, 80, 160)
+        snapshot_settings = ProjectSettings(
+            resolution=ResolutionSettings(32, 48),
+            duration_seconds=1.0,
+        )
+        snapshot_settings.background.motion_mode = ImageMotionMode.PARALLAX
+        snapshot_settings.background.zoom_percent = 40.0
+        preview = PreparedParallaxPreview(
+            source_image_bgr=source,
+            settings=snapshot_settings,
+            disparity=np.linspace(0.0, 1.0, 48, dtype=np.float32)[:, None].repeat(32, axis=1),
+        )
+        service = PreviewService()
+        service.install_parallax_preview(preview)
+
+        short_settings = snapshot_settings.clone()
+        long_settings = snapshot_settings.clone()
+        long_settings.duration_seconds = 10.0
+        short_frame = service.render_parallax_frame(0.5, short_settings, include_stars=False)
+        long_frame = service.render_parallax_frame(0.5, long_settings, include_stars=False)
+
+        self.assertFalse(np.array_equal(short_frame, long_frame))
+
     def test_cached_snapshot_uses_live_full_resolution_star_settings(self) -> None:
         source = np.zeros((24, 32, 3), dtype=np.uint8)
         snapshot_settings = ProjectSettings(

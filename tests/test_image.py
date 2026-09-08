@@ -9,14 +9,21 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock
 
+import cv2
+
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtCore import QLocale
-from PySide6.QtGui import QColor, QPixmap
+from PySide6.QtGui import QColor, QColorSpace, QImage, QPixmap
 from PySide6.QtWidgets import QApplication, QWidget
 
 from starflight.controllers.project_controller import ProjectController
-from starflight.utils.image import fit_size_within, read_image_dimensions
+from starflight.utils.image import (
+    fit_size_within,
+    load_image_bgr,
+    read_image_dimensions,
+    read_source_color_space,
+)
 from starflight.views.widgets.preview_panel import PreviewPanel
 from starflight.views.widgets.timeline_widget import TimelineWidget
 
@@ -41,6 +48,56 @@ class ImageUtilityTests(unittest.TestCase):
             path.write_bytes(b"\xff\xd8" + app_segment + size_segment + b"\xff\xd9")
 
             self.assertEqual(read_image_dimensions(str(path)), (800, 600))
+
+    def test_missing_image_profile_falls_back_to_srgb(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "unmanaged.png"
+            image = QImage(8, 8, QImage.Format.Format_RGB888)
+            image.fill(QColor(20, 80, 180))
+            self.assertTrue(image.save(str(path), "PNG"))
+
+            color_space = read_source_color_space(str(path))
+
+        self.assertEqual(color_space, QColorSpace(QColorSpace.NamedColorSpace.SRgb))
+
+    def test_non_srgb_source_is_converted_into_srgb_working_space(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "adobe.png"
+            image = QImage(8, 8, QImage.Format.Format_RGB888)
+            image.fill(QColor(200, 40, 40))
+            image.setColorSpace(
+                QColorSpace(
+                    QColorSpace.Primaries.AdobeRgb,
+                    QColorSpace.TransferFunction.Gamma,
+                    2.2,
+                )
+            )
+            self.assertTrue(image.save(str(path), "PNG"))
+
+            color_space = read_source_color_space(str(path))
+            loaded = load_image_bgr(str(path))
+            unmanaged = cv2.imread(str(path), cv2.IMREAD_COLOR)
+
+        self.assertEqual(color_space.primaries(), QColorSpace.Primaries.AdobeRgb)
+        self.assertIsNotNone(unmanaged)
+        self.assertFalse((loaded == unmanaged).all())
+
+    def test_prophoto_source_is_converted_into_srgb_working_space(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "prophoto.png"
+            image = QImage(8, 8, QImage.Format.Format_RGB888)
+            image.fill(QColor(200, 40, 40))
+            image.setColorSpace(QColorSpace(QColorSpace.NamedColorSpace.ProPhotoRgb))
+            self.assertTrue(image.save(str(path), "PNG"))
+
+            color_space = read_source_color_space(str(path))
+            loaded = load_image_bgr(str(path))
+            unmanaged = cv2.imread(str(path), cv2.IMREAD_COLOR)
+
+        self.assertTrue(color_space.isValid())
+        self.assertNotEqual(color_space, QColorSpace(QColorSpace.NamedColorSpace.SRgb))
+        self.assertIsNotNone(unmanaged)
+        self.assertFalse((loaded == unmanaged).all())
 
     def test_preview_size_keeps_aspect_ratio_and_caps_work(self) -> None:
         self.assertEqual(fit_size_within(1920, 1080, 800, 600), (800, 450))

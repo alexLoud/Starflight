@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import os
 import struct
+import zlib
 from collections.abc import Callable
 from pathlib import Path
 from typing import cast
@@ -137,6 +139,153 @@ def _read_next_jpeg_marker(handle) -> int | None:
             return marker[0]
 
 
+_SRGB_COLOR_SPACE = QColorSpace(QColorSpace.NamedColorSpace.SRgb)
+
+
+def read_source_color_space(path: str) -> QColorSpace:
+    """
+    read the embedded image color profile, or srgb when none is present.
+
+    path
+        image file path
+    """
+
+    icc_profile = _read_embedded_icc_profile(path)
+    if icc_profile:
+        color_space = QColorSpace.fromIccProfile(icc_profile)
+        if color_space.isValid():
+            return color_space
+    return QColorSpace(QColorSpace.NamedColorSpace.SRgb)
+
+
+def _is_srgb_color_space(color_space: QColorSpace) -> bool:
+    """
+    return whether a color space is srgb or should be treated as srgb.
+
+    color_space
+        embedded or fallback qcolorspace
+    """
+
+    if not color_space.isValid():
+        return True
+    if color_space == _SRGB_COLOR_SPACE:
+        return True
+    return (
+        color_space.primaries() == QColorSpace.Primaries.SRgb
+        and color_space.transferFunction() == QColorSpace.TransferFunction.SRgb
+    )
+
+
+def _read_embedded_icc_profile(path: str) -> bytes | None:
+    """
+    read icc profile bytes from jpeg, png, or other still-image formats.
+
+    path
+        image file path
+    """
+
+    suffix = Path(path).suffix.lower()
+    if suffix in {".jpg", ".jpeg"}:
+        return _read_jpeg_icc_profile(path)
+    if suffix == ".png":
+        return _read_png_icc_profile(path)
+    return _read_qimage_icc_profile(path)
+
+
+def _read_jpeg_icc_profile(path: str) -> bytes | None:
+    """
+    concatenate jpeg app2 icc_profile segments.
+
+    path
+        jpeg file path
+    """
+
+    chunks: dict[int, bytes] = {}
+    declared_count: int | None = None
+    prefix = b"ICC_PROFILE\x00"
+    with Path(path).open("rb") as handle:
+        if handle.read(2) != b"\xff\xd8":
+            return None
+        while True:
+            marker = _read_next_jpeg_marker(handle)
+            if marker is None or marker == 0xD9:
+                break
+            if marker in {0xD8, 0x01} or 0xD0 <= marker <= 0xD7:
+                continue
+            length_bytes = handle.read(2)
+            if len(length_bytes) < 2:
+                break
+            segment_length = struct.unpack(">H", length_bytes)[0]
+            if segment_length < 2:
+                break
+            data = handle.read(max(0, segment_length - 2))
+            if marker != 0xE2 or len(data) < 14 or not data.startswith(prefix):
+                continue
+            sequence = data[12]
+            declared_count = data[13]
+            chunks[sequence] = data[14:]
+            if declared_count is not None and len(chunks) >= declared_count:
+                break
+    if not chunks:
+        return None
+    expected = declared_count if declared_count is not None else max(chunks)
+    if any(index not in chunks for index in range(1, expected + 1)):
+        return None
+    return b"".join(chunks[index] for index in range(1, expected + 1))
+
+
+def _read_png_icc_profile(path: str) -> bytes | None:
+    """
+    decompress a png iccp chunk if present.
+
+    path
+        png file path
+    """
+
+    with Path(path).open("rb") as handle:
+        if handle.read(8) != b"\x89PNG\r\n\x1a\n":
+            return None
+        while True:
+            length_bytes = handle.read(4)
+            if len(length_bytes) < 4:
+                return None
+            length = struct.unpack(">I", length_bytes)[0]
+            chunk_type = handle.read(4)
+            if len(chunk_type) < 4:
+                return None
+            data = handle.read(length)
+            handle.read(4)
+            if chunk_type == b"iCCP":
+                null = data.find(b"\x00")
+                if null < 0 or null + 2 > len(data) or data[null + 1] != 0:
+                    return None
+                try:
+                    return zlib.decompress(data[null + 2 :])
+                except zlib.error:
+                    return None
+            if chunk_type in {b"IDAT", b"IEND"}:
+                return None
+
+
+def _read_qimage_icc_profile(path: str) -> bytes | None:
+    """
+    read an icc profile via qt for formats without a lightweight parser.
+
+    path
+        image file path
+    """
+
+    reader = QImageReader(path)
+    reader.setAutoTransform(False)
+    image = reader.read()
+    if image.isNull():
+        return None
+    profile = image.colorSpace().iccProfile()
+    if not profile:
+        return None
+    return bytes(profile)
+
+
 def load_qimage_preview(
     path: str,
     *,
@@ -163,16 +312,56 @@ def load_qimage_preview(
 
 def load_image_bgr(path: str) -> np.ndarray:
     """
-    load an image file as a bgr numpy array.
+    load an image as bgr in srgb, converting from the embedded profile.
 
     path
         image file path
     """
 
+    managed = _read_color_managed_srgb_qimage(path)
+    if managed is not None:
+        return _qimage_rgb888_to_bgr(managed)
     image = cv2.imread(path, cv2.IMREAD_COLOR)
     if image is None:
         raise _image_load_error(path)
-    return image
+    color_space = read_source_color_space(path)
+    if _is_srgb_color_space(color_space):
+        return image
+    return _bgr_converted_to_srgb(image, color_space)
+
+
+def _ensure_image_io_app() -> None:
+    """create an offscreen qt app so image io works in export workers."""
+
+    if QCoreApplication.instance() is not None:
+        return
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    QGuiApplication([])
+
+
+def _read_color_managed_srgb_qimage(path: str) -> QImage | None:
+    """
+    decode an image with its icc profile and convert pixels to srgb.
+
+    path
+        image file path
+    """
+
+    _ensure_image_io_app()
+    reader = QImageReader(path)
+    reader.setAutoTransform(False)
+    image = reader.read()
+    if image.isNull():
+        return None
+    if not image.colorSpace().isValid():
+        image.setColorSpace(_SRGB_COLOR_SPACE)
+    converted = image.convertedToColorSpace(
+        _SRGB_COLOR_SPACE,
+        QImage.Format.Format_RGB888,
+    )
+    if converted.isNull():
+        return None
+    return converted
 
 
 def cover_resize_bgr(image: np.ndarray, width: int, height: int) -> np.ndarray:
@@ -198,6 +387,48 @@ def bgr_to_rgb(image: np.ndarray) -> np.ndarray:
     """
 
     return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+
+def _bgr_converted_to_srgb(image: np.ndarray, source: QColorSpace) -> np.ndarray:
+    """
+    convert bgr pixels from an embedded rgb profile into srgb.
+
+    image
+        bgr numpy array in the source encoding
+    source
+        color space of the encoded pixels
+    """
+
+    rgb = np.ascontiguousarray(bgr_to_rgb(image))
+    height, width, _channels = rgb.shape
+    qimage = QImage(rgb.data, width, height, 3 * width, QImage.Format.Format_RGB888)
+    qimage = qimage.copy()
+    qimage.setColorSpace(source)
+    converted = qimage.convertedToColorSpace(
+        QColorSpace(QColorSpace.NamedColorSpace.SRgb),
+        QImage.Format.Format_RGB888,
+    )
+    if converted.isNull():
+        return image
+    return _qimage_rgb888_to_bgr(converted)
+
+
+def _qimage_rgb888_to_bgr(image: QImage) -> np.ndarray:
+    """
+    copy an rgb888 qimage into a bgr numpy array.
+
+    image
+        8-bit rgb qimage
+    """
+
+    rgb888 = image.convertToFormat(QImage.Format.Format_RGB888)
+    height = rgb888.height()
+    width = rgb888.width()
+    bytes_per_line = rgb888.bytesPerLine()
+    buffer = np.frombuffer(rgb888.constBits(), dtype=np.uint8, count=bytes_per_line * height)
+    packed = buffer.reshape(height, bytes_per_line)[:, : width * 3]
+    rgb = np.ascontiguousarray(packed.reshape(height, width, 3))
+    return cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
 
 
 def numpy_rgb_to_qimage(image: np.ndarray, *, screen: QScreen | None = None) -> QImage:

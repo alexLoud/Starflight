@@ -18,6 +18,7 @@ from starflight.core.exporter import (
     ExportWorker,
     _export_worker_count,
     _ExportProgressTracker,
+    _ffmpeg_encode_command,
     _ffmpeg_output_arg,
     _ffmpeg_popen_kwargs,
     _is_closed_pipe_error,
@@ -264,6 +265,21 @@ class ExportProgressTests(unittest.TestCase):
         path = Path("/tmp/video.mp4")
         with patch("starflight.core.exporter.sys.platform", "linux"):
             self.assertEqual(_ffmpeg_output_arg(path), str(path))
+
+    def test_ffmpeg_encode_command_tags_srgb_h264(self) -> None:
+        command = _ffmpeg_encode_command(
+            "ffmpeg",
+            1080,
+            1920,
+            30,
+            18,
+            Path("/tmp/video.mp4"),
+        )
+        self.assertEqual(command[command.index("-color_primaries") + 1], "bt709")
+        self.assertEqual(command[command.index("-color_trc") + 1], "iec61966-2-1")
+        self.assertEqual(command[command.index("-colorspace") + 1], "bt709")
+        self.assertIn("out_color_matrix=bt709", command[command.index("-vf") + 1])
+        self.assertIn("+write_colr", command)
 
     def test_default_export_path_skips_missing_desktop(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

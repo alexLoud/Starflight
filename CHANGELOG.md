@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Color Profile fixes
+
 ## [1.1.3] - 2026-08-30
 
 - Licensed under GNU GPLv3, with third-party notices in Help → About
