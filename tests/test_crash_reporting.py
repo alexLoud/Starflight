@@ -263,6 +263,7 @@ class StartupBoundaryTests(unittest.TestCase):
     def test_startup_exception_is_persisted_and_presented(self) -> None:
         logger = Mock()
         reporter = Mock(logger=logger)
+        reporter.log_path = Path("starflight.log")
         report = CrashReport("startup", "startup failed", Path("startup.pending.txt"))
         reporter.capture_exception.return_value = report
         error = RuntimeError("Qt component missing")
@@ -277,6 +278,7 @@ class StartupBoundaryTests(unittest.TestCase):
             patch("starflight.app.qt_diagnostics.restore_qt_message_logging"),
             patch("starflight.app.bootstrap.main", side_effect=error),
             patch("starflight.app.launcher._present_startup_report") as present,
+            patch("starflight.app.launcher._print_startup_failure") as print_failure,
         ):
             result = launch_application()
 
@@ -284,7 +286,27 @@ class StartupBoundaryTests(unittest.TestCase):
         reporter.start_native_fault_capture.assert_called_once_with()
         reporter.capture_exception.assert_called_once_with("application startup failed", error)
         present.assert_called_once_with(reporter, report)
+        print_failure.assert_called_once()
         reporter.shutdown.assert_called_once_with()
+
+    def test_missing_egl_import_error_gets_actionable_hint(self) -> None:
+        from starflight.app.launcher import _startup_failure_hint
+
+        hint = _startup_failure_hint(
+            ImportError("libEGL.so.1: cannot open shared object file")
+        )
+        self.assertIn("libegl1", hint.lower())
+
+    def test_xcb_cursor_failure_gets_actionable_hint(self) -> None:
+        from starflight.app.launcher import _startup_failure_hint
+
+        hint = _startup_failure_hint(
+            RuntimeError(
+                "From 6.5.0, xcb-cursor0 or libxcb-cursor0 is needed to load "
+                "the Qt xcb platform plugin"
+            )
+        )
+        self.assertIn("libxcb-cursor0", hint.lower())
 
 
 class QtMessageLoggingTests(unittest.TestCase):

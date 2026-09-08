@@ -48,6 +48,34 @@ LINUX_ICON_SIZE = 256
 FFMPEG_BUNDLE_MANIFEST = SRC / "starflight" / "assets" / "legal" / "ffmpeg-bundle.json"
 FFMPEG_DOWNLOAD_UA = "Starflight-packaging/1.0 (+https://github.com/alexLoud/Starflight)"
 
+# system libs that qt/pyside need at runtime on linux but pyinstaller either
+# excludes (glvnd egl loaders) or does not reliably collect from the xcb plugin.
+# use sonames (libfoo.so.N), not fully-versioned realpaths — pyinstaller keeps
+# the source basename, and qt is linked against the soname.
+LINUX_QT_RUNTIME_LIBS = (
+    "libEGL.so.1",
+    "libGLdispatch.so.0",
+    "libxcb-cursor.so.0",
+    "libxcb-icccm.so.4",
+    "libxcb-image.so.0",
+    "libxcb-keysyms.so.1",
+    "libxcb-randr.so.0",
+    "libxcb-render-util.so.0",
+    "libxcb-shape.so.0",
+    "libxcb-util.so.1",
+    "libxcb-xfixes.so.0",
+    "libxcb-xinerama.so.0",
+    "libxcb-xkb.so.1",
+    "libxkbcommon-x11.so.0",
+)
+LINUX_QT_RUNTIME_LIBS_REQUIRED = frozenset(
+    {
+        "libEGL.so.1",
+        "libGLdispatch.so.0",
+        "libxcb-cursor.so.0",
+    }
+)
+
 
 def main(argv: list[str] | None = None) -> int:
     """
@@ -447,6 +475,86 @@ def _ffmpeg_version_output(binary: Path) -> str:
     return output
 
 
+def _linux_lib_search_dirs() -> tuple[Path, ...]:
+    """return standard multi-arch library directories for this linux host."""
+
+    machine = platform.machine().lower()
+    multiarch = {
+        "x86_64": "x86_64-linux-gnu",
+        "amd64": "x86_64-linux-gnu",
+        "aarch64": "aarch64-linux-gnu",
+        "arm64": "aarch64-linux-gnu",
+    }.get(machine)
+    dirs: list[Path] = []
+    if multiarch is not None:
+        dirs.extend(
+            (
+                Path("/usr/lib") / multiarch,
+                Path("/lib") / multiarch,
+            )
+        )
+    dirs.extend(
+        (
+            Path("/usr/lib64"),
+            Path("/lib64"),
+            Path("/usr/lib"),
+            Path("/lib"),
+        )
+    )
+    return tuple(dirs)
+
+
+def _find_system_library(soname: str) -> Path | None:
+    """
+    locate a shared library by soname on the build host.
+
+    soname
+        library soname such as libxcb-cursor.so.0
+    """
+
+    for directory in _linux_lib_search_dirs():
+        candidate = directory / soname
+        if candidate.is_file():
+            # keep the soname path; do not resolve to the versioned realpath.
+            return candidate
+    return None
+
+
+def _linux_qt_runtime_binaries() -> list[tuple[Path, str]]:
+    """
+    collect system libs that must ship with the linux qt package.
+
+    returns
+        (source path, pyinstaller destination) pairs for --add-binary
+    """
+
+    binaries: list[tuple[Path, str]] = []
+    missing_required: list[str] = []
+    for soname in LINUX_QT_RUNTIME_LIBS:
+        path = _find_system_library(soname)
+        if path is None:
+            if soname in LINUX_QT_RUNTIME_LIBS_REQUIRED:
+                missing_required.append(soname)
+            else:
+                print(
+                    f"warning: optional qt runtime lib not found on build host: {soname}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+            continue
+        print(f"bundling qt runtime lib {soname} from {path}", flush=True)
+        # land in _internal/ so the bootloader ld_library_path finds them.
+        binaries.append((path, "."))
+    if missing_required:
+        missing = ", ".join(missing_required)
+        raise RuntimeError(
+            "missing required linux qt runtime libraries on the build host: "
+            f"{missing}. install the matching system packages "
+            "(e.g. libegl1 libxcb-cursor0) before packaging."
+        )
+    return binaries
+
+
 def _run_pyinstaller(target: str, icon_path: Path, work_dir: Path, dist_dir: Path) -> None:
     """
     run pyinstaller for one target.
@@ -489,6 +597,10 @@ def _run_pyinstaller(target: str, icon_path: Path, work_dir: Path, dist_dir: Pat
         "--collect-submodules=starflight",
         "--exclude-module=starflight.build",
     ]
+    if target == "linux":
+        print("bundling linux qt runtime libraries...", flush=True)
+        for src, dest in _linux_qt_runtime_binaries():
+            args.append(f"--add-binary={src}{data_sep}{dest}")
     if target.startswith("macos-"):
         args.append(f"--osx-bundle-identifier={BUNDLE_IDENTIFIER}")
         args.append(f"--target-arch={'arm64' if target == 'macos-arm' else 'x86_64'}")

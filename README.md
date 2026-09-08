@@ -64,6 +64,13 @@ Outputs in `dist/`:
 Packaged builds include a pinned, redistributable GPL FFmpeg binary with
 libx264 (no `--enable-nonfree`). See `src/starflight/assets/legal/ffmpeg-bundle.json`.
 
+The Linux tarball also bundles Qt runtime helpers (`libEGL`, `libxcb-cursor`, and
+related xcb/xkbcommon libraries) collected from the build host so download-and-run
+works on slim desktops. If a display library is still missing on an unusual system,
+install the matching package (Debian/Ubuntu: `libegl1` / `libxcb-cursor0`;
+Fedora/RHEL: `mesa-libEGL` / `xcb-util-cursor`) and check
+`~/.local/state/starflight/starflight.log`.
+
 ## Translation
 
 German (default) and English.

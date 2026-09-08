@@ -30,9 +30,14 @@ def main() -> int:
     except Exception as exc:
         try:
             report = reporter.capture_exception("application startup failed", exc)
+            _emit_startup_failure(reporter, exc, report)
             _present_startup_report(reporter, report)
         except Exception:
             reporter.logger.exception("application startup and crash reporting failed")
+            _print_startup_failure(
+                f"Starflight failed to start: {exc}",
+                getattr(reporter, "log_path", None),
+            )
         return 1
     finally:
         if restore_qt_logging is not None:
@@ -44,6 +49,88 @@ def main() -> int:
             reporter.shutdown()
         except Exception:
             reporter.logger.exception("diagnostic shutdown failed")
+
+
+def _emit_startup_failure(
+    reporter: CrashReporter,
+    exc: BaseException,
+    report: CrashReport,
+) -> None:
+    """
+    log and print a clear startup failure when the gui cannot be shown.
+
+    reporter
+        active crash reporter with log path
+    exc
+        exception that stopped startup
+    report
+        persisted crash report
+    """
+
+    hint = _startup_failure_hint(exc)
+    message = f"Starflight failed to start: {exc}"
+    if hint:
+        message = f"{message}\n{hint}"
+    reporter.logger.error(
+        "%s | log=%s | report=%s",
+        message.replace("\n", " | "),
+        reporter.log_path,
+        report.path,
+    )
+    _print_startup_failure(message, reporter.log_path, report.path)
+
+
+def _startup_failure_hint(exc: BaseException) -> str:
+    """
+    return a short hint for common qt/display library startup failures.
+
+    exc
+        exception raised during startup
+    """
+
+    text = f"{type(exc).__name__}: {exc}".lower()
+    if "libegl" in text or "libgl.so" in text or "libgldispatch" in text:
+        return (
+            "A required OpenGL/EGL library could not be loaded. "
+            "The Linux package should bundle libEGL; if this persists, install "
+            "libegl1 (Debian/Ubuntu) or mesa-libEGL (Fedora/RHEL)."
+        )
+    if "xcb-cursor" in text or ("xcb" in text and "platform plugin" in text):
+        return (
+            "The Qt xcb platform plugin failed to load. "
+            "The Linux package should bundle libxcb-cursor; if this persists, install "
+            "libxcb-cursor0 (Debian/Ubuntu) or xcb-util-cursor (Fedora/RHEL/Arch)."
+        )
+    if isinstance(exc, ImportError) and ("pyside" in text or "qt" in text or "lib" in text):
+        return (
+            "Qt/PySide6 failed to import. See the application log for the missing "
+            "library name."
+        )
+    return ""
+
+
+def _print_startup_failure(
+    message: str,
+    log_path: object | None = None,
+    report_path: object | None = None,
+) -> None:
+    """
+    write a user-visible startup error to stderr (even without a console gui).
+
+    message
+        primary failure text
+    log_path
+        application log path when available
+    report_path
+        crash report path when available
+    """
+
+    lines = [message.rstrip(), ""]
+    if log_path is not None:
+        lines.append(f"Log file: {log_path}")
+    if report_path is not None:
+        lines.append(f"Crash report: {report_path}")
+    print("\n".join(lines).rstrip() + "\n", file=sys.stderr)
 
 
 def _present_startup_report(reporter: CrashReporter, report: CrashReport) -> None:

@@ -49,7 +49,10 @@ You may also obtain upstream sources from:
 - **Homepage:** https://pyside.org/ · https://www.qt.io/
 - **Notes:** Packaged builds include Qt shared libraries collected by
   PyInstaller. You may replace those LGPL libraries with compatible modified
-  versions in accordance with the LGPL.
+  versions in accordance with the LGPL. Linux packages additionally bundle
+  system helper libraries required by the Qt xcb/EGL stack on slim desktops
+  (`libEGL` / libglvnd, `libxcb-cursor`, and related xcb utilities) from the
+  build host.
 
 ---
 
