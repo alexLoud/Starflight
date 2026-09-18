@@ -25,37 +25,37 @@
     },
     "windows": {
       "provider": "BtbN/FFmpeg-Builds gpl (not nonfree)",
-      "version": "n8.1.2-50-g1a748fe2cd",
-      "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-08-30-13-12/ffmpeg-n8.1.2-50-g1a748fe2cd-win64-gpl-8.1.zip",
-      "sha256": "962d052ff9a18ae3558a521f91969e1f7d2ca3aa3d1116681e42f7d99f5b66fb",
+      "version": "n8.1.2-54-gc573a95381",
+      "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-09-17-13-19/ffmpeg-n8.1.2-54-gc573a95381-win64-gpl-8.1.zip",
+      "sha256": "2d54d4e040e944520e9cc2c23083d7d7e6376d15a8eead22bff260d6ad4505c8",
       "format": "zip",
       "sources": [
         "https://github.com/FFmpeg/FFmpeg/tree/n8.1.2",
-        "https://github.com/BtbN/FFmpeg-Builds/releases/tag/autobuild-2026-08-30-13-12",
+        "https://github.com/BtbN/FFmpeg-Builds/releases/tag/autobuild-2026-09-17-13-19",
         "https://github.com/BtbN/FFmpeg-Builds"
       ]
     },
     "linux-amd64": {
       "provider": "BtbN/FFmpeg-Builds gpl (not nonfree)",
-      "version": "n8.1.2-50-g1a748fe2cd",
-      "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-08-30-13-12/ffmpeg-n8.1.2-50-g1a748fe2cd-linux64-gpl-8.1.tar.xz",
-      "sha256": "ea0aa14aa7a45bba0825616c5b2a1c331d8ca19dff4fa51f941587fc16affb27",
+      "version": "n8.1.2-54-gc573a95381",
+      "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-09-17-13-19/ffmpeg-n8.1.2-54-gc573a95381-linux64-gpl-8.1.tar.xz",
+      "sha256": "7b170fc2bf3d015ff346c186b77d22cf2bc97eb2868bd442ca0e61ee93b144ed",
       "format": "tar.xz",
       "sources": [
         "https://github.com/FFmpeg/FFmpeg/tree/n8.1.2",
-        "https://github.com/BtbN/FFmpeg-Builds/releases/tag/autobuild-2026-08-30-13-12",
+        "https://github.com/BtbN/FFmpeg-Builds/releases/tag/autobuild-2026-09-17-13-19",
         "https://github.com/BtbN/FFmpeg-Builds"
       ]
     },
     "linux-arm64": {
       "provider": "BtbN/FFmpeg-Builds gpl (not nonfree)",
-      "version": "n8.1.2-50-g1a748fe2cd",
-      "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-08-30-13-12/ffmpeg-n8.1.2-50-g1a748fe2cd-linuxarm64-gpl-8.1.tar.xz",
-      "sha256": "df7ae09ed730f62051ff239e836061c976134d06b04b8ad054b3796fead4bb6f",
+      "version": "n8.1.2-54-gc573a95381",
+      "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-09-17-13-19/ffmpeg-n8.1.2-54-gc573a95381-linuxarm64-gpl-8.1.tar.xz",
+      "sha256": "e58da59c8b0d92531a0fd6f308f902d572c2e9e9ec6bca98ae9ba7e85f7cd2c1",
       "format": "tar.xz",
       "sources": [
         "https://github.com/FFmpeg/FFmpeg/tree/n8.1.2",
-        "https://github.com/BtbN/FFmpeg-Builds/releases/tag/autobuild-2026-08-30-13-12",
+        "https://github.com/BtbN/FFmpeg-Builds/releases/tag/autobuild-2026-09-17-13-19",
         "https://github.com/BtbN/FFmpeg-Builds"
       ]
     }

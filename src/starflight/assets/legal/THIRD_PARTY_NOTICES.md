@@ -85,7 +85,7 @@ You may also obtain upstream sources from:
 - **Pinned builds:** `ffmpeg-bundle.json` in this folder (checksums, download
   URLs, and corresponding source). macOS uses Martin Riedl 9.0.1 GPL static
   builds; Windows and Linux use BtbN FFmpeg-Builds `gpl` (not `nonfree`)
-  from tag `autobuild-2026-08-30-13-12`.
+  from tag `autobuild-2026-09-17-13-19`.
 - **Notes:** Starflight invokes FFmpeg as a separate process for H.264 export.
   The FFmpeg binary remains under GPL. Redistributors must keep these notices
   and provide corresponding source (or honor the written offer above).
