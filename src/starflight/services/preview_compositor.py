@@ -5,7 +5,7 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
-from starflight.core.camera_motion import camera_motion_progress
+from starflight.core.camera_motion import camera_motion_progress, rotation_radians
 from starflight.core.renderer import FrameRenderer, composite_star_layer
 from starflight.core.star_renderer import StarRenderer
 from starflight.types.settings import ProjectSettings, RenderQuality
@@ -23,6 +23,9 @@ def render_parallax_preview_frame(
 
     # length edits do not rebuild the snapshot; apply the live clip duration here
     background_renderer.settings.duration_seconds = preview_settings.duration_seconds
+    background_renderer.settings.background.flight_direction = (
+        preview_settings.background.flight_direction
+    )
     background = background_renderer.render_frame(
         time_seconds,
         RenderQuality.PREVIEW,
@@ -52,6 +55,11 @@ def render_parallax_preview_frame(
         preview_settings.background,
         preview_settings.stars.speed,
     )
+    field_rotation = rotation_radians(
+        motion_progress,
+        preview_settings.background.rotation_degrees,
+        preview_settings.background.flight_direction,
+    )
     star_layer = star_renderer.render_layer(
         time_seconds,
         duration,
@@ -59,5 +67,7 @@ def render_parallax_preview_frame(
         view_center_at_progress,
         motion_progress,
         track_visibility=False,
+        field_rotation_radians=field_rotation,
+        flight_direction=preview_settings.background.flight_direction,
     )
     return np.clip(composite_star_layer(background, star_layer), 0, 255).astype(np.uint8)

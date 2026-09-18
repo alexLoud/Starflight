@@ -156,7 +156,7 @@ class StarFieldRotationTests(unittest.TestCase):
         self.assertNotEqual(plain_keys, rotated_keys)
 
     def test_shared_progress_formula_matches_frame_renderer(self) -> None:
-        """FrameRenderer uses θ = radians(rotation_degrees * motion_progress)."""
+        """FrameRenderer uses θ = rotation_radians(motion_progress, degrees, direction)."""
 
         rotation_degrees = 40.0
         motion_progress = 0.25

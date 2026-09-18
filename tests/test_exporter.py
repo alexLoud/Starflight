@@ -28,6 +28,7 @@ from starflight.core.exporter import (
 from starflight.core.renderer import create_renderer
 from starflight.types.settings import (
     CropSettings,
+    FlightDirection,
     ImageMotionMode,
     Project,
     ProjectSettings,
@@ -321,6 +322,37 @@ class ExportProgressTests(unittest.TestCase):
             ):
                 path = default_export_output_path("clip.mp4")
             self.assertEqual(path, desktop / "clip.mp4")
+
+    def test_away_fade_snapshots_skip_the_sequential_walk(self) -> None:
+        project = Project()
+        project.settings.background.flight_direction = FlightDirection.AWAY
+        worker = ExportWorker(project, Path("out.mp4"))
+        progress = _ExportProgressTracker(
+            100,
+            lambda *_args: None,
+            total_frames=300,
+            has_parallax=False,
+            star_units=1.0,
+            encode_units=1.0,
+        )
+        with (
+            patch("starflight.core.exporter.load_image_bgr") as load_image,
+            patch("starflight.core.exporter.create_renderer") as create,
+        ):
+            snapshots = worker._build_fade_snapshots(
+                Path("source.jpg"),
+                project.settings,
+                300,
+                30.0,
+                {0, 100, 200},
+                progress,
+                None,
+            )
+        load_image.assert_not_called()
+        create.assert_not_called()
+        self.assertEqual(set(snapshots), {0, 100, 200})
+        for state in snapshots.values():
+            self.assertEqual(state, (set(), {}))
 
 
 if __name__ == "__main__":

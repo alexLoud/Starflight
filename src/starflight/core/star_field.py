@@ -11,7 +11,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from starflight.types.settings import RenderQuality, StarSettings
+from starflight.core.camera_motion import motion_amount
+from starflight.types.settings import FlightDirection, RenderQuality, StarSettings
 from starflight.utils.star_colors import (
     bias_temperature_for_star_strength,
     resolve_star_color,
@@ -95,6 +96,7 @@ class StarField:
         self._cached_star_colors: list[tuple[float, float, float]] = []
         self._continuous_from_start: set[int] = set()
         self._fade_start_by_index: dict[int, float] = {}
+        self._last_flight_direction: FlightDirection | None = None
 
     def export_fade_state(self) -> tuple[set[int], dict[int, float]]:
         """
@@ -603,6 +605,7 @@ class StarField:
         motion_progress: float | None = None,
         track_visibility: bool | None = None,
         field_rotation_radians: float = 0.0,
+        flight_direction: FlightDirection = FlightDirection.TOWARD,
     ) -> list[StarProjection]:
         """
         project stars for a specific time.
@@ -621,18 +624,27 @@ class StarField:
             whether to update sequential export fade state
         field_rotation_radians
             background-coupled field rotation θ applied to offsets and spikes
+        flight_direction
+            toward plays travel forward; away plays the same travel from last frame
+            to first so the last away frame is the full rest field
         """
 
         settings = self.settings
+        if (
+            self._last_flight_direction is not None
+            and self._last_flight_direction != flight_direction
+        ):
+            # a direction switch invalidates sequential fade continuity
+            self._continuous_from_start.clear()
+            self._fade_start_by_index.clear()
+        self._last_flight_direction = flight_direction
         if motion_progress is None:
             progress = 0.0 if duration_seconds <= 0 else time_seconds / duration_seconds
             progress = _clamp(progress, 0.0, 1.0)
-            travel_time = time_seconds
         else:
             progress = _clamp(motion_progress, 0.0, 1.0)
-            travel_time = progress * duration_seconds
         max_travel = self._max_travel(settings, duration_seconds)
-        travel = self._travel_at_time(settings, travel_time)
+        travel = max_travel * motion_amount(progress, flight_direction)
         export_appearance = quality == RenderQuality.EXPORT
         use_fade = export_appearance and track_visibility is not False
 

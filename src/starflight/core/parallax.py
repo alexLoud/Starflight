@@ -10,9 +10,11 @@ from concurrent.futures import TimeoutError as FutureTimeoutError
 import cv2
 import numpy as np
 
+from starflight.core.camera_motion import motion_amount
 from starflight.core.crop import crop_source_image
 from starflight.types.settings import (
     CropSettings,
+    FlightDirection,
     ImageMotionMode,
     ParallaxStrength,
     ProjectSettings,
@@ -556,12 +558,36 @@ def parallax_coordinate_maps(
     lateral_percent: float,
     *,
     iterations: int = _V4_INVERSE_BISECTION_ITERATIONS,
+    flight_direction: FlightDirection = FlightDirection.TOWARD,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Solve the inverse V4 perspective map with guaranteed bounded convergence."""
+    """
+    solve the inverse v4 perspective map with guaranteed bounded convergence.
+
+    disparity
+        prepared disparity field
+    base_map_x
+        affine source x map
+    base_map_y
+        affine source y map
+    source_size
+        source width and height
+    center
+        source-space look-at
+    progress
+        normalized clip progress 0..1
+    travel
+        parallax perspective travel
+    lateral_percent
+        parallax lateral shift percent
+    iterations
+        inverse bisection iterations
+    flight_direction
+        camera flight toward or away from the object
+    """
 
     source_width, source_height = source_size
     center_x, center_y = center
-    amount = max(0.0, min(float(progress), 1.0))
+    amount = motion_amount(progress, flight_direction)
     if amount <= 0.0 or travel <= 0.0:
         return base_map_x.astype(np.float32), base_map_y.astype(np.float32)
 

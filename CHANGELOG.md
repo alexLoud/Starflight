@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-09-18
+
+- New Backward Flight-Direction
 - Linux packages bundle Qt xcb/EGL helper libraries so the tarball starts on slim desktops without `apt install libegl1 libxcb-cursor0`
 - Color Profile fixes
 - Star field rotation follows the background camera roll
@@ -20,6 +23,8 @@
 ## [1.1.1] - 2026-08-29
 
 - Fix visual Export progress issues
+
+
 
 ## [1.1.0] - 2026-08-29
 

@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-import math
-
 import numpy as np
 
 from starflight.core.background import BackgroundRenderer
-from starflight.core.camera_motion import camera_motion_progress
+from starflight.core.camera_motion import camera_motion_progress, rotation_radians
 from starflight.core.parallax import parallax_motion_for_strength
 from starflight.core.star_renderer import StarRenderer
-from starflight.types.settings import ImageMotionMode, ProjectSettings, RenderQuality
+from starflight.types.settings import FlightDirection, ImageMotionMode, ProjectSettings, RenderQuality
 from starflight.utils.image import bgr_to_rgb
 
 
@@ -99,8 +97,10 @@ class FrameRenderer:
         if not include_stars:
             return np.clip(background_rgb, 0, 255).astype(np.uint8)
 
-        field_rotation = math.radians(
-            background_settings.rotation_degrees * motion_progress
+        field_rotation = rotation_radians(
+            motion_progress,
+            background_settings.rotation_degrees,
+            background_settings.flight_direction,
         )
         star_layer = self.stars.render_layer(
             time_seconds,
@@ -108,8 +108,12 @@ class FrameRenderer:
             star_quality or quality,
             self.view_center_at_progress,
             motion_progress,
-            track_visibility=quality == RenderQuality.EXPORT,
+            track_visibility=(
+                quality == RenderQuality.EXPORT
+                and background_settings.flight_direction != FlightDirection.AWAY
+            ),
             field_rotation_radians=field_rotation,
+            flight_direction=background_settings.flight_direction,
         )
         composite = composite_star_layer(background_rgb, star_layer)
         return np.clip(composite, 0, 255).astype(np.uint8)

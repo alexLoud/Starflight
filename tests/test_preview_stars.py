@@ -9,10 +9,18 @@ import cv2
 import numpy as np
 
 from starflight.controllers.preview_controller import PreviewController
+from starflight.core.camera_motion import rotation_radians
 from starflight.core.renderer import create_renderer
 from starflight.core.star_renderer import StarRenderer
+from starflight.services.preview_compositor import render_parallax_preview_frame
 from starflight.services.preview_service import _needs_renderer_rebuild
-from starflight.types.settings import Project, ProjectSettings, RenderQuality, ResolutionSettings
+from starflight.types.settings import (
+    FlightDirection,
+    Project,
+    ProjectSettings,
+    RenderQuality,
+    ResolutionSettings,
+)
 
 
 class PreviewStarTests(unittest.TestCase):
@@ -121,6 +129,39 @@ class PreviewStarTests(unittest.TestCase):
         self.assertLess(energy_ratio, 1.4)
         self.assertGreater(visible_ratio, 0.8)
         self.assertLess(visible_ratio, 1.2)
+
+    def test_parallax_preview_passes_away_field_rotation(self) -> None:
+        background_renderer = Mock()
+        background_renderer.settings.resolution.width = 96
+        background_renderer.settings.resolution.height = 64
+        background_renderer.settings.duration_seconds = 10.0
+        background_renderer.settings.background.flight_direction = FlightDirection.TOWARD
+        background_renderer.render_frame.return_value = np.zeros((64, 96, 3), dtype=np.uint8)
+        background_renderer.view_center_at_progress.return_value = (48.0, 32.0)
+
+        star_renderer = Mock()
+        star_renderer.render_layer.return_value = np.zeros((64, 96, 3), dtype=np.float32)
+
+        settings = ProjectSettings(resolution=ResolutionSettings(96, 64))
+        settings.duration_seconds = 10.0
+        settings.background.flight_direction = FlightDirection.AWAY
+        settings.background.rotation_degrees = 20.0
+
+        render_parallax_preview_frame(
+            background_renderer,
+            settings,
+            0.0,
+            include_stars=True,
+            star_renderer=star_renderer,
+        )
+
+        kwargs = star_renderer.render_layer.call_args.kwargs
+        self.assertAlmostEqual(
+            kwargs["field_rotation_radians"],
+            rotation_radians(0.0, 20.0, FlightDirection.AWAY),
+        )
+        self.assertEqual(kwargs["flight_direction"], FlightDirection.AWAY)
+        self.assertFalse(kwargs["track_visibility"])
 
 
 if __name__ == "__main__":

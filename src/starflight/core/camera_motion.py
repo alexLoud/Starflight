@@ -7,7 +7,9 @@ Motion runs from the first frame to the last. Stars use the same eased clock.
 
 from __future__ import annotations
 
-from starflight.types.settings import BackgroundSettings, EasingMode
+import math
+
+from starflight.types.settings import BackgroundSettings, EasingMode, FlightDirection
 
 # ramp length at flight speed 1.0, as a fraction of clip duration
 _EASE_FRACTION_AT_SPEED_ONE = 0.22
@@ -133,3 +135,38 @@ def camera_motion_progress(
         0.0,
         1.0,
     )
+
+
+def motion_amount(progress: float, direction: FlightDirection) -> float:
+    """
+    return zoom and parallax amount for the selected flight direction.
+
+    progress
+        normalized clip progress 0..1
+    direction
+        camera flight toward or away from the object
+    """
+
+    amount = _clamp(progress, 0.0, 1.0)
+    if direction == FlightDirection.TOWARD:
+        return amount
+    return 1.0 - amount
+
+
+def rotation_radians(
+    progress: float,
+    rotation_degrees: float,
+    direction: FlightDirection,
+) -> float:
+    """
+    return the camera roll for progress and flight direction.
+
+    progress
+        normalized clip progress 0..1
+    rotation_degrees
+        signed rotation hub in degrees
+    direction
+        camera flight toward or away from the object
+    """
+
+    return math.radians(rotation_degrees * motion_amount(progress, direction))

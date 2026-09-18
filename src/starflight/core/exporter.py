@@ -25,7 +25,7 @@ import numpy as np
 from PySide6.QtCore import QThread, Signal
 
 from starflight.app.settings import DEFAULT_RENDER_WORKER_COUNT, max_available_render_workers
-from starflight.core.camera_motion import camera_motion_progress
+from starflight.core.camera_motion import camera_motion_progress, rotation_radians
 from starflight.core.parallax import (
     create_parallax_depth,
     prepare_parallax_depth_v4,
@@ -34,6 +34,7 @@ from starflight.core.parallax import (
 from starflight.core.project import resolve_source_image_path
 from starflight.core.renderer import FrameRenderer, create_renderer
 from starflight.types.settings import (
+    FlightDirection,
     ImageMotionMode,
     Project,
     ProjectSettings,
@@ -385,9 +386,7 @@ class _ExportProgressTracker:
         if self._encode_base_value is None:
             self.finish_render_phase()
             self._encode_base_value = self._value
-        target = self._encode_base_value + round(
-            (self.scale - self._encode_base_value) * fraction
-        )
+        target = self._encode_base_value + round((self.scale - self._encode_base_value) * fraction)
         value = max(self._value, min(self.scale, target))
         if value == self._value:
             return
@@ -457,8 +456,10 @@ def _advance_star_fade_state(renderer: FrameRenderer, time_seconds: float) -> No
         renderer.settings.background,
         renderer.settings.stars.speed,
     )
-    field_rotation = math.radians(
-        renderer.settings.background.rotation_degrees * motion_progress
+    field_rotation = rotation_radians(
+        motion_progress,
+        renderer.settings.background.rotation_degrees,
+        renderer.settings.background.flight_direction,
     )
     renderer.stars.field.project_at_time(
         time_seconds,
@@ -466,7 +467,9 @@ def _advance_star_fade_state(renderer: FrameRenderer, time_seconds: float) -> No
         renderer.view_center_at_progress,
         RenderQuality.EXPORT,
         motion_progress,
+        track_visibility=(renderer.settings.background.flight_direction != FlightDirection.AWAY),
         field_rotation_radians=field_rotation,
+        flight_direction=renderer.settings.background.flight_direction,
     )
 
 
@@ -796,6 +799,9 @@ class ExportWorker(QThread):
         """
         build fade-state snapshots while updating export progress.
 
+        away export does not fade, so snapshots stay empty and the sequential
+        walk is skipped.
+
         image_path
             source image path
         settings
@@ -814,6 +820,14 @@ class ExportWorker(QThread):
 
         self.status_changed.emit("preparing")
         progress.report_star_frames(0)
+        if settings.background.flight_direction == FlightDirection.AWAY:
+            empty: tuple[set[int], dict[int, float]] = (set(), {})
+            snapshots = {0: empty}
+            for start in chunk_starts:
+                snapshots[start] = empty
+            progress.report_star_frames(total_frames)
+            return snapshots
+
         source_image = load_image_bgr(str(image_path))
         source_image, render_settings = _prepare_parallax_render_input(source_image, settings)
         renderer = create_renderer(
@@ -1082,9 +1096,7 @@ class ExportWorker(QThread):
                         self.finished_error.emit(EXPORT_CANCELLED)
                         return
                     encode_elapsed = max(time.perf_counter() - encode_t0, 0.0)
-                    progress.report_encode(
-                        min(0.99, encode_elapsed / max(encode_estimate_s, 1e-6))
-                    )
+                    progress.report_encode(min(0.99, encode_elapsed / max(encode_estimate_s, 1e-6)))
                     time.sleep(0.1)
                 progress.report_encode(1.0)
                 return_code = process.returncode

@@ -23,7 +23,8 @@
       "zoom_percent": 15.0,
       "rotation_degrees": 0.0,
       "easing": "linear",
-      "fill_frame": false
+      "fill_frame": false,
+      "flight_direction": "toward"
     },
     "parallax": {
       "strength": "medium"

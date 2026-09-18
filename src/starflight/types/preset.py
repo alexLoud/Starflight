@@ -12,11 +12,13 @@ from typing import Any
 from starflight.types.settings import (
     DensityPreset,
     EasingMode,
+    FlightDirection,
     ImageMotionMode,
     ParallaxSettings,
     ProjectSettings,
     StarSettings,
     coerce_easing_mode,
+    coerce_flight_direction,
     coerce_image_motion_mode,
     coerce_parallax_strength,
 )
@@ -44,6 +46,7 @@ _BACKGROUND_LOOK_FIELDS = (
     "rotation_degrees",
     "easing",
     "fill_frame",
+    "flight_direction",
 )
 
 
@@ -56,6 +59,7 @@ class LookBackgroundSettings:
     rotation_degrees: float = 0.0
     easing: EasingMode = EasingMode.LINEAR
     fill_frame: bool = False
+    flight_direction: FlightDirection = FlightDirection.TOWARD
 
 
 @dataclass
@@ -98,6 +102,7 @@ def look_from_project_settings(settings: ProjectSettings) -> LookSettings:
             rotation_degrees=background.rotation_degrees,
             easing=background.easing,
             fill_frame=background.fill_frame,
+            flight_direction=background.flight_direction,
         ),
         parallax=deepcopy(settings.parallax),
     )
@@ -132,6 +137,7 @@ def look_settings_to_dict(look: LookSettings) -> dict[str, Any]:
             "rotation_degrees": look.background.rotation_degrees,
             "easing": look.background.easing.value,
             "fill_frame": look.background.fill_frame,
+            "flight_direction": look.background.flight_direction.value,
         },
         "parallax": {
             "strength": look.parallax.strength.value,
@@ -196,6 +202,9 @@ def look_settings_from_dict(data: dict[str, Any]) -> LookSettings:
             ),
             easing=coerce_easing_mode(background_data.get("easing", background_defaults.easing)),
             fill_frame=bool(background_data.get("fill_frame", background_defaults.fill_frame)),
+            flight_direction=coerce_flight_direction(
+                background_data.get("flight_direction", background_defaults.flight_direction),
+            ),
         ),
         parallax=ParallaxSettings(
             strength=coerce_parallax_strength(

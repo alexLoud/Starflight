@@ -41,6 +41,13 @@ class ImageMotionMode(str, Enum):
     PARALLAX = "parallax"
 
 
+class FlightDirection(str, Enum):
+    """camera flight toward or away from the object."""
+
+    TOWARD = "toward"
+    AWAY = "away"
+
+
 class ParallaxStrength(str, Enum):
     """perceptually calibrated V4 parallax strength presets."""
 
@@ -149,6 +156,7 @@ class BackgroundSettings:
     end_focus_x: float = 0.5
     end_focus_y: float = 0.5
     fill_frame: bool = False
+    flight_direction: FlightDirection = FlightDirection.TOWARD
 
 
 @dataclass
@@ -345,6 +353,24 @@ def coerce_image_motion_mode(value: ImageMotionMode | str | None) -> ImageMotion
     return ImageMotionMode(value)
 
 
+def coerce_flight_direction(value: FlightDirection | str | None) -> FlightDirection:
+    """
+    normalize flight direction from enum or stored string.
+
+    value
+        flight direction enum or string value
+    """
+
+    if value is None:
+        return FlightDirection.TOWARD
+    if isinstance(value, FlightDirection):
+        return value
+    try:
+        return FlightDirection(value)
+    except (TypeError, ValueError):
+        return FlightDirection.TOWARD
+
+
 def coerce_parallax_strength(
     value: ParallaxStrength | str | int | float | None,
 ) -> ParallaxStrength:
@@ -469,6 +495,9 @@ def settings_to_dict(settings: ProjectSettings) -> dict[str, Any]:
     data["export"]["quality"] = _enum_to_json_value(settings.export.quality)
     data["background"]["easing"] = _enum_to_json_value(settings.background.easing)
     data["background"]["motion_mode"] = _enum_to_json_value(settings.background.motion_mode)
+    data["background"]["flight_direction"] = _enum_to_json_value(
+        settings.background.flight_direction
+    )
     data["parallax"]["strength"] = _enum_to_json_value(settings.parallax.strength)
     return json.loads(json.dumps(data, ensure_ascii=False))
 
@@ -537,6 +566,7 @@ def settings_from_dict(data: dict[str, Any]) -> ProjectSettings:
             easing=_load_easing_mode(background_data),
             **_load_focus_points(background_data),
             fill_frame=bool(background_data.get("fill_frame", False)),
+            flight_direction=coerce_flight_direction(background_data.get("flight_direction")),
         ),
         parallax=ParallaxSettings(
             strength=coerce_parallax_strength(parallax_data.get("strength")),

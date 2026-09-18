@@ -13,7 +13,7 @@ import cv2
 import numpy as np
 
 from starflight.core.star_field import StarField, StarProjection
-from starflight.types.settings import RenderQuality, StarSettings
+from starflight.types.settings import FlightDirection, RenderQuality, StarSettings
 
 _GLOW_HALO_SCALE = 0.10
 _GLOW_SIGMA_RADIUS_FACTOR = 2.1
@@ -408,6 +408,7 @@ class StarRenderer:
         motion_progress: float | None = None,
         track_visibility: bool | None = None,
         field_rotation_radians: float = 0.0,
+        flight_direction: FlightDirection = FlightDirection.TOWARD,
     ) -> np.ndarray:
         """
         render star rgb layer at a given time.
@@ -426,6 +427,8 @@ class StarRenderer:
             whether to update sequential export fade state
         field_rotation_radians
             background-coupled field rotation θ
+        flight_direction
+            camera flight toward or away from the object
         """
 
         projections = self.field.project_at_time(
@@ -436,6 +439,7 @@ class StarRenderer:
             motion_progress,
             track_visibility,
             field_rotation_radians,
+            flight_direction,
         )
         width = self.field.width
         height = self.field.height

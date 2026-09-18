@@ -27,6 +27,7 @@ from starflight.types.preset import (
 from starflight.types.settings import (
     DensityPreset,
     EasingMode,
+    FlightDirection,
     ImageMotionMode,
     ParallaxStrength,
     ProjectSettings,
@@ -42,6 +43,7 @@ class LookPresetConversionTests(unittest.TestCase):
         settings.background.zoom_percent = 18.0
         settings.background.easing = EasingMode.EASE_IN
         settings.background.motion_mode = ImageMotionMode.PARALLAX
+        settings.background.flight_direction = FlightDirection.AWAY
         settings.parallax.strength = ParallaxStrength.STRONG
 
         restored = look_settings_from_dict(
@@ -54,6 +56,7 @@ class LookPresetConversionTests(unittest.TestCase):
         self.assertEqual(restored.background.zoom_percent, 18.0)
         self.assertEqual(restored.background.easing, EasingMode.EASE_IN)
         self.assertEqual(restored.background.motion_mode, ImageMotionMode.PARALLAX)
+        self.assertEqual(restored.background.flight_direction, FlightDirection.AWAY)
         self.assertEqual(restored.parallax.strength, ParallaxStrength.STRONG)
 
     def test_look_dict_omits_image_specific_fields(self) -> None:
@@ -62,6 +65,7 @@ class LookPresetConversionTests(unittest.TestCase):
         self.assertNotIn("scale_percent", data["background"])
         self.assertNotIn("start_focus_x", data["background"])
         self.assertNotIn("end_focus_y", data["background"])
+        self.assertEqual(data["background"]["flight_direction"], "toward")
         self.assertEqual(set(data), {"stars", "background", "parallax"})
 
     def test_apply_look_leaves_crop_focus_and_timeline_untouched(self) -> None:
@@ -95,6 +99,7 @@ class LookPresetConversionTests(unittest.TestCase):
         preset.settings.background.zoom_percent = 6.0
         preset.settings.background.fill_frame = True
         preset.settings.background.easing = EasingMode.EASE_IN_OUT
+        preset.settings.background.flight_direction = FlightDirection.AWAY
         preset.source_settings = look_settings_to_dict(preset.settings)
 
         apply_look(settings, preset)
@@ -104,6 +109,7 @@ class LookPresetConversionTests(unittest.TestCase):
         self.assertEqual(settings.background.zoom_percent, 6.0)
         self.assertTrue(settings.background.fill_frame)
         self.assertEqual(settings.background.easing, EasingMode.EASE_IN_OUT)
+        self.assertEqual(settings.background.flight_direction, FlightDirection.AWAY)
 
         self.assertEqual(settings.resolution.width, 1080)
         self.assertEqual(settings.resolution.height, 1920)
@@ -138,6 +144,12 @@ class LookPresetConversionTests(unittest.TestCase):
         self.assertEqual(settings.stars.star_count, 1800)
         self.assertEqual(settings.background.zoom_percent, 9.0)
 
+    def test_missing_flight_direction_defaults_to_toward(self) -> None:
+        look = look_settings_from_dict({"background": {"zoom_percent": 10.0}})
+
+        self.assertEqual(look.background.flight_direction, FlightDirection.TOWARD)
+        self.assertEqual(look.background.zoom_percent, 10.0)
+
     def test_preset_id_from_name_is_filesystem_safe(self) -> None:
         self.assertEqual(preset_id_from_name("Soft Drift"), "soft-drift")
         self.assertEqual(preset_id_from_name("  "), "preset")
@@ -157,6 +169,7 @@ class LookPresetPersistenceTests(unittest.TestCase):
         self.assertEqual(preset.settings.stars.star_count, 2500)
         self.assertEqual(preset.settings.background.zoom_percent, 15.0)
         self.assertEqual(preset.settings.background.motion_mode, ImageMotionMode.MANUAL)
+        self.assertEqual(preset.settings.background.flight_direction, FlightDirection.TOWARD)
         self.assertEqual(preset.settings.parallax.strength, ParallaxStrength.MEDIUM)
 
     def test_user_preset_round_trip_and_delete(self) -> None:

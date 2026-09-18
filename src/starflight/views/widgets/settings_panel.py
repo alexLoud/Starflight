@@ -35,12 +35,14 @@ from starflight.types.settings import (
     CropSettings,
     DensityPreset,
     EasingMode,
+    FlightDirection,
     ImageMotionMode,
     ParallaxStrength,
     Project,
     ProjectSettings,
     coerce_density_preset,
     coerce_easing_mode,
+    coerce_flight_direction,
     coerce_parallax_strength,
     density_preset_from_count,
 )
@@ -363,6 +365,40 @@ class SettingsPanel(QWidget):
             self.easing_combo.blockSignals(False)
         self._emit_settings_changed()
 
+    def _reset_flight_direction(self) -> None:
+        """restore flight direction to toward the object."""
+
+        index = self.flight_direction_combo.findData(
+            _DEFAULT_SETTINGS.background.flight_direction,
+        )
+        if index >= 0:
+            self.flight_direction_combo.blockSignals(True)
+            self.flight_direction_combo.setCurrentIndex(index)
+            self.flight_direction_combo.blockSignals(False)
+        self._sync_zoom_label()
+        self._emit_settings_changed()
+
+    def _on_flight_direction_changed(self, *_args: object) -> None:
+        """sync the zoom label and persist the selected flight direction."""
+
+        self._sync_zoom_label()
+        self._emit_settings_changed()
+
+    def _sync_zoom_label(self) -> None:
+        """set the zoom slider label and hint from the current flight direction."""
+
+        direction = coerce_flight_direction(self.flight_direction_combo.currentData())
+        if direction == FlightDirection.AWAY:
+            self._label_zoom.set_text(self.tr("Zoom out"))
+            self._label_zoom.set_hint(
+                self.tr("How strongly the image slowly shrinks over the full video length."),
+            )
+            return
+        self._label_zoom.set_text(self.tr("Zoom in"))
+        self._label_zoom.set_hint(
+            self.tr("How strongly the image slowly enlarges over the full video length."),
+        )
+
     def _reset_parallax_strength(self) -> None:
         """Restore the default V4 parallax strength preset."""
 
@@ -450,6 +486,21 @@ class SettingsPanel(QWidget):
 
         camera_form = QFormLayout()
         self._configure_form(camera_form)
+
+        self.flight_direction_combo = NoWheelComboBox()
+        for direction in (FlightDirection.TOWARD, FlightDirection.AWAY):
+            self.flight_direction_combo.addItem("", direction)
+        self.flight_direction_combo.currentIndexChanged.connect(
+            self._on_flight_direction_changed,
+        )
+        self._style_field(self.flight_direction_combo)
+        self._label_flight_direction = self._create_setting_label()
+        self._add_setting_row(
+            camera_form,
+            self._label_flight_direction,
+            self.flight_direction_combo,
+            self._reset_flight_direction,
+        )
 
         self.zoom_row = SliderSpinBoxRow(
             0.0,
@@ -996,10 +1047,16 @@ class SettingsPanel(QWidget):
         self.fps_combo.setItemText(1, self.tr("{fps} fps").format(fps=30))
         self.fps_combo.setItemText(2, self.tr("{fps} fps").format(fps=60))
 
-        self._label_zoom.set_text(self.tr("Zoom in"))
-        self._label_zoom.set_hint(
-            self.tr("How strongly the image slowly enlarges over the full video length."),
+        self._label_flight_direction.set_text(self.tr("Flight direction"))
+        self._label_flight_direction.set_hint(
+            self.tr(
+                "Whether the camera flies toward the object or away from it. "
+                "Stars and zoom follow this direction.",
+            ),
         )
+        self.flight_direction_combo.setItemText(0, self.tr("Toward the object"))
+        self.flight_direction_combo.setItemText(1, self.tr("Away from the object"))
+        self._sync_zoom_label()
         self._label_rotation.set_text(self.tr("Rotation"))
         self._label_rotation.set_hint(
             self.tr(
@@ -1341,6 +1398,12 @@ class SettingsPanel(QWidget):
 
         background = settings.background
         self.parallax_checkbox.setChecked(background.motion_mode == ImageMotionMode.PARALLAX)
+        flight_index = self.flight_direction_combo.findData(background.flight_direction)
+        if flight_index >= 0:
+            self.flight_direction_combo.blockSignals(True)
+            self.flight_direction_combo.setCurrentIndex(flight_index)
+            self.flight_direction_combo.blockSignals(False)
+        self._sync_zoom_label()
         self.zoom_row.set_value(background.zoom_percent)
         self.rotation_row.set_value(background.rotation_degrees)
         self.fill_frame_checkbox.setChecked(background.fill_frame)
@@ -1416,6 +1479,9 @@ class SettingsPanel(QWidget):
         )
         background.zoom_percent = float(self.zoom_row.value())
         background.rotation_degrees = float(self.rotation_row.value())
+        background.flight_direction = coerce_flight_direction(
+            self.flight_direction_combo.currentData(),
+        )
         background.easing = coerce_easing_mode(self.easing_combo.currentData())
         background.fill_frame = self.fill_frame_checkbox.isChecked()
         settings.parallax.strength = coerce_parallax_strength(

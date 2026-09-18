@@ -6,9 +6,11 @@ import math
 import unittest
 
 from starflight.types.settings import (
+    FlightDirection,
     ImageMotionMode,
     ParallaxStrength,
     Project,
+    coerce_flight_direction,
     reset_project_settings,
     settings_from_dict,
     settings_to_dict,
@@ -115,6 +117,36 @@ class SettingsConversionTests(unittest.TestCase):
         self.assertEqual(project.settings.background.zoom_percent, 0.0)
         self.assertEqual(project.settings.resolution.width, 1080)
         self.assertEqual(project.settings.resolution.height, 1920)
+
+    def test_flight_direction_defaults_to_toward(self) -> None:
+        settings = settings_from_dict({})
+
+        self.assertEqual(settings.background.flight_direction, FlightDirection.TOWARD)
+
+    def test_missing_flight_direction_defaults_to_toward(self) -> None:
+        settings = settings_from_dict({"background": {"zoom_percent": 10.0}})
+
+        self.assertEqual(settings.background.flight_direction, FlightDirection.TOWARD)
+
+    def test_flight_direction_round_trips_away(self) -> None:
+        settings = settings_from_dict({"background": {"flight_direction": "away"}})
+        restored = settings_from_dict(settings_to_dict(settings))
+
+        self.assertEqual(settings.background.flight_direction, FlightDirection.AWAY)
+        self.assertEqual(restored.background.flight_direction, FlightDirection.AWAY)
+        self.assertEqual(
+            settings_to_dict(restored)["background"]["flight_direction"],
+            "away",
+        )
+
+    def test_coerce_flight_direction_unknown_falls_back_to_toward(self) -> None:
+        self.assertEqual(coerce_flight_direction(None), FlightDirection.TOWARD)
+        self.assertEqual(coerce_flight_direction("sideways"), FlightDirection.TOWARD)
+        self.assertEqual(coerce_flight_direction("toward"), FlightDirection.TOWARD)
+        self.assertEqual(coerce_flight_direction("away"), FlightDirection.AWAY)
+        self.assertEqual(coerce_flight_direction(FlightDirection.AWAY), FlightDirection.AWAY)
+        settings = settings_from_dict({"background": {"flight_direction": "sideways"}})
+        self.assertEqual(settings.background.flight_direction, FlightDirection.TOWARD)
 
 
 if __name__ == "__main__":

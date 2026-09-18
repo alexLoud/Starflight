@@ -17,6 +17,7 @@ from starflight.core.parallax import (
 )
 from starflight.core.renderer import create_renderer
 from starflight.types.settings import (
+    FlightDirection,
     ImageMotionMode,
     ParallaxStrength,
     ProjectSettings,
@@ -249,6 +250,87 @@ class ParallaxDepthTests(unittest.TestCase):
             distances.append(float(np.hypot(map_x[0, 0] - center[0], map_y[0, 0] - center[1])))
 
         self.assertEqual(distances, sorted(distances, reverse=True))
+
+    def test_toward_starts_as_identity_and_ends_warped(self) -> None:
+        depth = np.ones((8, 8), dtype=np.float32)
+        base_x = np.array([[1.0, 6.0]], dtype=np.float32)
+        base_y = np.array([[1.0, 7.0]], dtype=np.float32)
+        center = (4.0, 4.0)
+        travel = 0.64
+
+        start_x, start_y = parallax_coordinate_maps(
+            depth,
+            base_x,
+            base_y,
+            (8, 8),
+            center,
+            0.0,
+            travel,
+            0.0,
+            flight_direction=FlightDirection.TOWARD,
+        )
+        end_x, end_y = parallax_coordinate_maps(
+            depth,
+            base_x,
+            base_y,
+            (8, 8),
+            center,
+            1.0,
+            travel,
+            0.0,
+            flight_direction=FlightDirection.TOWARD,
+        )
+
+        np.testing.assert_allclose(start_x, base_x)
+        np.testing.assert_allclose(start_y, base_y)
+        self.assertFalse(np.allclose(end_x, base_x))
+        self.assertFalse(np.allclose(end_y, base_y))
+
+    def test_away_starts_warped_and_ends_as_identity(self) -> None:
+        depth = np.ones((8, 8), dtype=np.float32)
+        base_x = np.array([[1.0, 6.0]], dtype=np.float32)
+        base_y = np.array([[1.0, 7.0]], dtype=np.float32)
+        center = (4.0, 4.0)
+        travel = 0.64
+
+        start_x, start_y = parallax_coordinate_maps(
+            depth,
+            base_x,
+            base_y,
+            (8, 8),
+            center,
+            0.0,
+            travel,
+            0.0,
+            flight_direction=FlightDirection.AWAY,
+        )
+        end_x, end_y = parallax_coordinate_maps(
+            depth,
+            base_x,
+            base_y,
+            (8, 8),
+            center,
+            1.0,
+            travel,
+            0.0,
+            flight_direction=FlightDirection.AWAY,
+        )
+        toward_end_x, toward_end_y = parallax_coordinate_maps(
+            depth,
+            base_x,
+            base_y,
+            (8, 8),
+            center,
+            1.0,
+            travel,
+            0.0,
+            flight_direction=FlightDirection.TOWARD,
+        )
+
+        np.testing.assert_allclose(start_x, toward_end_x)
+        np.testing.assert_allclose(start_y, toward_end_y)
+        np.testing.assert_allclose(end_x, base_x)
+        np.testing.assert_allclose(end_y, base_y)
 
 
 class ParallaxRenderModeTests(unittest.TestCase):

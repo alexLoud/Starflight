@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import math
 import unittest
 
-from starflight.core.camera_motion import camera_motion_progress
+from starflight.core.camera_motion import camera_motion_progress, motion_amount, rotation_radians
 from starflight.types.settings import (
     BackgroundSettings,
     EasingMode,
+    FlightDirection,
     ImageMotionMode,
     resolution_for_image_orientation,
     settings_from_dict,
@@ -95,6 +97,48 @@ class CameraMotionTests(unittest.TestCase):
         long_clip = _progress(1.0, EasingMode.EASE_IN, duration=10.0)
         short_clip = _progress(1.0, EasingMode.EASE_IN, duration=5.0)
         self.assertGreater(short_clip, long_clip)
+
+
+class MotionAmountTests(unittest.TestCase):
+    def test_toward_follows_progress(self) -> None:
+        self.assertAlmostEqual(motion_amount(0.0, FlightDirection.TOWARD), 0.0)
+        self.assertAlmostEqual(motion_amount(0.4, FlightDirection.TOWARD), 0.4)
+        self.assertAlmostEqual(motion_amount(1.0, FlightDirection.TOWARD), 1.0)
+
+    def test_away_mirrors_progress(self) -> None:
+        self.assertAlmostEqual(motion_amount(0.0, FlightDirection.AWAY), 1.0)
+        self.assertAlmostEqual(motion_amount(0.4, FlightDirection.AWAY), 0.6)
+        self.assertAlmostEqual(motion_amount(1.0, FlightDirection.AWAY), 0.0)
+
+    def test_progress_is_clamped(self) -> None:
+        self.assertAlmostEqual(motion_amount(-0.5, FlightDirection.TOWARD), 0.0)
+        self.assertAlmostEqual(motion_amount(1.5, FlightDirection.TOWARD), 1.0)
+        self.assertAlmostEqual(motion_amount(-0.5, FlightDirection.AWAY), 1.0)
+        self.assertAlmostEqual(motion_amount(1.5, FlightDirection.AWAY), 0.0)
+
+
+class RotationRadiansTests(unittest.TestCase):
+    def test_toward_grows_from_zero(self) -> None:
+        self.assertAlmostEqual(rotation_radians(0.0, 20.0, FlightDirection.TOWARD), 0.0)
+        self.assertAlmostEqual(
+            rotation_radians(0.5, 20.0, FlightDirection.TOWARD),
+            math.radians(10.0),
+        )
+        self.assertAlmostEqual(
+            rotation_radians(1.0, 20.0, FlightDirection.TOWARD),
+            math.radians(20.0),
+        )
+
+    def test_away_unwinds_to_zero(self) -> None:
+        self.assertAlmostEqual(
+            rotation_radians(0.0, 20.0, FlightDirection.AWAY),
+            math.radians(20.0),
+        )
+        self.assertAlmostEqual(
+            rotation_radians(0.5, 20.0, FlightDirection.AWAY),
+            math.radians(10.0),
+        )
+        self.assertAlmostEqual(rotation_radians(1.0, 20.0, FlightDirection.AWAY), 0.0)
 
 
 class SettingsCompatibilityTests(unittest.TestCase):

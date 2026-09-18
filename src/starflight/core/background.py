@@ -11,7 +11,7 @@ import math
 import cv2
 import numpy as np
 
-from starflight.core.camera_motion import camera_motion_progress
+from starflight.core.camera_motion import camera_motion_progress, motion_amount, rotation_radians
 from starflight.core.crop import framing_base_scale, map_look_at_to_source
 from starflight.core.parallax import parallax_coordinate_maps
 from starflight.types.settings import (
@@ -19,6 +19,7 @@ from starflight.types.settings import (
     MIN_BACKGROUND_SCALE_PERCENT,
     BackgroundSettings,
     CropSettings,
+    FlightDirection,
 )
 
 _SCALE_SAMPLE_COUNT = 64
@@ -79,6 +80,7 @@ def interpolate_camera_look_at(
         normalized animation progress 0..1
     """
 
+    # raw progress for both directions keeps the away rest field on the end focus
     (start_x, start_y), (end_x, end_y) = resolve_camera_path(settings)
     amount = _clamp(progress, 0.0, 1.0)
     return (
@@ -160,12 +162,17 @@ class BackgroundRenderer:
             flight_speed,
         )
         matrix = self._build_transform_matrix(progress, settings)
-        if self.parallax_depth is not None and parallax_travel > 0.0 and progress > 0.0:
+        if (
+            self.parallax_depth is not None
+            and parallax_travel > 0.0
+            and motion_amount(progress, settings.flight_direction) > 0.0
+        ):
             return self._remap_parallax(
                 matrix,
                 progress,
                 parallax_travel,
                 parallax_lateral_percent,
+                settings.flight_direction,
             )
         return self._remap(matrix)
 
@@ -252,8 +259,22 @@ class BackgroundRenderer:
         progress: float,
         travel: float,
         lateral_percent: float,
+        flight_direction: FlightDirection,
     ) -> np.ndarray:
-        """Apply continuous parallax after the complete background camera transform."""
+        """
+        apply continuous parallax after the complete background camera transform.
+
+        matrix
+            2x3 affine matrix mapping output pixels to source coordinates
+        progress
+            normalized animation progress 0..1
+        travel
+            parallax perspective travel
+        lateral_percent
+            parallax lateral shift percent
+        flight_direction
+            camera flight toward or away from the object
+        """
 
         if self.parallax_depth is None:
             return self._remap(matrix)
@@ -272,6 +293,7 @@ class BackgroundRenderer:
             travel,
             lateral_percent,
             iterations=self.parallax_iterations,
+            flight_direction=flight_direction,
         )
         return cv2.remap(
             self.source_image,
@@ -358,7 +380,9 @@ class BackgroundRenderer:
             self.crop_target_width,
             self.crop_target_height,
         )
-        zoom = 1.0 + (settings.zoom_percent / 100.0) * progress
+        zoom = 1.0 + (settings.zoom_percent / 100.0) * motion_amount(
+            progress, settings.flight_direction
+        )
         requested_scale = base_scale * scale_factor * zoom
         if not settings.fill_frame:
             return requested_scale
@@ -387,6 +411,7 @@ class BackgroundRenderer:
         return (
             settings.scale_percent,
             settings.zoom_percent,
+            settings.flight_direction,
             settings.rotation_degrees,
             settings.fill_frame,
             settings.start_focus_enabled,
@@ -410,24 +435,35 @@ class BackgroundRenderer:
             background settings
         """
 
+        start_angle = rotation_radians(
+            0.0,
+            settings.rotation_degrees,
+            settings.flight_direction,
+        )
         start = self._required_scale(
             0.0,
             settings,
-            1.0,
-            0.0,
+            math.cos(start_angle),
+            math.sin(start_angle),
             *self._desired_source_center(0.0, settings),
         )
-        max_slope = 0.0
+        slope = float("-inf")
         for index in range(1, _SCALE_SAMPLE_COUNT + 1):
             progress = index / _SCALE_SAMPLE_COUNT
-            angle = math.radians(settings.rotation_degrees * progress)
+            angle = rotation_radians(
+                progress,
+                settings.rotation_degrees,
+                settings.flight_direction,
+            )
             cos_a = math.cos(angle)
             sin_a = math.sin(angle)
             center_x, center_y = self._desired_source_center(progress, settings)
             required = self._required_scale(progress, settings, cos_a, sin_a, center_x, center_y)
-            max_slope = max(max_slope, (required - start) / progress)
+            slope = max(slope, (required - start) / progress)
 
-        return start, max_slope
+        if settings.flight_direction != FlightDirection.AWAY:
+            slope = max(slope, 0.0)
+        return start, slope
 
     def _linear_scale(self, progress: float, settings: BackgroundSettings) -> float:
         """
@@ -457,7 +493,11 @@ class BackgroundRenderer:
             background settings
         """
 
-        angle = math.radians(settings.rotation_degrees * progress)
+        angle = rotation_radians(
+            progress,
+            settings.rotation_degrees,
+            settings.flight_direction,
+        )
         cos_a = math.cos(angle)
         sin_a = math.sin(angle)
 
